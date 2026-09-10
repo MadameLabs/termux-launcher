@@ -312,7 +312,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final int REQUEST_CODE_WALLPAPER_READ_PERMISSION = 4713;
     private static final int REQUEST_CODE_WIDGET_BIND = 4714;
     private static final int REQUEST_CODE_WIDGET_CONFIGURE = 4715;
+    private static final int REQUEST_CODE_VOICE_MICROPHONE = 4716;
     @Nullable private TerminalSession mVoiceTypingTargetSession;
+    /** Built on the first voice gesture: the Groq dictation path with its post-processing modes. */
+    @Nullable private com.termux.app.voice.VoiceDictationController mVoiceDictationController;
     /** Drawer-visible sessions = service sessions minus secondary panes. Backs the list adapter. */
     private final java.util.List<com.termux.shared.termux.shell.command.runner.terminal.TermuxSession> mDrawerSessions = new java.util.ArrayList<>();
 
@@ -5051,6 +5054,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mBackgroundProcessHandler.removeCallbacks(mBackgroundProcessResync);
         mStatusCardHost.dismiss();
         mKeybindHintPresenter.hideNow(false);
+        // A recording must not keep the microphone open behind a backgrounded launcher.
+        if (mVoiceDictationController != null) mVoiceDictationController.onActivityStopped();
         if (mStatsController != null) mStatsController.stop();
         if (mAiIndicatorController != null) mAiIndicatorController.stop();
         // Sampling stops here, so the smoothed history stops meaning anything. Dropped now rather
@@ -5150,6 +5155,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // with the Activity rather than outlive it.
         com.termux.app.terminal.TerminalKeyInspector.close();
         mChrome.onDestroy();
+        if (mVoiceDictationController != null) {
+            mVoiceDictationController.shutdown();
+            mVoiceDictationController = null;
+        }
         unregisterPreferredHomeChangeReceiver();
         if (mIsInvalidState)
             return;
@@ -9714,7 +9723,44 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
     }
 
+    /**
+     * The voice gesture, routed to whichever dictation path is configured.
+     *
+     * <p>With Groq voice set up, the swipe records straight away and the long press opens the mode
+     * panel first. Without it, both keep the original behaviour of handing the job to a platform
+     * speech recogniser — an unconfigured feature must not take the gesture away.
+     */
     private void launchVoiceTyping(boolean chooser) {
+        com.termux.app.voice.VoiceDictationController controller = voiceDictationController();
+        if (controller.isConfigured()) {
+            controller.onVoiceGesture(chooser);
+            return;
+        }
+        launchPlatformVoiceTyping(chooser);
+    }
+
+    @NonNull
+    private com.termux.app.voice.VoiceDictationController voiceDictationController() {
+        if (mVoiceDictationController == null) {
+            mVoiceDictationController = new com.termux.app.voice.VoiceDictationController(this,
+                new com.termux.app.voice.VoiceDictationController.SessionSource() {
+                    @Nullable
+                    @Override
+                    public TerminalSession currentSession() {
+                        return getCurrentSession();
+                    }
+
+                    @Override
+                    public void write(@NonNull TerminalSession session, @NonNull String text) {
+                        // A single write of the finished text: no Enter, no shell invocation.
+                        session.write(text);
+                    }
+                }, REQUEST_CODE_VOICE_MICROPHONE);
+        }
+        return mVoiceDictationController;
+    }
+
+    private void launchPlatformVoiceTyping(boolean chooser) {
         TerminalSession target = getCurrentSession();
         if (target == null) return;
         Intent recognition = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -9747,6 +9793,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: " + Arrays.toString(permissions) + ", grantResults: " + Arrays.toString(grantResults));
+        if (requestCode == REQUEST_CODE_VOICE_MICROPHONE) {
+            boolean granted = grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (mVoiceDictationController != null)
+                mVoiceDictationController.onMicrophonePermissionResult(granted);
+            return;
+        }
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         } else if (requestCode == REQUEST_CODE_WEATHER_LOCATION) {

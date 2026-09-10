@@ -33,6 +33,11 @@
             app:key="in_app_keyboard_hide_on_hardware"
             app:title="@string/settings_hide_keyboard_hardware_title"
             app:summary="@string/settings_hide_keyboard_hardware_summary" />
+        <Preference
+            app:key="voice_post_processing"
+            app:fragment="com.termux.app.fragments.settings.termux.VoicePreferencesFragment"
+            app:title="@string/voice_preferences_title"
+            app:summary="@string/voice_preferences_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory app:key="keyboard_appearance" app:title="@string/termux_keyboard_appearance_header">

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Voice dictation settings. Every key here except voice_api_key_input persists into the
+  termux_voice preference file; the API key is not persisted by the preference framework at all —
+  the fragment moves it into GroqSecretStore and the field keeps nothing.
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/voice_preferences_title">
+        <SwitchPreferenceCompat
+            app:key="voice_post_processing_enabled"
+            app:title="@string/voice_settings_enabled_title"
+            app:summary="@string/voice_settings_enabled_summary"
+            android:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/voice_settings_credentials_header">
+        <EditTextPreference
+            app:key="voice_api_key_input"
+            app:persistent="false"
+            app:title="@string/voice_settings_api_key_title"
+            app:dialogTitle="@string/voice_settings_api_key_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/voice_settings_models_header">
+        <EditTextPreference
+            app:key="voice_speech_model"
+            app:title="@string/voice_settings_speech_model_title"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="voice_text_model"
+            app:title="@string/voice_settings_text_model_title"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="voice_language"
+            app:title="@string/voice_settings_language_title"
+            app:useSimpleSummaryProvider="true" />
+        <EditTextPreference
+            app:key="voice_temperature"
+            app:title="@string/voice_settings_temperature_title"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/voice_settings_prompts_header">
+        <EditTextPreference
+            app:key="voice_correction_prompt"
+            app:title="@string/voice_settings_correction_prompt_title"
+            app:summary="@string/voice_settings_prompt_summary_default" />
+        <EditTextPreference
+            app:key="voice_shorten_prompt"
+            app:title="@string/voice_settings_shorten_prompt_title"
+            app:summary="@string/voice_settings_prompt_summary_default" />
+        <EditTextPreference
+            app:key="voice_emoji_prompt"
+            app:title="@string/voice_settings_emoji_prompt_title"
+            app:summary="@string/voice_settings_prompt_summary_default" />
+        <EditTextPreference
+            app:key="voice_terminal_prompt"
+            app:title="@string/voice_settings_terminal_prompt_title"
+            app:summary="@string/voice_settings_prompt_summary_default" />
+        <EditTextPreference
+            app:key="voice_output_prompt"
+            app:title="@string/voice_settings_output_prompt_title"
+            app:summary="@string/voice_settings_prompt_summary_default" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/voice_settings_modes_header">
+        <SwitchPreferenceCompat
+            app:key="voice_show_terminal_mode"
+            app:title="@string/voice_settings_show_terminal_title"
+            app:summary="@string/voice_settings_show_terminal_summary"
+            android:defaultValue="true" />
+        <EditTextPreference
+            app:key="voice_vocabulary"
+            app:title="@string/voice_settings_vocabulary_title"
+            app:summary="@string/voice_settings_vocabulary_summary"
+            app:dialogTitle="@string/voice_settings_vocabulary_title" />
+    </PreferenceCategory>
+</PreferenceScreen>
