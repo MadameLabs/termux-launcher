@@ -1510,12 +1510,25 @@
     <string name="voice_settings_emoji_prompt_title">Emoji prompt</string>
     <string name="voice_settings_terminal_prompt_title">Terminal prompt</string>
     <string name="voice_settings_output_prompt_title">Output instruction</string>
-    <string name="voice_settings_prompt_summary_default">Empty uses the safe default</string>
     <string name="voice_settings_modes_header">Modes and vocabulary</string>
     <string name="voice_settings_show_terminal_title">Show terminal mode</string>
     <string name="voice_settings_show_terminal_summary">Turns a spoken intent into command text; it never runs it</string>
     <string name="voice_settings_vocabulary_title">Custom vocabulary</string>
     <string name="voice_settings_vocabulary_summary">One term per line. Spelling reference only: a term that was not spoken is never inserted.</string>
+
+    <!--
+      Default post-processing prompts. They are instructions sent to a language model, not UI
+      labels, and they are localized on purpose: the instruction and the dictation should speak
+      the same language, or the model drifts toward the language it was instructed in.
+      Every one of them is overridable in the settings screen; a blank field falls back here.
+      The emoji prompt must never claim the wording cannot change — it also runs alongside
+      correction and shortening, which exist precisely to change it.
+    -->
+    <string name="voice_default_correction_prompt">Correct the transcript: remove hesitations, repetitions and false starts, and fix punctuation and spelling. Preserve the original meaning, language and tone. Do not add or remove information.</string>
+    <string name="voice_default_shorten_prompt">Rewrite the transcript with fewer words, keeping every fact and the original language. Cut wording, never content: nothing that was said may disappear.</string>
+    <string name="voice_default_emoji_prompt">Also add fitting emoji, sparingly and only where they help reading. Never use an emoji in place of a word, and never add one to convey something that was not said.</string>
+    <string name="voice_default_terminal_prompt">Turn the described intent into a single POSIX shell command line for Android/Termux. Answer with the command alone: no backticks, no code block, no explanation, no comment. If the intent does not describe a command, repeat the received text unchanged.</string>
+    <string name="voice_default_output_prompt">Answer with the final text to be inserted and nothing else: no prefix, no quotes, no markup, and no remark about the task.</string>
     <plurals name="background_process_hidden_count">
         <item quantity="one">%d more background process</item>
         <item quantity="other">%d more background processes</item>

@@ -45,6 +45,18 @@ public class VoicePreferencesFragment extends MaterialPreferenceFragment {
             VoiceSettings.DEFAULT_LANGUAGE);
         applyDefaultHint(VoicePostProcessingPreferences.KEY_TEMPERATURE,
             String.valueOf(VoiceSettings.DEFAULT_TEMPERATURE));
+        // Each prompt shows the localized default it will actually send, so an empty field is
+        // legible instead of mysterious.
+        applyPromptHint(VoicePostProcessingPreferences.KEY_CORRECTION_PROMPT,
+            R.string.voice_default_correction_prompt);
+        applyPromptHint(VoicePostProcessingPreferences.KEY_SHORTEN_PROMPT,
+            R.string.voice_default_shorten_prompt);
+        applyPromptHint(VoicePostProcessingPreferences.KEY_EMOJI_PROMPT,
+            R.string.voice_default_emoji_prompt);
+        applyPromptHint(VoicePostProcessingPreferences.KEY_TERMINAL_PROMPT,
+            R.string.voice_default_terminal_prompt);
+        applyPromptHint(VoicePostProcessingPreferences.KEY_OUTPUT_PROMPT,
+            R.string.voice_default_output_prompt);
         bindVocabulary();
     }
 
@@ -85,6 +97,17 @@ public class VoicePreferencesFragment extends MaterialPreferenceFragment {
         preference.setSummaryProvider(p -> {
             CharSequence text = ((EditTextPreference) p).getText();
             return (text == null || text.toString().trim().isEmpty()) ? defaultValue : text;
+        });
+    }
+
+    private void applyPromptHint(@NonNull String key, @androidx.annotation.StringRes int fallback) {
+        EditTextPreference preference = findPreference(key);
+        Context context = getContext();
+        if (preference == null || context == null) return;
+        String fallbackText = context.getString(fallback);
+        preference.setSummaryProvider(p -> {
+            CharSequence text = ((EditTextPreference) p).getText();
+            return (text == null || text.toString().trim().isEmpty()) ? fallbackText : text;
         });
     }
 

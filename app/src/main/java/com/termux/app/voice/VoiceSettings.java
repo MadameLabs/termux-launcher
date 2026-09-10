@@ -8,6 +8,11 @@ import androidx.annotation.Nullable;
  *
  * <p>The Groq key never lives here: it is fetched from {@link GroqSecretStore} at request time so
  * it cannot reach a snapshot, a log line or a crash report.
+ *
+ * <p>Prompt text is not defaulted here either. The defaults are localized string resources, so
+ * they arrive already resolved from {@link VoicePostProcessingPreferences} — an instruction and
+ * the dictation it transforms should speak the same language. A prompt that still arrives blank
+ * is simply omitted from the request rather than silently replaced.
  */
 public final class VoiceSettings {
 
@@ -18,24 +23,6 @@ public final class VoiceSettings {
     public static final float MIN_TEMPERATURE = 0f;
     public static final float MAX_TEMPERATURE = 1f;
 
-    public static final String DEFAULT_CORRECTION_PROMPT =
-        "Corrija a transcricao: remova hesitacoes, repeticoes e falsos inicios, e ajuste pontuacao "
-            + "e ortografia. Preserve o sentido, o idioma e o tom originais. Nao acrescente nem "
-            + "remova informacao.";
-    public static final String DEFAULT_SHORTEN_PROMPT =
-        "Reescreva a transcricao de forma mais curta e direta, preservando todos os fatos e o "
-            + "idioma original. Nao resuma a ponto de perder informacao essencial.";
-    public static final String DEFAULT_EMOJI_PROMPT =
-        "Acrescente emojis pertinentes ao texto, com moderacao e apenas onde ajudarem a leitura. "
-            + "Nao altere as palavras do texto.";
-    public static final String DEFAULT_TERMINAL_PROMPT =
-        "Converta a intencao descrita em uma unica linha de comando de shell POSIX para Android/"
-            + "Termux. Responda somente com o comando, sem crase, sem bloco de codigo, sem "
-            + "explicacao e sem comentario. Se a intencao nao descrever um comando, repita o texto "
-            + "recebido sem alteracao.";
-    public static final String DEFAULT_OUTPUT_PROMPT =
-        "Responda exclusivamente com o texto final que sera inserido, sem prefixo, sem aspas, sem "
-            + "marcacao e sem qualquer comentario sobre a tarefa.";
 
     private final boolean mPostProcessingEnabled;
     @NonNull private final String mTextModel;
@@ -55,11 +42,11 @@ public final class VoiceSettings {
         mSpeechModel = orDefault(builder.mSpeechModel, DEFAULT_SPEECH_MODEL);
         mLanguage = orDefault(builder.mLanguage, DEFAULT_LANGUAGE);
         mTemperature = clampTemperature(builder.mTemperature);
-        mCorrectionPrompt = orDefault(builder.mCorrectionPrompt, DEFAULT_CORRECTION_PROMPT);
-        mShortenPrompt = orDefault(builder.mShortenPrompt, DEFAULT_SHORTEN_PROMPT);
-        mEmojiPrompt = orDefault(builder.mEmojiPrompt, DEFAULT_EMOJI_PROMPT);
-        mTerminalPrompt = orDefault(builder.mTerminalPrompt, DEFAULT_TERMINAL_PROMPT);
-        mOutputPrompt = orDefault(builder.mOutputPrompt, DEFAULT_OUTPUT_PROMPT);
+        mCorrectionPrompt = trimmed(builder.mCorrectionPrompt);
+        mShortenPrompt = trimmed(builder.mShortenPrompt);
+        mEmojiPrompt = trimmed(builder.mEmojiPrompt);
+        mTerminalPrompt = trimmed(builder.mTerminalPrompt);
+        mOutputPrompt = trimmed(builder.mOutputPrompt);
         mShowTerminalMode = builder.mShowTerminalMode;
     }
 
@@ -76,6 +63,10 @@ public final class VoiceSettings {
 
     private static String orDefault(@Nullable String value, @NonNull String fallback) {
         return (value == null || value.trim().isEmpty()) ? fallback : value.trim();
+    }
+
+    private static String trimmed(@Nullable String value) {
+        return value == null ? "" : value.trim();
     }
 
     public boolean postProcessingEnabled() { return mPostProcessingEnabled; }

@@ -142,4 +142,13 @@
     <!-- About Preference -->
     <!-- Donate Preference -->
     <string name="donate_preference_title">Doar</string>
+
+    <!-- Prompts padrao do pos-processamento de voz. Sao instrucoes para um modelo de
+         linguagem, nao rotulos de interface: ficam no idioma da pessoa porque instrucao e
+         ditado devem falar a mesma lingua. Todos sao editaveis na tela de configuracao. -->
+    <string name="voice_default_correction_prompt">Corrija a transcrição: remova hesitações, repetições e falsos inícios, e acerte a pontuação e a ortografia, com todos os acentos. Preserve o sentido, o idioma e o tom originais. Não acrescente nem remova informação.</string>
+    <string name="voice_default_shorten_prompt">Reescreva a transcrição com menos palavras, mantendo todos os fatos e o idioma original. Corte redação, nunca conteúdo: nada do que foi dito pode sumir.</string>
+    <string name="voice_default_emoji_prompt">Acrescente também emojis pertinentes, com moderação e apenas onde ajudarem a leitura. Nunca use emoji no lugar de uma palavra, e nunca acrescente um para dizer algo que não foi falado.</string>
+    <string name="voice_default_terminal_prompt">Converta a intenção descrita em uma única linha de comando de shell POSIX para Android/Termux. Responda apenas com o comando: sem crase, sem bloco de código, sem explicação e sem comentário. Se a intenção não descrever um comando, repita o texto recebido sem alteração.</string>
+    <string name="voice_default_output_prompt">Responda com o texto final que será inserido e nada mais: sem prefixo, sem aspas, sem marcação e sem qualquer comentário sobre a tarefa.</string>
 </resources>

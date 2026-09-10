@@ -4,6 +4,10 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
+
+import com.termux.R;
 
 /**
  * Loads and saves everything about voice post-processing except the key.
@@ -33,11 +37,12 @@ public final class VoicePostProcessingPreferences {
     /** Where the settings screen puts the key before it is moved into the Keystore. */
     public static final String KEY_API_KEY_INPUT = "voice_api_key_input";
 
+    @NonNull private final Context mContext;
     @NonNull private final SharedPreferences mPreferences;
 
     public VoicePostProcessingPreferences(@NonNull Context context) {
-        mPreferences = context.getApplicationContext()
-            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        mContext = context.getApplicationContext();
+        mPreferences = mContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
     @NonNull
@@ -51,11 +56,11 @@ public final class VoicePostProcessingPreferences {
             .speechModel(mPreferences.getString(KEY_SPEECH_MODEL, null))
             .language(mPreferences.getString(KEY_LANGUAGE, null))
             .temperature(readTemperature())
-            .correctionPrompt(mPreferences.getString(KEY_CORRECTION_PROMPT, null))
-            .shortenPrompt(mPreferences.getString(KEY_SHORTEN_PROMPT, null))
-            .emojiPrompt(mPreferences.getString(KEY_EMOJI_PROMPT, null))
-            .terminalPrompt(mPreferences.getString(KEY_TERMINAL_PROMPT, null))
-            .outputPrompt(mPreferences.getString(KEY_OUTPUT_PROMPT, null))
+            .correctionPrompt(prompt(KEY_CORRECTION_PROMPT, R.string.voice_default_correction_prompt))
+            .shortenPrompt(prompt(KEY_SHORTEN_PROMPT, R.string.voice_default_shorten_prompt))
+            .emojiPrompt(prompt(KEY_EMOJI_PROMPT, R.string.voice_default_emoji_prompt))
+            .terminalPrompt(prompt(KEY_TERMINAL_PROMPT, R.string.voice_default_terminal_prompt))
+            .outputPrompt(prompt(KEY_OUTPUT_PROMPT, R.string.voice_default_output_prompt))
             .showTerminalMode(mPreferences.getBoolean(KEY_SHOW_TERMINAL_MODE, true))
             .build();
     }
@@ -71,6 +76,22 @@ public final class VoicePostProcessingPreferences {
 
     public void setPostProcessingEnabled(boolean enabled) {
         mPreferences.edit().putBoolean(KEY_ENABLED, enabled).apply();
+    }
+
+    /**
+     * An edited prompt, or the localized default when the field was left blank.
+     *
+     * <p>This is the only place a prompt default is resolved, so the text has one home: the string
+     * resources, which follow the device language the way the dictation does.
+     */
+    @NonNull
+    public String prompt(@NonNull String key, @StringRes int fallback) {
+        String stored = mPreferences.getString(key, null);
+        return isBlank(stored) ? mContext.getString(fallback) : stored.trim();
+    }
+
+    private static boolean isBlank(@Nullable String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     /**

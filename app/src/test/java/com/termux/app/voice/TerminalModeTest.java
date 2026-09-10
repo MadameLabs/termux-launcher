@@ -13,8 +13,15 @@ import org.junit.Test;
  */
 public class TerminalModeTest {
 
+    private static final String TERMINAL_PROMPT = "VIRE ISTO EM UM COMANDO";
+    private static final String CORRECTION_PROMPT = "CORRIJA O TEXTO";
+
     private static VoiceSettings settings() {
-        return VoiceSettings.builder().postProcessingEnabled(true).build();
+        return VoiceSettings.builder()
+            .postProcessingEnabled(true)
+            .terminalPrompt(TERMINAL_PROMPT)
+            .correctionPrompt(CORRECTION_PROMPT)
+            .build();
     }
 
     private static String systemMessage() {
@@ -23,11 +30,10 @@ public class TerminalModeTest {
     }
 
     @Test
-    public void thePromptAsksForOneCommandWithNoMarkupAndNoExplanation() {
+    public void theTerminalPromptIsTheOneSentAndTheOthersAreNot() {
         String system = systemMessage();
-        assertTrue(system.contains("uma unica linha de comando"));
-        assertTrue(system.contains("sem bloco de codigo"));
-        assertTrue(system.contains("sem explicacao"));
+        assertTrue(system.contains(TERMINAL_PROMPT));
+        assertFalse(system.contains(CORRECTION_PROMPT));
     }
 
     @Test

@@ -61,8 +61,13 @@ public class VoiceOrchestratorTest {
             mPostProcessingClient, () -> mApiKey, DIRECT, DIRECT, mListener);
     }
 
+    private static final String CORRECTION_PROMPT = "CORRIJA O TEXTO";
+
     private VoiceSettings settings(boolean postProcessingEnabled) {
-        return VoiceSettings.builder().postProcessingEnabled(postProcessingEnabled).build();
+        return VoiceSettings.builder()
+            .postProcessingEnabled(postProcessingEnabled)
+            .correctionPrompt(CORRECTION_PROMPT)
+            .build();
     }
 
     private VoiceOrchestrator startedWith(ModeSelection selection, boolean postProcessingEnabled) {
@@ -256,8 +261,7 @@ public class VoiceOrchestratorTest {
         // Whatever the settings screen does now, this dictation keeps the prompts it started with.
         orchestrator.finish();
 
-        assertTrue(mPostProcessingClient.systemMessage.contains(
-            VoiceSettings.DEFAULT_CORRECTION_PROMPT));
+        assertTrue(mPostProcessingClient.systemMessage.contains(CORRECTION_PROMPT));
     }
 
     @Test

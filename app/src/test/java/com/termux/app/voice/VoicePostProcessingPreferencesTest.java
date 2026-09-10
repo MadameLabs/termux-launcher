@@ -9,6 +9,8 @@ import android.content.SharedPreferences;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import com.termux.R;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -43,16 +45,19 @@ public class VoicePostProcessingPreferencesTest {
         assertEquals(VoiceSettings.DEFAULT_TEXT_MODEL, settings.textModel());
         assertEquals(VoiceSettings.DEFAULT_SPEECH_MODEL, settings.speechModel());
         assertEquals(VoiceSettings.DEFAULT_LANGUAGE, settings.language());
-        assertEquals(VoiceSettings.DEFAULT_CORRECTION_PROMPT, settings.correctionPrompt());
-        assertEquals(VoiceSettings.DEFAULT_TERMINAL_PROMPT, settings.terminalPrompt());
-        assertEquals(VoiceSettings.DEFAULT_OUTPUT_PROMPT, settings.outputPrompt());
+        assertEquals(mContext.getString(R.string.voice_default_correction_prompt),
+            settings.correctionPrompt());
+        assertEquals(mContext.getString(R.string.voice_default_terminal_prompt),
+            settings.terminalPrompt());
+        assertEquals(mContext.getString(R.string.voice_default_output_prompt),
+            settings.outputPrompt());
         assertTrue(settings.showTerminalMode());
     }
 
     @Test
     public void anEmptyPromptFallsBackToItsDefaultInsteadOfSendingNothing() {
         prefs().edit().putString(VoicePostProcessingPreferences.KEY_CORRECTION_PROMPT, "   ").commit();
-        assertEquals(VoiceSettings.DEFAULT_CORRECTION_PROMPT,
+        assertEquals(mContext.getString(R.string.voice_default_correction_prompt),
             mPreferences.load().correctionPrompt());
     }
 

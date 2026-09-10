@@ -45,24 +45,19 @@
     <PreferenceCategory app:title="@string/voice_settings_prompts_header">
         <EditTextPreference
             app:key="voice_correction_prompt"
-            app:title="@string/voice_settings_correction_prompt_title"
-            app:summary="@string/voice_settings_prompt_summary_default" />
+            app:title="@string/voice_settings_correction_prompt_title" />
         <EditTextPreference
             app:key="voice_shorten_prompt"
-            app:title="@string/voice_settings_shorten_prompt_title"
-            app:summary="@string/voice_settings_prompt_summary_default" />
+            app:title="@string/voice_settings_shorten_prompt_title" />
         <EditTextPreference
             app:key="voice_emoji_prompt"
-            app:title="@string/voice_settings_emoji_prompt_title"
-            app:summary="@string/voice_settings_prompt_summary_default" />
+            app:title="@string/voice_settings_emoji_prompt_title" />
         <EditTextPreference
             app:key="voice_terminal_prompt"
-            app:title="@string/voice_settings_terminal_prompt_title"
-            app:summary="@string/voice_settings_prompt_summary_default" />
+            app:title="@string/voice_settings_terminal_prompt_title" />
         <EditTextPreference
             app:key="voice_output_prompt"
-            app:title="@string/voice_settings_output_prompt_title"
-            app:summary="@string/voice_settings_prompt_summary_default" />
+            app:title="@string/voice_settings_output_prompt_title" />
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/voice_settings_modes_header">
