@@ -127,6 +127,10 @@ Open-Meteo attribution.
   and nudges presses near a boundary toward the key you usually mean. Only letters, digits and
   punctuation are ever moved; Enter, Backspace, Ctrl and the other action keys are not. **Forget
   learned taps** clears what it has learned. It stores per-key averages only, never what you typed.
+- **Voice and post-processing:** dictate through Groq instead of the system recognizer, and
+  have the text corrected, shortened, given emoji or turned into command text before it reaches
+  the prompt. Off until a key is set, and the gesture keeps its old behaviour until then. See
+  [Voice dictation](Voice_Dictation.md).
 - **Layout documentation** and **Supported key values**.
 - **Haptic feedback** and **Keypress sound**.
 

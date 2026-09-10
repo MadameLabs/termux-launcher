@@ -35,6 +35,7 @@ access; skip it if command-line tools do not need your shared files.
 - [Getting started](Launcher_Getting_Started.md)
 - [Using Termux Launcher](Launcher_Usage.md)
 - [Settings map](Launcher_Settings.md)
+- [Voice dictation](Voice_Dictation.md)
 - [Troubleshooting](Launcher_Troubleshooting.md)
 - [Modern terminal power-user guide](Terminal_Modernization.md)
 - [Terminal fonts](Terminal_Fonts.md)

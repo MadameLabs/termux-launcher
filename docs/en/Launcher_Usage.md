@@ -235,6 +235,11 @@ popup action assigned to a key.
 Open **Settings → Keyboard & input** to change input method, appearance, colors, typeface, extra keys,
 feedback, and `~/.termux/keyboard/layout.xml` support.
 
+Swiping the Enter key toward the microphone dictates into the session you are in. With a Groq key
+configured, the launcher transcribes it itself and can correct, shorten or turn what you said into
+command text first — see [Voice dictation](Voice_Dictation.md). Otherwise the gesture opens the
+system speech recognizer, as it always has.
+
 The extra keys editor gives the **Display label** and **Swipe-up label** fields a glyph picker
 (the `Ω` button) with a searchable catalogue of arrows, box drawing, blocks, shapes, Powerline
 separators, technical key symbols, and terminal marks. Key caps are drawn with the user-interface
