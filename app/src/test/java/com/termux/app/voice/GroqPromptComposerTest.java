@@ -92,6 +92,39 @@ public class GroqPromptComposerTest {
     }
 
     @Test
+    public void aReasoningModelsThinkingNeverReachesTheTerminal() {
+        assertEquals("Bom dia.", GroqPromptComposer.cleanAnswer(
+            "<think>O usuario hesitou duas vezes, vou limpar isso.</think>Bom dia."));
+        assertEquals("Bom dia.", GroqPromptComposer.cleanAnswer(
+            "<THINK>maiusculas tambem</THINK>\nBom dia."));
+    }
+
+    @Test
+    public void severalThinkingBlocksAreAllRemoved() {
+        assertEquals("ls -la", GroqPromptComposer.cleanAnswer(
+            "<think>primeiro</think>ls<think>segundo</think> -la"));
+    }
+
+    @Test
+    public void aThinkingBlockThatWasCutShortDoesNotLeakItsTail() {
+        // The stream ended inside the block: there is an opener and no closer.
+        assertEquals("ok", GroqPromptComposer.cleanAnswer("ok<think>deixei pela metade"));
+        // The opener was lost instead: everything before the closer is deliberation.
+        assertEquals("ok", GroqPromptComposer.cleanAnswer("deliberando</think>ok"));
+    }
+
+    @Test
+    public void thinkingWrappedAroundAFencedCommandStillYieldsTheCommand() {
+        assertEquals("find . -name '*.log'", GroqPromptComposer.cleanAnswer(
+            "<think>ele quer buscar logs</think>\n```bash\nfind . -name '*.log'\n```"));
+    }
+
+    @Test
+    public void anAnswerThatIsOnlyThinkingFallsBackInsteadOfInsertingNothing() {
+        assertNull(GroqPromptComposer.cleanAnswer("<think>nao sei o que fazer</think>"));
+    }
+
+    @Test
     public void emptyOrBlankAnswerIsRejectedSoTheRawTranscriptCanTakeOver() {
         assertNull(GroqPromptComposer.cleanAnswer(null));
         assertNull(GroqPromptComposer.cleanAnswer("   "));

@@ -65,6 +65,7 @@ public final class GroqPromptComposer {
         String text = answer.trim();
         if (text.isEmpty()) return null;
 
+        text = stripReasoning(text);
         text = stripDelimiters(text);
         text = stripCodeFence(text);
         text = stripDelimiters(text);
@@ -72,6 +73,37 @@ public final class GroqPromptComposer {
 
         text = text.trim();
         return text.isEmpty() ? null : text;
+    }
+
+    /**
+     * Removes a chain-of-thought block from the answer.
+     *
+     * <p>The model is configurable, and a reasoning model answers with its thinking inside
+     * {@code <think>} tags in the content itself — that is the provider's default format for
+     * everything except the gpt-oss family, which reports reasoning in a field of its own. Without
+     * this, choosing such a model would dictate the model's deliberation into the terminal.
+     */
+    private static String stripReasoning(String text) {
+        String result = text;
+        int open;
+        while ((open = indexOfIgnoreCase(result, "<think>")) >= 0) {
+            int close = indexOfIgnoreCase(result, "</think>");
+            if (close < open) {
+                // A closing tag with no opening one before it: everything up to it is thinking.
+                break;
+            }
+            result = result.substring(0, open) + result.substring(close + "</think>".length());
+        }
+        // A stream cut short can leave the closing tag without its opener, or the reverse.
+        int strayClose = indexOfIgnoreCase(result, "</think>");
+        if (strayClose >= 0) result = result.substring(strayClose + "</think>".length());
+        int strayOpen = indexOfIgnoreCase(result, "<think>");
+        if (strayOpen >= 0) result = result.substring(0, strayOpen);
+        return result.trim();
+    }
+
+    private static int indexOfIgnoreCase(String haystack, String needle) {
+        return haystack.toLowerCase(java.util.Locale.ROOT).indexOf(needle);
     }
 
     private static String stripDelimiters(String text) {
