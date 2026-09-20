@@ -215,17 +215,22 @@ set -g status-style "fg=#{E:TERMUX_MATERIAL_ON_SURFACE},bg=#{E:TERMUX_MATERIAL_S
 set -g window-status-current-style "fg=#{E:TERMUX_MATERIAL_SURFACE},bg=#{E:TERMUX_MATERIAL_PRIMARY}"
 ```
 
-## Optional Helper Scripts
+## Optional Helper Files
 
-The helper scripts in `docs/en/examples/` are not installed by the APK. The beginner setup downloads them when requested.
+The files in `docs/en/examples/` are not bundled in the APK. `tlstore`'s catalog installs some of
+them (pinned to a tag in this repository); the app seeds the rest into place directly. Fish,
+zoxide, eza, and the showcase binaries (sigye, fastfetch, kitten) come from `tlstore install` — see
+`docs/en/Tlstore.md`. The Oh My Posh prompt theme and the Neovim colour scheme instead come from
+Settings › Look's template pack (`app/src/main/assets/theme-templates`), which renders and seeds
+them directly.
 
-Scripts:
+Files:
 
 - `setup-nvim`: interactive Neovim setup. Installs AstroNvim (default), NvChad, LazyVim, kickstart, or a stock config, plus launcher integrations: OSC 52 clipboard, always-on line wrap, and — on AstroNvim and NvChad — a colorscheme generated from `~/.termux/material-colors.sh` that retints live on wallpaper changes.
 - The shell environment is not scripted from this directory: `setup-launcher` (shipped in the nix base environment) installs the flake template and switches, and `setup-toolkits` (shipped by that template) picks the toolkits — shell, eye candy, editor, build, node, go, python. See [Nix package management](Nix_Package_Management.md).
 - `config.fish`, `conf.d-personal.fish`, and `aliens-material.omp.json`: optional Fish and Oh My Posh defaults. `config.fish` is launcher-owned and replaced on re-install; `conf.d-personal.fish` is copied once to `~/.config/fish/conf.d/personal.fish` and never overwritten, so personal edits survive re-runs. It is the Termux-edition copy — the Nix edition ships its own, with nix-on-droid shortcuts in place of the `pkg`/`pacman` ones.
 
-Refresh installed helper scripts after an APK or docs update by re-running `setup-launcher`, or by re-downloading the single script from `docs/en/examples/`. Every template it replaces gets a timestamped `.bak` first.
+Refresh installed files after an APK or docs update with `tlstore update`.
 
 ## Shizuku and rish
 
