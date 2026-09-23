@@ -630,6 +630,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private static final String PANE_STATE_SESSION_NAME = "session_name";
 
     private static final String LOG_TAG = "TermuxActivity";
+    /** Temporary IME/layout probe; remove after collecting the device log. */
+    private static final boolean TEMP_IME_LAYOUT_LOGGING_ENABLED = true;
     private static final int IN_APP_KEYBOARD_MARGIN_SLIDER_STEPS_PER_UNIT = 100;
     private static final int IN_APP_KEYBOARD_RADIUS_SLIDER_STEPS_PER_DP = 10;
     private static volatile boolean sPendingStyleReloadOnNextResume = false;
@@ -871,11 +873,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View content = findViewById(android.R.id.content);
         content.setOnApplyWindowInsetsListener((v, insets) -> {
             WindowInsetsCompat insetsCompat = WindowInsetsCompat.toWindowInsetsCompat(insets, v);
+            logImeLayoutState("insets:before", insetsCompat);
             mNavBarHeight = insetsCompat.getInsets(Type.systemBars()).bottom;
             mImeLiftPx = computeDockImeLiftPx(insetsCompat);
             applyDockImeOffset(0);
             applyTerminalOverlayInsets(insetsCompat);
             mChrome.requestSync(ChromeRenderer.SCOPE_APPLY_NOW);
+            logImeLayoutState("insets:after", insetsCompat);
             return insetsCompat.toWindowInsets();
         });
         applySeamlessStatusBackgroundModeIfNeeded();
@@ -4917,6 +4921,50 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (accessoryContainer.getTranslationY() != translationY) {
             accessoryContainer.setTranslationY(translationY);
         }
+    }
+
+    /** Temporary snapshot of the geometry involved in the IME/top-position report. */
+    public void logImeLayoutState(@NonNull String source, @Nullable WindowInsetsCompat insets) {
+        if (!TEMP_IME_LAYOUT_LOGGING_ENABLED) return;
+
+        View input = findViewById(R.id.terminal_toolbar_text_input);
+        View terminal = mTerminalView;
+        ViewGroup.LayoutParams rootParams = mTermuxActivityRootView == null
+            ? null : mTermuxActivityRootView.getLayoutParams();
+        int appliedMarginBottom = rootParams instanceof ViewGroup.MarginLayoutParams
+            ? ((ViewGroup.MarginLayoutParams) rootParams).bottomMargin : -1;
+        int imeBottom = insets == null ? -1 : insets.getInsets(Type.ime()).bottom;
+        boolean imeVisible = insets != null && insets.isVisible(Type.ime());
+
+        Logger.logVerbose(LOG_TAG,
+            "[temp-ime-layout] source=" + source
+                + ", imeVisible=" + imeVisible
+                + ", imeInsets.bottom=" + imeBottom
+                + ", navInsets.bottom=" + (insets == null ? -1 : insets.getInsets(Type.navigationBars()).bottom)
+                + ", imeLiftPx=" + mImeLiftPx
+                + ", root.height=" + (mTermuxActivityRootView == null ? -1 : mTermuxActivityRootView.getHeight())
+                + ", root=" + describeImeView(mTermuxActivityRootView)
+                + ", inputCommand=" + describeImeView(input)
+                + ", bottomSpace=" + describeImeView(mTermuxActivityBottomSpaceView)
+                + ", root.marginBottom.applied=" + appliedMarginBottom
+                + ", root.marginBottom.pending=" + (mTermuxActivityRootView == null ? null : mTermuxActivityRootView.marginBottom)
+                + ", windowFocus=" + hasWindowFocus()
+                + ", rootFocus=" + (mTermuxActivityRootView != null && mTermuxActivityRootView.hasFocus())
+                + ", inputCommandFocus=" + (input != null && input.hasFocus())
+                + ", terminalFocus=" + (terminal != null && terminal.hasFocus()));
+    }
+
+    @NonNull
+    private String describeImeView(@Nullable View view) {
+        if (view == null) return "null";
+        int[] location = new int[2];
+        view.getLocationInWindow(location);
+        return "top=" + location[1]
+            + ",bottom=" + (location[1] + view.getHeight())
+            + ",height=" + view.getHeight()
+            + ",shown=" + view.isShown()
+            + ",visibility=" + view.getVisibility()
+            + ",translationY=" + view.getTranslationY();
     }
 
     /**
@@ -13311,6 +13359,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        View content = findViewById(android.R.id.content);
+        logImeLayoutState("window-focus:" + hasFocus,
+            content == null ? null : ViewCompat.getRootWindowInsets(content));
         if (hasFocus) {
             applyFullscreenMode();
         }

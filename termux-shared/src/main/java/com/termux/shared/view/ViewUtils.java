@@ -23,6 +23,9 @@ public class ViewUtils {
      */
     public static boolean VIEW_UTILS_LOGGING_ENABLED = false;
 
+    /** Temporary geometry probe used by TermuxActivityRootView; remove with the IME probe. */
+    private static final boolean TEMP_IME_LAYOUT_LOGGING_ENABLED = true;
+
     private static final String LOG_TAG = "ViewUtils";
 
     /**
@@ -125,6 +128,11 @@ public class ViewUtils {
         int viewRight = viewLeft + view.getWidth();
         int viewBottom = viewTop + view.getHeight();
         viewRect = new Rect(viewLeft, viewTop, viewRight, viewBottom);
+        if (TEMP_IME_LAYOUT_LOGGING_ENABLED) {
+            Logger.logVerbose(LOG_TAG, "[temp-ime-layout] viewRect: " + toRectString(viewRect)
+                + ", windowAvailableRect: " + toRectString(windowAvailableRect)
+                + ", viewHeight=" + view.getHeight());
+        }
         if (displayOrientation == Configuration.ORIENTATION_LANDSCAPE && viewRight > windowAvailableRect.right) {
             if (view_utils_logging_enabled)
                 Logger.logVerbose(LOG_TAG, "viewRight " + viewRight + " is greater than windowAvailableRect.right " + windowAvailableRect.right + " in landscape mode. Setting windowAvailableRect.right to viewRight since it may not include navbar height.");

@@ -126,12 +126,19 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
                 setLayoutParams(params);
                 mLastMarginCommitTimeMs = SystemClock.uptimeMillis();
             }
+            if (mActivity != null) {
+                mActivity.logImeLayoutState("root:onMeasure:margin=" + targetBottomMargin,
+                    ViewCompat.getRootWindowInsets(this));
+            }
             marginBottom = null;
         }
     }
 
     @Override
     public void onGlobalLayout() {
+        if (mActivity != null) {
+            mActivity.logImeLayoutState("root:onGlobalLayout", ViewCompat.getRootWindowInsets(this));
+        }
         if (mActivity == null || !mActivity.isVisible()) return;
 
         // A resumed launcher may inherit the previous app's visible-frame/IME snapshot. Until an
