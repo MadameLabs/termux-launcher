@@ -4,8 +4,11 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -144,6 +147,7 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
             .create();
         dialog.setCanceledOnTouchOutside(false);
         dialog.show();
+        positionPanelAtBottom(dialog);
         mDialog = dialog;
 
         // Set after show() so the button can act without dismissing the panel mid-dictation.
@@ -151,6 +155,13 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         if (positive != null) positive.setOnClickListener(view -> onPrimaryAction());
 
         if (requestPermissionFirst) requestMicrophonePermission();
+    }
+
+    static void positionPanelAtBottom(@NonNull Dialog dialog) {
+        Window window = dialog.getWindow();
+        if (window == null) return;
+        window.setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
     }
 
     private void bindChip(@NonNull View content, int viewId, @NonNull VoiceMode mode, boolean visible) {
