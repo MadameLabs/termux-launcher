@@ -36,6 +36,7 @@ android {
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "TERMUX_PACKAGE_NAME", "\"" + rootProject.ext.termuxPackageName + "\"" // Read by TermuxConstants
         externalNativeBuild {
             ndkBuild {
                 cppFlags ''
@@ -48,6 +49,10 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     compileOptions {

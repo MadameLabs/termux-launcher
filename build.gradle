@@ -9,6 +9,13 @@ buildscript {
     }
 }
 
+ext {
+    // Package name of the edition being built, shared by the app and termux-shared so the two can
+    // never disagree. Unset, it builds the nix edition as always; TERMUX_APP_PACKAGE_NAME=com.termux
+    // builds the same code to take the place of the stock Termux.
+    termuxPackageName = System.getenv("TERMUX_APP_PACKAGE_NAME") ?: "com.termux.launcher.nix"
+}
+
 allprojects {
     repositories {
         google()
