@@ -1,6 +1,5 @@
 package com.termux.app.terminal.io;
 
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,11 +7,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import androidx.annotation.NonNull;
 import androidx.viewpager.widget.PagerAdapter;
-import androidx.viewpager.widget.ViewPager;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
-import com.termux.shared.view.KeyboardUtils;
 import com.termux.terminal.TerminalSession;
 
 public class TerminalToolbarViewPager {
@@ -21,19 +18,13 @@ public class TerminalToolbarViewPager {
 
         final TermuxActivity mActivity;
 
-        String mSavedTextInput;
-
-        public PageAdapter(TermuxActivity activity, String savedTextInput) {
+        public PageAdapter(TermuxActivity activity) {
             this.mActivity = activity;
-            this.mSavedTextInput = savedTextInput;
         }
 
         @Override
         public int getCount() {
-            // Every configured key page, then the text input page last. A second key page only
-            // exists when "extra-keys2" is non-empty, so a user who does not want one writes
-            // "extra-keys2=[]" (or removes the page in the editor) and gets the old two-page pager.
-            return mActivity.getExtraKeysPageCount() + 1;
+            return mActivity.getExtraKeysPageCount();
         }
 
         @Override
@@ -50,80 +41,22 @@ public class TerminalToolbarViewPager {
         @NonNull
         @Override
         public Object instantiateItem(@NonNull ViewGroup collection, int position) {
-            LayoutInflater inflater = LayoutInflater.from(mActivity);
-            View layout;
             int keyPages = mActivity.getExtraKeysPageCount();
-            if (position < keyPages) {
-                // The page is the activity's own key view, lent here: the same instance the
-                // portable host takes when the place stands the keys on another edge, so a latched
-                // modifier and the picked colours survive the move either way.
-                ExtraKeysView extraKeysView = mActivity.lendExtraKeysPage(position);
-                extraKeysView.setVertical(false);
-                layout = extraKeysView;
-                extraKeysView.setExtraKeysViewClient(mActivity.getTermuxTerminalExtraKeys(position));
-                extraKeysView.setButtonTextAllCaps(mActivity.getProperties().shouldExtraKeysTextBeAllCaps());
-                // Left swipe from the last key page reaches the text input; from an earlier one it
-                // is just the next key page, which the pager already handles.
-                final int textInputPage = keyPages;
-                extraKeysView.setToolbarTextInputSwipeListener(() ->
-                    mActivity.getTerminalToolbarViewPager().setCurrentItem(textInputPage, true));
-                extraKeysView.setPageIndicator(position, keyPages);
-                mActivity.setExtraKeysView(extraKeysView, position);
-                extraKeysView.reload(
-                    mActivity.getTermuxTerminalExtraKeys(position).getExtraKeysInfo(),
-                    mActivity.getTerminalToolbarDefaultHeight());
-            } else {
-                layout = inflater.inflate(R.layout.view_terminal_toolbar_text_input, collection, false);
-
-                final Button button = layout.findViewById(R.id.terminal_toolbar_text_input_button);
-                button.setText("\u2398");
-                button.setOnClickListener(v ->
-                    TermuxTerminalExtraKeys.pasteWhereTheKeyboardPastes(mActivity));
-                button.setOnLongClickListener(v -> {
-                    ViewPager pager = mActivity.getTerminalToolbarViewPager();
-                    pager.setCurrentItem(0, true);
-                    return true;
-                });
-
-                final EditText editText = layout.findViewById(R.id.terminal_toolbar_text_input);
-                editText.setOnTouchListener((view, event) -> {
-                    if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                        mActivity.beginTerminalToolbarExternalTextInput(editText);
-                    }
-                    return false;
-                });
-                editText.setOnFocusChangeListener((view, hasFocus) -> {
-                    if (hasFocus) {
-                        mActivity.beginTerminalToolbarExternalTextInput(editText);
-                    } else if (mActivity.hasWindowFocus()) {
-                        mActivity.endTerminalToolbarExternalTextInput();
-                    }
-                    // Focus lost while the window itself is unfocused is lifecycle churn (screen
-                    // off, keyguard) — ending external input there suppresses an IME that cannot
-                    // be hidden yet, stranding it on screen. onResume restores the state instead.
-                });
-                if (mSavedTextInput != null) {
-                    editText.setText(mSavedTextInput);
-                    mSavedTextInput = null;
-                }
-                editText.setOnEditorActionListener((v, actionId, event) -> {
-                    TerminalSession session = mActivity.getCurrentSession();
-                    if (session != null) {
-                        if (session.isRunning()) {
-                            String textToSend = editText.getText().toString();
-                            if (textToSend.length() == 0)
-                                textToSend = "\r";
-                            session.write(textToSend);
-                        } else {
-                            mActivity.getTermuxTerminalSessionClient().removeFinishedSession(session);
-                        }
-                        editText.setText("");
-                    }
-                    return true;
-                });
-            }
-            collection.addView(layout);
-            return layout;
+            // The page is the activity's own key view, lent here: the same instance the
+            // portable host takes when the place stands the keys on another edge, so a latched
+            // modifier and the picked colours survive the move either way.
+            ExtraKeysView extraKeysView = mActivity.lendExtraKeysPage(position);
+            extraKeysView.setVertical(false);
+            extraKeysView.setExtraKeysViewClient(mActivity.getTermuxTerminalExtraKeys(position));
+            extraKeysView.setButtonTextAllCaps(mActivity.getProperties().shouldExtraKeysTextBeAllCaps());
+            extraKeysView.setToolbarTextInputSwipeListener(() -> focusCommandRow(mActivity));
+            extraKeysView.setPageIndicator(position, keyPages);
+            mActivity.setExtraKeysView(extraKeysView, position);
+            extraKeysView.reload(
+                mActivity.getTermuxTerminalExtraKeys(position).getExtraKeysInfo(),
+                mActivity.getTerminalToolbarDefaultHeight());
+            collection.addView(extraKeysView);
+            return extraKeysView;
         }
 
         @Override
@@ -135,36 +68,59 @@ public class TerminalToolbarViewPager {
         }
     }
 
-    public static class OnPageChangeListener extends ViewPager.SimpleOnPageChangeListener {
+    /** Binds the persistent second row without taking focus away from the terminal on startup. */
+    public static void bindCommandRow(TermuxActivity activity, String savedTextInput) {
+        final Button button = activity.findViewById(R.id.terminal_toolbar_text_input_button);
+        button.setText("\u2398");
+        button.setOnClickListener(v ->
+            TermuxTerminalExtraKeys.pasteWhereTheKeyboardPastes(activity));
+        button.setOnLongClickListener(v -> {
+            activity.endTerminalToolbarExternalTextInput();
+            activity.getTerminalView().requestFocus();
+            return true;
+        });
 
-        final TermuxActivity mActivity;
-
-        final ViewPager mTerminalToolbarViewPager;
-
-        public OnPageChangeListener(TermuxActivity activity, ViewPager viewPager) {
-            this.mActivity = activity;
-            this.mTerminalToolbarViewPager = viewPager;
-        }
-
-        @Override
-        public void onPageSelected(int position) {
-            if (position < mActivity.getExtraKeysPageCount()) {
-                mActivity.endTerminalToolbarExternalTextInput();
-                mActivity.getTerminalView().requestFocus();
-            } else {
-                final EditText editText = mTerminalToolbarViewPager.findViewById(R.id.terminal_toolbar_text_input);
-                if (editText != null) {
-                    editText.requestFocus();
-                    editText.postDelayed(() -> {
-                        if (mActivity.isInAppKeyboardEnabled()) {
-                            mActivity.beginTerminalToolbarExternalTextInput(editText);
-                            return;
-                        }
-                        mActivity.onSystemImeRequested();
-                        KeyboardUtils.showSoftKeyboard(mActivity, editText);
-                    }, 120);
-                }
+        final EditText editText = activity.findViewById(R.id.terminal_toolbar_text_input);
+        editText.setOnTouchListener((view, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                activity.beginTerminalToolbarExternalTextInput(editText);
             }
+            return false;
+        });
+        editText.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) {
+                activity.beginTerminalToolbarExternalTextInput(editText);
+            } else if (activity.hasWindowFocus()) {
+                activity.endTerminalToolbarExternalTextInput();
+            }
+            // Focus lost while the window itself is unfocused is lifecycle churn (screen
+            // off, keyguard) — ending external input there suppresses an IME that cannot
+            // be hidden yet, stranding it on screen. onResume restores the state instead.
+        });
+        if (savedTextInput != null) {
+            editText.setText(savedTextInput);
         }
+        editText.setOnEditorActionListener((v, actionId, event) -> {
+            TerminalSession session = activity.getCurrentSession();
+            if (session != null) {
+                if (session.isRunning()) {
+                    String textToSend = editText.getText().toString();
+                    if (textToSend.length() == 0)
+                        textToSend = "\r";
+                    session.write(textToSend);
+                } else {
+                    activity.getTermuxTerminalSessionClient().removeFinishedSession(session);
+                }
+                editText.setText("");
+            }
+            return true;
+        });
+    }
+
+    private static void focusCommandRow(TermuxActivity activity) {
+        EditText input = activity.findViewById(R.id.terminal_toolbar_text_input);
+        if (input == null) return;
+        input.requestFocus();
+        activity.beginTerminalToolbarExternalTextInput(input);
     }
 }

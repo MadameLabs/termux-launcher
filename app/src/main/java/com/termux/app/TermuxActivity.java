@@ -6069,6 +6069,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View accessoryContainer = findViewById(R.id.accessory_stack_container);
         View accessorySurfaceHost = findViewById(R.id.accessory_surface_host);
         View terminalToolbarViewPager = findViewById(R.id.terminal_toolbar_view_pager);
+        View commandRow = findViewById(R.id.terminal_toolbar_command_row);
         View appsBarViewPager = findViewById(R.id.apps_bar_viewpager);
         View indicatorBand = findViewById(R.id.apps_bar_indicator_band);
         View extraKeysBackground = findViewById(R.id.extrakeys_background);
@@ -6109,6 +6110,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             if (terminalToolbarViewPager != null) {
                 terminalToolbarViewPager.setVisibility(View.GONE);
             }
+            if (commandRow != null) commandRow.setVisibility(View.GONE);
             if (azRow != null) {
                 azRow.setVisibility(View.GONE);
             }
@@ -6174,6 +6176,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (terminalToolbarViewPager != null) {
             terminalToolbarViewPager.setVisibility(
                 state.extraKeysRowEnabled ? View.VISIBLE : View.GONE);
+        }
+        if (commandRow != null) {
+            commandRow.setVisibility(state.extraKeysRowEnabled ? View.VISIBLE : View.GONE);
         }
         if (azRow != null) {
             azRow.setVisibility(state.azRowEnabled ? View.VISIBLE : View.GONE);
@@ -9934,8 +9939,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         String savedTextInput = null;
         if (savedInstanceState != null)
             savedTextInput = savedInstanceState.getString(ARG_TERMINAL_TOOLBAR_TEXT_INPUT);
-        terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this, savedTextInput));
-        terminalToolbarViewPager.addOnPageChangeListener(new TerminalToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
+        TerminalToolbarViewPager.bindCommandRow(this, savedTextInput);
+        terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this));
         mChrome.requestSync(ChromeRenderer.SCOPE_ACCESSORY_RENDER);
     }
 
@@ -10478,7 +10483,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void rebuildTerminalToolbarPages() {
         ViewPager pager = getTerminalToolbarViewPager();
         if (pager == null || pager.getAdapter() == null) return;
-        int page = Math.min(pager.getCurrentItem(), getExtraKeysPageCount());
+        int page = Math.min(pager.getCurrentItem(), getExtraKeysPageCount() - 1);
         pager.getAdapter().notifyDataSetChanged();
         pager.setCurrentItem(page, false);
     }
@@ -11092,12 +11097,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             keyboardOverlays, state.keyboardShown, state.keyboardHeight);
         // The keyboard coming and going is also when the place's claim on the system IME changes.
         applyPlaceSystemImeOwner();
-        int toolbarHeightPx = state.extraKeysRowEnabled ? measuredToolbarHeightPx : 0;
-        boolean toolbarHeightChanged = toolbarLayoutParams.height != toolbarHeightPx;
+        int keyPagesHeightPx = state.extraKeysRowEnabled ? measuredToolbarHeightPx : 0;
+        int commandHeightPx = state.extraKeysRowEnabled
+            ? AccessoryStackLayoutPolicy.computeTerminalToolbarHeightPx(
+                Math.round(mTerminalToolbarDefaultHeight), 1,
+                mProperties.getTerminalToolbarHeightScaleFactor()) : 0;
+        int toolbarHeightPx = keyPagesHeightPx + commandHeightPx;
+        boolean toolbarHeightChanged = toolbarLayoutParams.height != keyPagesHeightPx;
         if (toolbarHeightChanged) {
-            toolbarLayoutParams.height = toolbarHeightPx;
+            toolbarLayoutParams.height = keyPagesHeightPx;
             terminalToolbarViewPager.setLayoutParams(toolbarLayoutParams);
         }
+        toolbarHeightChanged |= updateViewHeight(R.id.terminal_toolbar_command_row, commandHeightPx);
 
         DockLayout dockMetrics = buildDockLayout(0);
         int accessoryBottomMarginPx = resolveAccessoryStackBottomMarginPx(state);
@@ -11399,6 +11410,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         moved |= updateViewHorizontalMargins(R.id.apps_bar_indicator_band, contentInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_row, contentInset);
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_view_pager, extraKeysInset);
+        moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_command_row, extraKeysInset);
         moved |= updateViewPadding(R.id.apps_bar_viewpager, 0, appsTopPadding, 0, appsBottomPadding);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_underlay, surfaceInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_overlay, surfaceInset);
@@ -13756,11 +13768,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public boolean isTerminalViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() == 0;
+        return !isTerminalToolbarTextInputViewSelected();
     }
 
     public boolean isTerminalToolbarTextInputViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() == 1;
+        View input = findViewById(R.id.terminal_toolbar_text_input);
+        return input != null && input.hasFocus();
     }
 
     void termuxSessionListNotifyUpdated() {

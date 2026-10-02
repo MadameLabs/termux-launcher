@@ -383,6 +383,7 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         View toolbarPager = mActivity.findViewById(R.id.terminal_toolbar_view_pager);
         View appsBar = mActivity.findViewById(R.id.apps_bar_viewpager);
         int dockContentHeight = toolbarPager.getLayoutParams().height
+            + mActivity.findViewById(R.id.terminal_toolbar_command_row).getLayoutParams().height
             + appsBar.getLayoutParams().height;
         int keyboardHeight = desiredKeyboardHeightPx();
         int[] location = new int[2];
