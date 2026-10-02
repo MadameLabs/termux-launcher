@@ -20,7 +20,10 @@ public final class VoiceOrchestrator {
         /** Whether this session is still the live one it was at the start of the recording. */
         boolean isValid();
 
-        /** Writes the finished text. Never sends Enter and never runs anything. */
+        /**
+         * Writes the finished text exactly as given. Only {@link #finish(boolean)} with submit ever
+         * puts an Enter in it, and never for a terminal mode command.
+         */
         void write(@NonNull String text);
     }
 
@@ -95,6 +98,16 @@ public final class VoiceOrchestrator {
 
     public boolean isBusy() { return mState != VoiceState.IDLE; }
 
+    /** Whether the recording in progress may end with Enter: never for a terminal mode command. */
+    public boolean canSubmit() {
+        VoiceRequest request = mRequest;
+        return mState == VoiceState.RECORDING && request != null && allowsSubmit(request);
+    }
+
+    private static boolean allowsSubmit(@NonNull VoiceRequest request) {
+        return request.modeSelection().primary() != VoiceMode.TERMINAL;
+    }
+
     /**
      * Captures the snapshot and starts recording.
      *
@@ -150,8 +163,20 @@ public final class VoiceOrchestrator {
         mCallbackExecutor.execute(mListener::onCancelled);
     }
 
-    /** Ends the recording and starts the asynchronous half of the flow. */
+    /** The Enter a terminal receives when the person presses the key. */
+    static final String ENTER = "\r";
+
+    /** Ends the recording and starts the asynchronous half of the flow. Never sends Enter. */
     public void finish() {
+        finish(false);
+    }
+
+    /**
+     * Ends the recording; with {@code submit}, the delivered text is followed by Enter in the same
+     * write. Enter is only sent once the text actually reached the session that started the
+     * dictation, and never when the recording was a terminal mode command: there it would execute.
+     */
+    public void finish(boolean submit) {
         VoiceRequest request = mRequest;
         if (request == null || mState != VoiceState.RECORDING) return;
 
@@ -165,10 +190,10 @@ public final class VoiceOrchestrator {
         }
 
         setState(VoiceState.TRANSCRIBING);
-        mBackgroundExecutor.execute(() -> process(request));
+        mBackgroundExecutor.execute(() -> process(request, submit));
     }
 
-    private void process(@NonNull VoiceRequest request) {
+    private void process(@NonNull VoiceRequest request, boolean submit) {
         try {
             String apiKey = mKeyProvider.apiKey();
             if (apiKey == null) {
@@ -184,7 +209,7 @@ public final class VoiceOrchestrator {
                 ? postProcess(request, transcript, apiKey)
                 : VoiceResult.raw(transcript);
 
-            deliver(request, result);
+            deliver(request, result, submit);
         } catch (VoiceException e) {
             failFrom(e.failure());
         } finally {
@@ -213,7 +238,7 @@ public final class VoiceOrchestrator {
         }
     }
 
-    private void deliver(@NonNull VoiceRequest request, @NonNull VoiceResult result) {
+    private void deliver(@NonNull VoiceRequest request, @NonNull VoiceResult result, boolean submit) {
         setState(VoiceState.DELIVERING);
         mCallbackExecutor.execute(() -> {
             SessionTarget target = request.target();
@@ -224,7 +249,9 @@ public final class VoiceOrchestrator {
                 mListener.onFailed(VoiceFailure.SESSION_GONE);
                 return;
             }
-            target.write(result.deliveryText());
+            // The snapshot, not the panel: chips can change while the request is in flight.
+            boolean sendEnter = submit && allowsSubmit(request);
+            target.write(sendEnter ? result.deliveryText() + ENTER : result.deliveryText());
             mState = VoiceState.IDLE;
             mListener.onStateChanged(VoiceState.IDLE);
             mListener.onDelivered(result,

@@ -220,6 +220,107 @@ public class VoiceOrchestratorTest {
     }
 
     @Test
+    public void stopAndSendDeliversTheRawTranscriptAndEnterInASingleWrite() {
+        mSpeechClient.transcript = "ola mundo";
+
+        startedWith(ModeSelection.RAW, false).finish(true);
+
+        assertEquals("ola mundo\r", mTarget.written);
+        assertEquals(1, mTarget.writes);
+        assertNull(mListener.failure);
+    }
+
+    @Test
+    public void stopAndSendWaitsForTheTransformationBeforeSendingEnter() {
+        mSpeechClient.transcript = "eh eh bom dia";
+        mPostProcessingClient.answer = "Bom dia.";
+
+        startedWith(ModeSelection.of(VoiceMode.CORRECTION, false), true).finish(true);
+
+        assertEquals("Bom dia.\r", mTarget.written);
+        assertEquals(1, mTarget.writes);
+    }
+
+    @Test
+    public void stopAndSendStillSendsTheRawTranscriptWhenTheTransformationFellBack() {
+        mSpeechClient.transcript = "bom dia";
+        mPostProcessingClient.failure = VoiceFailure.NETWORK;
+
+        startedWith(ModeSelection.of(VoiceMode.CORRECTION, false), true).finish(true);
+
+        assertEquals("bom dia\r", mTarget.written);
+        assertEquals(VoiceResult.Warning.POST_PROCESSING_FAILED, mListener.result.warning());
+    }
+
+    @Test
+    public void stopAndSendNeverRunsATerminalModeCommand() {
+        mSpeechClient.transcript = "apagar tudo";
+        mPostProcessingClient.answer = "rm -rf ~";
+
+        startedWith(ModeSelection.of(VoiceMode.TERMINAL, false), true).finish(true);
+
+        // In terminal mode the text is a command line; Enter would execute it.
+        assertEquals("rm -rf ~", mTarget.written);
+        assertEquals(1, mTarget.writes);
+    }
+
+    @Test
+    public void stopAndSendToALostSessionWritesNothingAtAll() {
+        mSpeechClient.transcript = "nao envie isso";
+        VoiceOrchestrator orchestrator = startedWith(ModeSelection.RAW, false);
+        mTarget.valid = false;
+
+        orchestrator.finish(true);
+
+        assertNull(mTarget.written);
+        assertEquals(VoiceFailure.SESSION_GONE, mListener.failure);
+    }
+
+    @Test
+    public void stopAndSendAfterAFailedTranscriptionWritesNothing() {
+        mSpeechClient.failure = VoiceFailure.NETWORK;
+
+        startedWith(ModeSelection.RAW, false).finish(true);
+
+        assertNull(mTarget.written);
+        assertEquals(VoiceFailure.NETWORK, mListener.failure);
+    }
+
+    @Test
+    public void aSecondStopAndSendCannotSendTwice() {
+        mSpeechClient.transcript = "uma vez";
+        VoiceOrchestrator orchestrator = startedWith(ModeSelection.RAW, false);
+
+        orchestrator.finish(true);
+        orchestrator.finish(true);
+
+        assertEquals(1, mTarget.writes);
+    }
+
+    @Test
+    public void stopAndSendIsOfferedOnlyWhileRecordingSomethingOtherThanACommand() {
+        VoiceOrchestrator idle = orchestrator();
+        assertFalse(idle.canSubmit());
+
+        VoiceOrchestrator raw = startedWith(ModeSelection.RAW, false);
+        assertTrue(raw.canSubmit());
+        raw.cancel();
+        assertFalse(raw.canSubmit());
+
+        VoiceOrchestrator terminal = startedWith(ModeSelection.of(VoiceMode.TERMINAL, false), true);
+        assertFalse(terminal.canSubmit());
+    }
+
+    @Test
+    public void plainStopNeverSendsEnter() {
+        mSpeechClient.transcript = "so o texto";
+
+        startedWith(ModeSelection.RAW, false).finish();
+
+        assertEquals("so o texto", mTarget.written);
+    }
+
+    @Test
     public void withoutAKeyNothingIsRecordedInTheFirstPlace() {
         mApiKey = null;
         VoiceOrchestrator orchestrator = startedWith(ModeSelection.RAW, false);

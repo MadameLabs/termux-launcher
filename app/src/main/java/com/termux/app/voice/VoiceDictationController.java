@@ -42,6 +42,10 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         void write(@NonNull TerminalSession session, @NonNull String text);
     }
 
+    /** Record/Stop sits in the middle slot, Stop & send on the right. */
+    private static final int PRIMARY_BUTTON = android.R.id.button2;
+    private static final int SUBMIT_BUTTON = android.R.id.button1;
+
     @NonNull private final Activity mActivity;
     @NonNull private final SessionSource mSessionSource;
     private final int mPermissionRequestCode;
@@ -83,13 +87,16 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         return mPreferences.load().postProcessingEnabled() && mSecretStore.hasKey();
     }
 
-    /** Answers the keyboard gesture. The long press opens the panel; the swipe records at once. */
+    /**
+     * Answers the keyboard gesture. Both the swipe and the long press open the panel already
+     * recording; only a missing microphone permission holds the recording back until it is granted.
+     */
     public void onVoiceGesture(boolean showModePanel) {
         if (mOrchestrator.isBusy()) return;
         if (mSessionSource.currentSession() == null) return;
 
-        if (showModePanel || !mCapture.hasMicrophonePermission()) {
-            showPanel(!mCapture.hasMicrophonePermission());
+        if (!mCapture.hasMicrophonePermission()) {
+            showPanel(true);
             return;
         }
         showPanel(false);
@@ -137,8 +144,11 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         Dialog dialog = new MaterialAlertDialogBuilder(mActivity)
             .setTitle(R.string.voice_dictation_title)
             .setView(content)
-            .setPositiveButton(R.string.voice_action_record, null)
-            .setNegativeButton(R.string.voice_action_cancel, (d, which) -> mOrchestrator.cancel())
+            // The bar lays out neutral, negative, positive from left to right, so the roles follow
+            // the order the person reads: Cancel, Record/Stop, Stop & send.
+            .setNeutralButton(R.string.voice_action_cancel, (d, which) -> mOrchestrator.cancel())
+            .setNegativeButton(R.string.voice_action_record, null)
+            .setPositiveButton(R.string.voice_action_stop_and_send, null)
             .setOnDismissListener(d -> {
                 mDialog = null;
                 mStateView = null;
@@ -150,9 +160,12 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         positionPanelAtBottom(dialog);
         mDialog = dialog;
 
-        // Set after show() so the button can act without dismissing the panel mid-dictation.
-        View positive = dialog.findViewById(android.R.id.button1);
-        if (positive != null) positive.setOnClickListener(view -> onPrimaryAction());
+        // Set after show() so the buttons can act without dismissing the panel mid-dictation.
+        View primary = dialog.findViewById(PRIMARY_BUTTON);
+        if (primary != null) primary.setOnClickListener(view -> onPrimaryAction());
+        View submit = dialog.findViewById(SUBMIT_BUTTON);
+        if (submit != null) submit.setOnClickListener(view -> onSubmitAction());
+        onStateChanged(mOrchestrator.state());
 
         if (requestPermissionFirst) requestMicrophonePermission();
     }
@@ -199,6 +212,11 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         }
     }
 
+    /** Stop and send: the orchestrator decides again whether Enter is allowed for this recording. */
+    private void onSubmitAction() {
+        if (mOrchestrator.canSubmit()) mOrchestrator.finish(true);
+    }
+
     private void requestMicrophonePermission() {
         mAwaitingPermission = true;
         ActivityCompat.requestPermissions(mActivity,
@@ -221,11 +239,17 @@ public final class VoiceDictationController implements VoiceOrchestrator.Listene
         if (mStateView != null) mStateView.setText(stateLabel(state));
         Dialog dialog = mDialog;
         if (dialog == null) return;
-        View positive = dialog.findViewById(android.R.id.button1);
-        if (!(positive instanceof TextView)) return;
-        ((TextView) positive).setText(state == VoiceState.RECORDING
+        View submit = dialog.findViewById(SUBMIT_BUTTON);
+        if (submit != null) {
+            // Only a recording can be stopped; a terminal mode command is offered but never sent.
+            submit.setVisibility(state == VoiceState.RECORDING ? View.VISIBLE : View.GONE);
+            submit.setEnabled(mOrchestrator.canSubmit());
+        }
+        View primary = dialog.findViewById(PRIMARY_BUTTON);
+        if (!(primary instanceof TextView)) return;
+        ((TextView) primary).setText(state == VoiceState.RECORDING
             ? R.string.voice_action_stop : R.string.voice_action_record);
-        positive.setEnabled(state == VoiceState.IDLE || state == VoiceState.RECORDING);
+        primary.setEnabled(state == VoiceState.IDLE || state == VoiceState.RECORDING);
     }
 
     @Override

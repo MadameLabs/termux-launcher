@@ -1729,6 +1729,7 @@
     <string name="voice_mode_terminal">Terminal</string>
     <string name="voice_action_record">Record</string>
     <string name="voice_action_stop">Stop</string>
+    <string name="voice_action_stop_and_send">Stop &amp; send</string>
     <string name="voice_action_cancel">Cancel</string>
     <string name="voice_state_ready">Ready to record</string>
     <string name="voice_state_recording">Recording…</string>
