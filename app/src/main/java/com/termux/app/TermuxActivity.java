@@ -12777,6 +12777,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 }
             }
         });
+        // Outermost: the embedded keyboard goes down only on a press no surface above wanted.
+        registry.register(new com.termux.app.terminal.inappkeyboard.InAppKeyboardBack(() -> {
+            if (mInAppKeyboard == null) return null;
+            return new com.termux.app.terminal.inappkeyboard.InAppKeyboardBack.Keyboard() {
+                @Override public boolean isVisible() {
+                    return mInAppKeyboard != null && mInAppKeyboard.isVisible();
+                }
+                @Override public void hideForBack() {
+                    // The same way down as the KEYBOARD extra key, Display place frame included.
+                    if (applyDisplayFrameKeyboard(false)) return;
+                    if (mInAppKeyboard != null) mInAppKeyboard.hide(
+                        com.termux.app.terminal.inappkeyboard.TermuxInAppKeyboard.HideReason.KEYBOARD_ACTION);
+                }
+            };
+        }));
         return registry;
     }
 
