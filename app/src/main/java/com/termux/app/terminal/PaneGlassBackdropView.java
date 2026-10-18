@@ -16,6 +16,12 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.app.chrome.FrameCrossfade;
+import com.termux.app.chrome.GlassAnchor;
+import com.termux.app.chrome.GlassFilters;
+import com.termux.app.chrome.GlassRefraction;
+import com.termux.app.chrome.WallpaperParallax;
+
 /**
  * One pane's glass. Draws the shared pre-blurred wallpaper frame through this pane's own rect, the
  * terminal tint over it, and the film grain on top — the same three layers the whole-terminal glass
@@ -24,25 +30,56 @@ import androidx.annotation.Nullable;
  *
  * <p>The wallpaper frame is never cropped into a per-pane bitmap: panes resize on every split, drag
  * and keyboard toggle, and cropping would allocate a pane-sized ARGB_8888 bitmap each time. The one
- * cached frame is drawn through a translation matrix instead, recomputed only when this view's
- * position on screen actually changes.
+ * cached frame is drawn through a matrix instead, recomputed only when this view's place over the
+ * wallpaper actually changes — its layout position, the wall page's slide, sink or tilt, or the
+ * wallpaper's own parallax offset. The page's transform is undone in that matrix
+ * ({@link GlassAnchor#place}), so the wallpaper in the slab stays fixed to the screen while the
+ * slab's own tint, grain and rim move with the page.
+ *
+ * <p>With Fancier Glass on ({@link #setRefraction}), that same aim is handed to
+ * {@link GlassRefraction} as uniforms and the frame is drawn through its program instead — bent
+ * under the slab's rim and lit along it — in the one pass the plain draw took. The tint and the
+ * grain stay where they are: they are the slab's own surface, not the picture behind it.
+ *
+ * <p>A terminal pane is also a legibility band ({@link #setVeilSource}): over the tint it draws the
+ * veil that keeps the palette's foreground readable on whatever wallpaper is under it, under the
+ * grain and the rim, in addition to the user's own terminal opacity — the order
+ * {@code GlassSurfaceFactory} gives a chrome band's veil.
  */
 public final class PaneGlassBackdropView extends View {
 
     private final Paint mFramePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Paint mTintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix mFrameMatrix = new Matrix();
-    private final int[] mLocation = new int[2];
+    /** Where this slab stands over the wallpaper; read on every draw, see {@link GlassAnchor#place}. */
+    private final GlassAnchor.Placement mPlacement = new GlassAnchor.Placement();
+    /** The aim; the shader's matrix or the program's uniforms are set from it. */
+    private final GlassAnchor.Aim mAim = new GlassAnchor.Aim();
+    /** The matrix to the screen the aim was last written for. */
+    private final Matrix mLastToScreen = new Matrix();
     private final int[] mRootLocation = new int[2];
     private final Rect mFrameRect = new Rect();
     private final RectF mClipRect = new RectF();
 
     @Nullable private Bitmap mFrame;
     @Nullable private BitmapShader mFrameShader;
+    /**
+     * The frame {@link #mFrame} is fading in from. Held (not recycled) here through the fade so a
+     * scan for what is still on screen keeps finding it as long as this pane is still drawing it.
+     */
+    @Nullable private Bitmap mPreviousFrame;
+    @Nullable private BitmapShader mPreviousFrameShader;
+    private final Paint mPreviousFramePaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    @NonNull private final FrameCrossfade mCrossfade = new FrameCrossfade();
+    /** The preset's rim over the slab, or null (the hairline look draws none on a pane). */
+    @Nullable private Drawable mRim;
+    private float mRimRadiusPx = PaneGlass.NO_RIM;
     @Nullable private Drawable mGrain;
     /** The grain strength {@link #mGrain} was built from: a fresh drawable is not comparable. */
     private int mGrainStrength;
     @Nullable private ColorFilter mFrostFilter;
+    /** The sink dim the frame paints' filter last undid; 255 for the plain frost. */
+    private int mFilterKeptBrightness = 0xFF;
     /** False until the first {@link #setGlass} call, so the defaults are never mistaken for a dress. */
     private boolean mDressed;
     private int mTintColor;
@@ -55,10 +92,42 @@ public final class PaneGlassBackdropView extends View {
     private int mCornerMaskWidth;
     private int mCornerMaskHeight;
     private float mCornerMaskPathRadius;
-    private int mLastLeft = Integer.MIN_VALUE;
-    private int mLastTop = Integer.MIN_VALUE;
+    /** True until the aim has been written for the frame, the program and the place drawn now. */
+    private boolean mAimStale = true;
     private int mLastWidth = -1;
     private int mLastHeight = -1;
+    /**
+     * The wallpaper's live x-offset, or null while nothing pans. Read on every draw rather than
+     * copied in, so every slab samples the frame at the same offset the backdrop draws it at.
+     */
+    @Nullable private WallpaperParallax mParallax;
+    /** The parallax the matrix was last aimed for, in px. */
+    private float mLastParallax;
+    /** The shader the aim was last written for; a rebind of the paint needs its own matrix. */
+    @Nullable private BitmapShader mLastAimShader;
+    /** Fancier Glass, or null for the plain draw. */
+    @Nullable private GlassRefraction.Look mLook;
+    /** The program the frame draws through while {@link #mLook} is set and the phone runs one. */
+    @Nullable private GlassRefraction.Program mProgram;
+    @Nullable private GlassRefraction.Program mPreviousProgram;
+    /**
+     * The retired frame's program once its fade has ended, kept for the next crossfade so a
+     * wallpaper change does not compile a RuntimeShader each time. One program per surface; every
+     * uniform it reads is written afresh before it draws again.
+     */
+    @Nullable private GlassRefraction.Program mSpareProgram;
+    /** Answers this slab's veil; null for a slab nobody measures. See {@link #setVeilSource}. */
+    @Nullable private PaneSurfaceStyle mVeilSource;
+    /**
+     * The terminal pane's veil: the terminal's own background at the smallest alpha that lets the
+     * palette's worst foreground clear its target here. Drawn over the tint, under the grain and
+     * the rim — where it was measured, and in addition to the user's opacity.
+     */
+    private int mVeilColor = android.graphics.Color.TRANSPARENT;
+    /** The laid-out rect {@link #mVeilColor} was asked for. */
+    private final Rect mVeilRect = new Rect();
+    private final int[] mVeilLocation = new int[2];
+    private final int[] mVeilRootLocation = new int[2];
 
     public PaneGlassBackdropView(@NonNull Context context) {
         this(context, null);
@@ -72,6 +141,18 @@ public final class PaneGlassBackdropView extends View {
     }
 
     /**
+     * {@link #setGlass(Bitmap, Rect, int, Drawable, int, float, ColorFilter, boolean)} without a
+     * crossfade — the swap lands outright, which is what a corner mask (never tracked for a
+     * crossfade) and every caller that predates the wallpaper crossfade both still want.
+     */
+    public boolean setGlass(@Nullable Bitmap frame, @NonNull Rect frameRect, int tintColor,
+                            @Nullable Drawable grain, int grainStrength, float radiusPx,
+                            @Nullable ColorFilter frostFilter) {
+        return setGlass(frame, frameRect, tintColor, grain, grainStrength, radiusPx, frostFilter,
+            false);
+    }
+
+    /**
      * Dress this pane, or leave it exactly as it is.
      *
      * <p>Every chrome apply re-dresses every pane, and there are two applies to a frame; a page
@@ -80,6 +161,14 @@ public final class PaneGlassBackdropView extends View {
      * tint, grain, radius and filter, is not a re-dress: it returns without building a shader or
      * invalidating, and the pane keeps the matrix it had. The frame is compared by identity, never
      * by pixels — a newly blurred frame is a new bitmap, which is what makes that sound.</p>
+     *
+     * <p>{@code frame} null while a fresh blur is in flight is not a reason to go tint-only: this
+     * pane keeps drawing whatever it already had — {@code frame} simply loses the comparison to
+     * {@code mFrame} below — until the next pass hands it a real one. {@code crossfade} asks for
+     * the swap from that frame to a genuinely new one to fade over
+     * {@link FrameCrossfade#DURATION_MS} instead of landing on the next draw; the caller already
+     * knows this arrived to replace one a wallpaper change displaced, never a rotation or a radius
+     * change.</p>
      *
      * @param frame         shared pre-blurred wallpaper frame, or null for a tint-and-grain-only pane
      * @param frameRect     that frame's rect in screen coordinates
@@ -90,14 +179,26 @@ public final class PaneGlassBackdropView extends View {
      */
     public boolean setGlass(@Nullable Bitmap frame, @NonNull Rect frameRect, int tintColor,
                             @Nullable Drawable grain, int grainStrength, float radiusPx,
-                            @Nullable ColorFilter frostFilter) {
-        Bitmap live = frame != null && !frame.isRecycled() ? frame : null;
+                            @Nullable ColorFilter frostFilter, boolean crossfade) {
+        Bitmap requested = frame != null && !frame.isRecycled() ? frame : null;
+        Bitmap live = requested != null ? requested : mFrame;
         if (mDressed && live == mFrame && mTintColor == tintColor && mRadiusPx == radiusPx
             && mGrainStrength == grainStrength && (mGrain == null) == (grain == null)
             && mFrostFilter == frostFilter && mFrameRect.equals(frameRect)) {
             return false;
         }
         mDressed = true;
+        if (live != mFrame) {
+            if (crossfade && mFrame != null && !mFrame.isRecycled() && mFrameRect.equals(frameRect)) {
+                mPreviousFrame = mFrame;
+                mPreviousFrameShader = mFrameShader;
+            } else {
+                mPreviousFrame = null;
+                mPreviousFrameShader = null;
+                mCrossfade.cancel();
+            }
+            if (mPreviousFrame != null) mCrossfade.start();
+        }
         mFrame = live;
         // CLAMP, and drawn as a shader rather than as a bitmap: the cached frame does not always
         // reach the full width of the screen (it is downsampled for the blur, and on ROMs that
@@ -108,6 +209,7 @@ public final class PaneGlassBackdropView extends View {
         mFrameShader = mFrame == null
             ? null : new BitmapShader(mFrame, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
         mFramePaint.setShader(mFrameShader);
+        syncRefraction();
         mFrameRect.set(frameRect);
         mTintColor = tintColor;
         mGrain = grain;
@@ -115,12 +217,72 @@ public final class PaneGlassBackdropView extends View {
         mRadiusPx = radiusPx;
         mFrostFilter = frostFilter;
         mFramePaint.setColorFilter(frostFilter);
-        mLastLeft = Integer.MIN_VALUE;   // force the matrix to be rebuilt against the new frame
+        mPreviousFramePaint.setColorFilter(frostFilter);
+        mFilterKeptBrightness = 0xFF;
+        mAimStale = true;   // force the matrix to be rebuilt against the new frame
         invalidate();
         return true;
     }
 
-    /** Recompute the frame matrix on the next draw; call after this pane has moved. */
+    /**
+     * The preset's rim on this slab, cut at {@code radiusPx} ({@link PaneGlass#NO_RIM} for none),
+     * built by {@code style} only when the radius or the presence changes. Idempotent, so every
+     * dress may restate it.
+     */
+    public void setRim(float radiusPx, @NonNull PaneSurfaceStyle style) {
+        if (radiusPx == mRimRadiusPx && (radiusPx < 0f || mRim != null)) return;
+        mRimRadiusPx = radiusPx;
+        mRim = radiusPx < 0f ? null : style.paneGlassRim(radiusPx);
+        invalidate();
+    }
+
+    /**
+     * Who says how much veil this slab needs, or null for a slab nobody measures (a wall page's).
+     * Set by {@link PaneGlass#apply(PaneSurfaceStyle, View, PaneGlassBackdropView, float, boolean)}
+     * for a terminal pane, whose ink is the palette's and has to read on this glass whatever the
+     * wallpaper does; asked again at once, so a dress after a wallpaper, palette or legibility
+     * change lands its new veil in the same pass.
+     */
+    public void setVeilSource(@Nullable PaneSurfaceStyle source) {
+        mVeilSource = source;
+        if (refreshVeil()) invalidate();
+    }
+
+    /** The veil this slab is drawn with right now, for tests and the departure card. */
+    public int veilColor() {
+        return mVeilColor;
+    }
+
+    /**
+     * Re-asks the veil for where this slab is laid out now. The rect is the laid-out one, which
+     * ignores every transform — the root's editor scale among them — and the wall page's slide
+     * too: a page sliding keeps the veil it had until it settles, rather than re-sampling the
+     * wallpaper on every frame of the slide.
+     *
+     * @return true when the veil changed
+     */
+    private boolean refreshVeil() {
+        int veil = android.graphics.Color.TRANSPARENT;
+        if (mVeilSource != null && getWidth() > 0 && getHeight() > 0) {
+            GlassAnchor.layoutOriginOnScreen(this, mVeilLocation, mVeilRootLocation);
+            mVeilRect.set(mVeilLocation[0], mVeilLocation[1],
+                mVeilLocation[0] + getWidth(), mVeilLocation[1] + getHeight());
+            veil = mVeilSource.paneGlassVeil(mVeilRect);
+        } else {
+            mVeilRect.setEmpty();
+        }
+        if (veil == mVeilColor) return false;
+        mVeilColor = veil;
+        return true;
+    }
+
+    /** True when this slab has moved or resized since its veil was asked for. */
+    private boolean veilRectMoved() {
+        GlassAnchor.layoutOriginOnScreen(this, mVeilLocation, mVeilRootLocation);
+        return mVeilRect.left != mVeilLocation[0] || mVeilRect.top != mVeilLocation[1]
+            || mVeilRect.width() != getWidth() || mVeilRect.height() != getHeight();
+    }
+
     /**
      * Paint only the four corner arcs, and skip the tint and grain.
      *
@@ -135,7 +297,82 @@ public final class PaneGlassBackdropView extends View {
         float resolved = Math.max(0f, radiusPx);
         if (mCornerMaskRadiusPx == resolved) return;
         mCornerMaskRadiusPx = resolved;
+        syncRefraction();
         invalidate();
+    }
+
+    /**
+     * Fancier Glass on this slab: the frame is bent under the rim and lit along it, through
+     * {@link GlassRefraction}, at this slab's own corner radius. Null puts the plain draw back —
+     * the default mode, and what every phone below API 33 draws whatever it is handed. Idempotent,
+     * so every dress may restate it. A corner mask never refracts: it stands in for what is
+     * behind the page, which has no rim.
+     */
+    public void setRefraction(@Nullable GlassRefraction.Look look) {
+        if (java.util.Objects.equals(look, mLook)) return;
+        mLook = look;
+        syncRefraction();
+        // Whichever way the draw goes now, its aim has to be written afresh: the program's on
+        // first use, the shader's matrix after the program cleared it.
+        mAimStale = true;
+        invalidate();
+    }
+
+    /** True while the frame is drawn through the refraction program rather than plain. */
+    public boolean refracts() {
+        return mProgram != null;
+    }
+
+    /**
+     * Points the paints at the program or at the frame's own shader, whichever the look asks for
+     * and the phone can run. On every frame change and look change, never per draw: the program
+     * captures its input when it is set.
+     */
+    private void syncRefraction() {
+        mLastAimShader = null;
+        GlassRefraction.Look look = mLook;
+        BitmapShader shader = mFrameShader;
+        if (look == null || shader == null || mCornerMaskRadiusPx > 0f || !GlassRefraction.available()) {
+            mProgram = null;
+            mPreviousProgram = null;
+            mSpareProgram = null;
+            mFramePaint.setShader(shader);
+            return;
+        }
+        float density = getResources().getDisplayMetrics().density;
+        GlassRefraction.Program program = mProgram;
+        if (program == null || program.density() != density) {
+            program = GlassRefraction.Program.create(density);
+        }
+        mProgram = program;
+        if (program == null) {
+            // The driver refused the program: the plain draw is the look this phone gets.
+            mPreviousProgram = null;
+            mFramePaint.setShader(shader);
+            return;
+        }
+        program.setLook(look);
+        program.setInput(shader);
+        program.applyTo(mFramePaint);
+        BitmapShader previousShader = mPreviousFrameShader;
+        if (previousShader == null) {
+            if (mPreviousProgram != null) mSpareProgram = mPreviousProgram;
+            mPreviousProgram = null;
+            return;
+        }
+        GlassRefraction.Program previous = mPreviousProgram;
+        if (previous == null || previous.density() != density) {
+            GlassRefraction.Program spare = mSpareProgram;
+            mSpareProgram = null;
+            previous = spare != null && spare.density() == density
+                ? spare : GlassRefraction.Program.create(density);
+        }
+        mPreviousProgram = previous;
+        if (previous != null) {
+            previous.setLook(look);
+            previous.setInput(previousShader);
+            previous.applyTo(mPreviousFramePaint);
+        }
     }
 
     /** The colour laid over the arcs: the wall's dim over its wallpaper, or a flat colour alone. */
@@ -145,9 +382,40 @@ public final class PaneGlassBackdropView extends View {
         invalidate();
     }
 
+    /**
+     * Re-aim on the next draw; call after this slab has moved, or after its page did — a slide,
+     * the sink, the plank's tilt — since a transform alone never redraws a child.
+     */
     public void invalidateGlassPosition() {
-        mLastLeft = Integer.MIN_VALUE;
+        mAimStale = true;
         invalidate();
+    }
+
+    /**
+     * Follow the wallpaper's parallax: the frame is sampled {@code parallax.offsetPx()} further
+     * along on every draw. Null stops following. Whoever moves the offset invalidates this view;
+     * the draw itself notices the change and re-aims.
+     */
+    public void setParallax(@Nullable WallpaperParallax parallax) {
+        if (mParallax == parallax) return;
+        mParallax = parallax;
+        invalidateGlassPosition();
+    }
+
+    /** The frame this pane is drawing, so the blur cache never recycles it under a draw. */
+    @Nullable
+    public Bitmap heldFrame() {
+        return mFrame;
+    }
+
+    /**
+     * The frame a crossfade is still fading out of, so the blur cache never recycles it mid-fade —
+     * null once the fade has landed on {@link #heldFrame()} alone, or when the last swap never
+     * crossfaded at all.
+     */
+    @Nullable
+    public Bitmap fadingFrame() {
+        return mCrossfade.isFinished() ? null : mPreviousFrame;
     }
 
     @Override
@@ -163,22 +431,85 @@ public final class PaneGlassBackdropView extends View {
             mClipRect.set(0f, 0f, width, height);
             canvas.clipRect(mClipRect);   // the round clip is the parent frame's; this bounds ours
         }
-        if (mFrame != null && !mFrame.isRecycled() && mFrameShader != null) {
-            layoutOriginOnScreen(mLocation);
-            if (mLocation[0] != mLastLeft || mLocation[1] != mLastTop
-                || width != mLastWidth || height != mLastHeight) {
-                mLastLeft = mLocation[0];
-                mLastTop = mLocation[1];
+        // A software canvas refuses a RuntimeShader (a RealtimeBlurView capturing the window is
+        // one), so the refracted frame sits that pass out; it only feeds another view's blur.
+        if (mFrame != null && !mFrame.isRecycled() && mFrameShader != null
+                && (mProgram == null || canvas.isHardwareAccelerated())) {
+            BitmapShader aimShader = mFrameShader;
+            Bitmap aimFrame = mFrame;
+            // Where this slab is on screen through its page's slide, sink and tilt: the frame is
+            // aimed past all of it, so the wallpaper in the slab stays where the wallpaper behind
+            // the wall is. The parallax carries the wallpaper to the left under it.
+            GlassAnchor.place(this, mPlacement);
+            // The sink dims the page's layer, this slab with it; the wallpaper behind does not
+            // darken, so the frame is lifted by as much as the layer will take away.
+            int kept = mPlacement.keptBrightness;
+            if (kept != mFilterKeptBrightness) {
+                mFilterKeptBrightness = kept;
+                ColorFilter filter = GlassFilters.undimmed(mFrostFilter, kept);
+                mFramePaint.setColorFilter(filter);
+                mPreviousFramePaint.setColorFilter(filter);
+            }
+            float parallax = mParallax == null ? 0f : mParallax.offsetPx();
+            GlassRefraction.Program program = mProgram;
+            if (mAimStale || aimShader != mLastAimShader || !mPlacement.toScreen.equals(mLastToScreen)
+                || width != mLastWidth || height != mLastHeight || parallax != mLastParallax) {
+                mAimStale = false;
+                mLastToScreen.set(mPlacement.toScreen);
                 mLastWidth = width;
                 mLastHeight = height;
-                float scaleX = mFrameRect.width() / (float) Math.max(1, mFrame.getWidth());
-                float scaleY = mFrameRect.height() / (float) Math.max(1, mFrame.getHeight());
-                mFrameMatrix.reset();
-                mFrameMatrix.setScale(scaleX, scaleY);
-                mFrameMatrix.postTranslate(mFrameRect.left - mLastLeft, mFrameRect.top - mLastTop);
-                mFrameShader.setLocalMatrix(mFrameMatrix);
+                mLastParallax = parallax;
+                mLastAimShader = aimShader;
+                mAim.set(mPlacement.toScreen, mFrameRect, aimFrame.getWidth(), aimFrame.getHeight(),
+                    parallax);
+                float[] aim = mAim.scaleOffset;
+                if (program != null) {
+                    // The same aim, as uniforms: the program samples the frame by its own pixels,
+                    // and the rim runs along this slab's own rounded rect, so the bend and the
+                    // light move with the page while the wallpaper they bend stays put.
+                    program.setAim(aim[0], aim[1], aim[2], aim[3]);
+                    program.setLocal(mAim.local);
+                    program.setRect(0f, 0f, width, height, mRadiusPx);
+                    if (mPreviousProgram != null) {
+                        mPreviousProgram.setAim(aim[0], aim[1], aim[2], aim[3]);
+                        mPreviousProgram.setLocal(mAim.local);
+                        mPreviousProgram.setRect(0f, 0f, width, height, mRadiusPx);
+                    } else if (mPreviousFrameShader != null) {
+                        // No program for the retiring frame: it fades out drawn plain.
+                        mAim.shaderMatrix(mFrameMatrix);
+                        mPreviousFrameShader.setLocalMatrix(mFrameMatrix);
+                    }
+                } else {
+                    mAim.shaderMatrix(mFrameMatrix);
+                    aimShader.setLocalMatrix(mFrameMatrix);
+                    // The retired frame shares this pane's rect and, always, the current frame's
+                    // own size — both are full captures of the same radius — so the same matrix
+                    // aims it.
+                    if (mPreviousFrameShader != null) mPreviousFrameShader.setLocalMatrix(mFrameMatrix);
+                }
             }
-            canvas.drawRect(0f, 0f, width, height, mFramePaint);
+            float progress = mCrossfade.progress();
+            boolean fading = progress < 1f && mPreviousFrame != null && !mPreviousFrame.isRecycled()
+                && mPreviousFrameShader != null
+                && mPreviousFrame.getWidth() == mFrame.getWidth()
+                && mPreviousFrame.getHeight() == mFrame.getHeight();
+            if (fading) {
+                if (program == null || mPreviousProgram == null) {
+                    mPreviousFramePaint.setShader(mPreviousFrameShader);
+                }
+                mPreviousFramePaint.setAlpha(255);
+                canvas.drawRect(0f, 0f, width, height, mPreviousFramePaint);
+                mFramePaint.setAlpha(Math.round(255f * progress));
+                canvas.drawRect(0f, 0f, width, height, mFramePaint);
+                postInvalidateOnAnimation();
+            } else {
+                mPreviousFrame = null;
+                mPreviousFrameShader = null;
+                if (mPreviousProgram != null) mSpareProgram = mPreviousProgram;
+                mPreviousProgram = null;
+                mFramePaint.setAlpha(255);
+                canvas.drawRect(0f, 0f, width, height, mFramePaint);
+            }
         }
         // A corner mask stands in for what is behind the page, so it takes neither the pane
         // tint nor the grain: those belong to a pane's own slab, and the page has none. It takes
@@ -193,25 +524,25 @@ public final class PaneGlassBackdropView extends View {
                 mTintPaint.setColor(mTintColor);
                 canvas.drawRect(0f, 0f, width, height, mTintPaint);
             }
+            // A pane that moved or resized (a split, a divider drag, the keyboard) re-asks for its
+            // veil here: none of those re-dress it, and the veil is memoised per rect, so a pane
+            // that did not move costs one walk up the tree.
+            if (mVeilSource != null && veilRectMoved()) refreshVeil();
+            if (android.graphics.Color.alpha(mVeilColor) > 0) {
+                mTintPaint.setColor(mVeilColor);
+                canvas.drawRect(0f, 0f, width, height, mTintPaint);
+            }
             if (mGrain != null) {
                 mGrain.setBounds(0, 0, width, height);
                 mGrain.draw(canvas);
             }
+            if (mRim != null) {
+                mRim.setBounds(0, 0, width, height);
+                mRim.draw(canvas);
+            }
         }
         canvas.restoreToCount(save);
     }
-    /**
-     * This view's position on screen as laid out, ignoring every transform on the way up.
-     *
-     * <p>{@code getLocationOnScreen} answers with the transforms applied, and the pane frame is
-     * transformed constantly — the plank tilts and slides it under a finger, and the FLIP movement
-     * animates its translation. Pinning the frost to a transformed position baked the tilt's offset
-     * into the matrix: the frost jumped when touched, then stayed shifted once the spring settled,
-     * because no further position change ever arrived to correct it. Layout coordinates are the
-     * frost's real anchor — the wallpaper does not move when a pane tips over it, and the frost
-     * inside the pane then travels with the pane, which is what glass does.
-     */
-    // Package-private so the regression test can pin it directly.
     /** Rebuilt only when the size or the radius changes, never per draw. */
     @NonNull
     private android.graphics.Path cornerMaskPath(int width, int height) {
@@ -234,25 +565,16 @@ public final class PaneGlassBackdropView extends View {
         return path;
     }
 
-    void layoutOriginOnScreen(@NonNull int[] out) {
-        float x = 0f;
-        float y = 0f;
-        View view = this;
-        while (true) {
-            x += view.getLeft();
-            y += view.getTop();
-            android.view.ViewParent parent = view.getParent();
-            if (!(parent instanceof View)) break;
-            View parentView = (View) parent;
-            x -= parentView.getScrollX();
-            y -= parentView.getScrollY();
-            view = parentView;
-        }
-        // `view` is now the root of this hierarchy; it carries no transform of its own, so asking
-        // the framework for its screen position is safe.
-        view.getLocationOnScreen(mRootLocation);
-        out[0] = Math.round(x) + mRootLocation[0];
-        out[1] = Math.round(y) + mRootLocation[1];
+    /**
+     * This view's position on screen as laid out, ignoring every transform on the way up but one:
+     * the wall page's slide, returned separately — the anchor every glass surface shares, see
+     * {@link GlassAnchor#layoutOriginOnScreen}.
+     *
+     * @return the wall page's translation on the way up, in px; 0 off the wall
+     */
+    // Package-private so the regression test can pin it directly.
+    float layoutOriginOnScreen(@NonNull int[] out) {
+        return GlassAnchor.layoutOriginOnScreen(this, out, mRootLocation);
     }
 
 }

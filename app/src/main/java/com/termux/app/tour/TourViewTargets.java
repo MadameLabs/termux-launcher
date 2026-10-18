@@ -1,6 +1,7 @@
 package com.termux.app.tour;
 
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -15,6 +16,9 @@ import com.termux.app.terminal.PaneContentFrame;
 import com.termux.app.terminal.TerminalActionDispatcher;
 import com.termux.app.terminal.TerminalWindowBar;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
+import com.termux.app.wall.BorderDrag;
+import com.termux.app.wall.BorderGrabber;
+import com.termux.app.wall.PaneWallLayout;
 import com.termux.shared.termux.extrakeys.ExtraKeysView;
 
 /**
@@ -47,6 +51,9 @@ public final class TourViewTargets implements TourTargets {
      * belong to the corners on either side of it, and so does the glow that teaches them.
      */
     private static final float PANE_CORNER_SLOP_DP = 6f;
+
+    /** Room round a grabber's pill, so a glow drawn on it reads as a target and not a hairline. */
+    private static final float GRABBER_AIR_DP = 10f;
 
     /** The seams the tour needs into the activity's view tree. */
     public interface ViewFinder {
@@ -144,7 +151,19 @@ public final class TourViewTargets implements TourTargets {
                     "neither the dock nor the landscape rail is on screen");
             // The row lives in the dock, above the content or down a side column, one at a time.
             case AZ_ROW:
-                return rectInOverlay(azRowView(), "the A-Z row is switched off or not on screen");
+                return rectInOverlay(azRowView(), "the A-Z index is put away or not on screen");
+            case PAGE_BORDER:
+                return pageBorderRect();
+            // A layout that draws no pill still takes the swipe off its border, so the card stands
+            // against the border itself: the bottom one for the keyboard, the bar for the status.
+            case KEYBOARD_GRABBER:
+                Rect keyboardPill = grabberRect(false);
+                return keyboardPill != null ? keyboardPill : pageBorderRect();
+            case STATUS_GRABBER:
+                Rect statusPill = grabberRect(true);
+                return statusPill != null ? statusPill
+                    : rectInOverlay(mFinder.findTourView(R.id.terminal_window_bar_host),
+                        "the status bar is not on screen");
             case NONE:
                 return miss("this card points at nothing");
             default:
@@ -305,6 +324,52 @@ public final class TourViewTargets implements TourTargets {
             if (fallback == null) fallback = host;
         }
         return fallback;
+    }
+
+    /**
+     * A strip along the bottom of the page that is up, which is the page's border: the frame line
+     * and the air below it down to the wall's foot, where a sideways swipe changes place (the top
+     * border takes the same swipe, and the card's text names both), less the corner squares, which
+     * are the corner tab's.
+     */
+    @Nullable
+    private Rect pageBorderRect() {
+        View wallView = mFinder.findTourView(R.id.terminal_pane_wall);
+        Rect wall = rectInOverlay(wallView, "the pane wall is not on screen");
+        if (wall == null) return null;
+        if (!(wallView instanceof PaneWallLayout)) return miss("the pane wall has no border");
+        Rect strip = new Rect();
+        if (!((PaneWallLayout) wallView).borderZone(BorderDrag.Border.BOTTOM, strip))
+            return miss("the page is too narrow to have a border to hold");
+        strip.offset(wall.left, wall.top);
+        return strip;
+    }
+
+    /**
+     * One of the border grabbers, where the wall draws it: centred on the page's bottom or top
+     * edge. Null while that swipe is off, because the wall draws no pill then, and a card glowing
+     * a pill that is not there points at nothing.
+     */
+    @Nullable
+    private Rect grabberRect(boolean top) {
+        View wallView = mFinder.findTourView(R.id.terminal_pane_wall);
+        Rect wall = rectInOverlay(wallView, "the pane wall is not on screen");
+        if (wall == null) return null;
+        if (wallView instanceof PaneWallLayout) {
+            PaneWallLayout layout = (PaneWallLayout) wallView;
+            if (top ? !layout.isStatusGrabberShown() : !layout.isGrabberShown())
+                return miss(top ? "the status swipe is off on this layout"
+                    : "the keyboard swipe is off on this layout");
+        }
+        float density = mOverlay.getResources().getDisplayMetrics().density;
+        RectF pill = new RectF();
+        BorderGrabber.bounds(pill, wall.exactCenterX(), top ? wall.top : wall.bottom, 1f, 0f, 1f,
+            density, top);
+        float air = GRABBER_AIR_DP * density;
+        pill.inset(-air, -air);
+        Rect out = new Rect();
+        pill.roundOut(out);
+        return out;
     }
 
     @Nullable

@@ -14,8 +14,6 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.preference.Preference;
 
 import com.termux.R;
-import com.termux.ai.TaiManager;
-import com.termux.ai.TaiSettings;
 import com.termux.app.TermuxActivity;
 import com.termux.app.fragments.settings.MaterialPreferenceFragment;
 import com.termux.app.fragments.settings.StatusActionPreference;
@@ -61,35 +59,12 @@ public final class ServicesPermissionsPreferencesFragment extends MaterialPrefer
     }
 
     private void refresh(@NonNull Context context) {
-        refreshTai(context);
         refreshShizuku();
         setPermission(STORAGE, PermissionUtils.checkAndRequestLegacyOrManageExternalStoragePermission(context, -1, true, false));
         refreshWallpaperRead(context);
         setPermission(NOTIFICATION_ACCESS, LauncherNotificationAccess.isEnabled(context));
-        setPermission(ACCESSIBILITY, LauncherLockAccessibilityAccess.isEnabled(context));
+        setOptionalPermission(ACCESSIBILITY, LauncherLockAccessibilityAccess.isEnabled(context));
         setPermission(NOTIFICATIONS, NotificationManagerCompat.from(context).areNotificationsEnabled());
-    }
-
-    private void refreshTai(@NonNull Context context) {
-        Preference row = findPreference("service_tai");
-        if (!(row instanceof StatusActionPreference)) return;
-        TaiManager manager = TaiManager.getInstance(context);
-        String model = new TaiSettings(context).getDefaultAssistantModel();
-        boolean configured = model != null && !model.isEmpty() && manager.isModelAvailable(model);
-        ((StatusActionPreference) row).setState(getString(configured ? R.string.settings_status_stopped
-            : R.string.settings_status_not_configured), getString(R.string.settings_manage_action),
-            StatusActionPreference.Tone.NEUTRAL);
-        new Thread(() -> {
-            boolean running = manager.getRuntimeState().loaded;
-            if (isAdded() && getActivity() != null) getActivity().runOnUiThread(() -> {
-                Preference current = findPreference("service_tai");
-                if (current instanceof StatusActionPreference) ((StatusActionPreference) current).setState(
-                    getString(running ? R.string.settings_status_running : configured
-                        ? R.string.settings_status_stopped : R.string.settings_status_not_configured),
-                    getString(R.string.settings_manage_action), running
-                        ? StatusActionPreference.Tone.POSITIVE : StatusActionPreference.Tone.NEUTRAL);
-            });
-        }).start();
     }
 
     private void refreshShizuku() {
@@ -122,7 +97,7 @@ public final class ServicesPermissionsPreferencesFragment extends MaterialPrefer
             row.setFragment(null);
             row.setSummary(R.string.settings_termux_api_install_summary);
             row.setOnPreferenceClickListener(preference -> {
-                ShareUtils.openUrl(context, TermuxConstants.TERMUX_API_FDROID_PACKAGE_URL);
+                ShareUtils.openUrl(context, TermuxConstants.TERMUX_API_GITHUB_RELEASES_URL);
                 return true;
             });
         }
@@ -188,6 +163,19 @@ public final class ServicesPermissionsPreferencesFragment extends MaterialPrefer
                 ? R.string.settings_manage_action : R.string.settings_fix_action),
             allowed ? StatusActionPreference.Tone.POSITIVE : StatusActionPreference.Tone.WARNING);
         row.setSummary(allowed ? R.string.settings_permission_allowed_summary : R.string.settings_permission_fix_summary);
+    }
+
+    /**
+     * A permission nothing depends on: only the A-Z double-tap lock can use it, and Shizuku does
+     * the same job without it. The row is marked optional so "off" reads as neutral, and its
+     * summary names that purpose instead of the generic "tap to fix".
+     */
+    private void setOptionalPermission(String key, boolean allowed) {
+        setPermission(key, allowed);
+        Preference row = findPreference(key);
+        if (!(row instanceof StatusActionPreference)) return;
+        ((StatusActionPreference) row).setOptional(true);
+        row.setSummary(R.string.settings_accessibility_optional_summary);
     }
 
     private boolean start(Intent intent) {

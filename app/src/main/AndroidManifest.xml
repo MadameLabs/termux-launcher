@@ -38,6 +38,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- The built-in agenda and calendar widgets; asked for when one is placed, never before. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- The palette's contact search; asked for from its own row, never before. Calls go through the dialer. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
@@ -112,7 +116,7 @@
         android:hasFragileUserData="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:usesCleartextTraffic="${TERMUX_APP_USES_CLEARTEXT_TRAFFIC}"
-        android:supportsRtl="false"
+        android:supportsRtl="true"
         android:theme="@style/Theme.TermuxApp.DayNight.DarkActionBar"
         tools:targetApi="o">
 
@@ -177,14 +181,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity-alias>
-
-        <activity
-            android:name=".app.activities.HelpActivity"
-            android:exported="false"
-            android:label="@string/application_name"
-            android:parentActivityName=".app.TermuxActivity"
-            android:resizeableActivity="true"
-            tools:targetApi="o" />
 
         <!-- The help centre: the whole guide, read on a screen of its own. -->
         <activity

@@ -3,6 +3,7 @@ package com.termux.app.help;
 import android.content.Context;
 import android.graphics.Outline;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.view.View;
 import android.view.ViewGroup;
 import com.termux.R;
@@ -11,6 +12,9 @@ import com.termux.app.launcher.widget.WidgetCellRect;
 import com.termux.app.launcher.widget.WidgetGridMetrics;
 import com.termux.app.launcher.widget.WidgetGridView;
 import com.termux.app.terminal.TerminalWindowBar;
+import com.termux.app.wall.BorderDrag;
+import com.termux.app.wall.BorderGrabber;
+import com.termux.app.wall.PaneWallLayout;
 import com.termux.app.wall.PaneWallPage;
 import com.termux.app.x11.DisplayScaleRailView;
 import com.termux.app.x11.DisplayTouchpadView;
@@ -54,6 +58,10 @@ public final class HelpTargets {
     }
     public static final class Snapshot {
         public final Rect wall;
+        /**
+         * The measured controls. One id may come more than once — the page's border is a strip
+         * along each edge — and then its first target is the one its card is seated against.
+         */
         public final List<Target> targets = new ArrayList<>();
         public final List<KeyLabel> keys = new ArrayList<>();
         Snapshot(Rect wall) { this.wall = wall; }
@@ -64,6 +72,8 @@ public final class HelpTargets {
             return s.toString();
         }
     }
+    /** Room round the keyboard grabber's pill, so its box reads as a target and not a hairline. */
+    private static final float GRABBER_AIR_DP = 10f;
     /** The keyboard value the launcher's own settings hang off; the cog is how it is drawn. */
     private static final String SETTINGS_KEY = "config";
     private final ViewFinder finder;
@@ -94,14 +104,22 @@ public final class HelpTargets {
                 add(s, "windows", chips, radius(strip));
             }
             stats(s);
+            // Beside the clock in the status bar's widget slot, so wherever the bar has one.
+            add(s, "pinned", finder.findHelpView(R.id.terminal_pinned_notifications));
         }
         // The whole bar, not the peeking place icon at its end: the gestures the topic names are
         // made anywhere along it, and a box on one small icon read as being about that icon.
         View host = finder.findHelpView(R.id.terminal_window_bar_host);
         add(s, "status", rect(host), radius(host));
-        // Launcher settings live on a keyboard corner rather than in the chrome, so every place
-        // points at the cog itself: the box is the glyph, which is the thing the user swipes off.
-        add(s, "settings", keyCornerRect(SETTINGS_KEY), 0);
+        // Launcher settings live on a keyboard corner rather than in the chrome, so the places
+        // that carry the keyboard point at the cog itself: the box is the glyph, which is the
+        // thing the user swipes off. The Widgets page keeps its keyboard down, so it has no cog.
+        if (place != PaneWallPage.WIDGETS) add(s, "settings", keyCornerRect(SETTINGS_KEY), 0);
+        // The page's own border and the pill on its bottom edge are on every place, because the
+        // wall draws them round every page alike.
+        pageBorder(s, wall);
+        keyboardGrabber(s, wall);
+        if (place != PaneWallPage.TERMINAL) add(s, "corners", wallCorner(wall), 0);
         if (place == PaneWallPage.TERMINAL) {
             add(s, "sessions", finder.findHelpView(R.id.terminal_sessions_indicator));
             if (finder.paneCount() > 1) {
@@ -128,10 +146,6 @@ public final class HelpTargets {
             if (rail != null && rail.isRailShown()) add(s, "scale", localRect(rail, rail.helpBounds()),
                 radius(rail));
             add(s, "touchpad", firstOfType(root, DisplayTouchpadView.class));
-            add(s, "start", finder.findHelpView(R.id.x11_pane_start));
-            // Only out while the empty state names a missing package; that visibility is the
-            // readiness flag already applied to the view, so nothing here re-checks the prefix.
-            add(s, "setup", finder.findHelpView(R.id.x11_pane_guide));
         } else {
             WidgetGridView grid = firstOfType(root, WidgetGridView.class);
             if (grid != null) {
@@ -146,6 +160,55 @@ public final class HelpTargets {
         }
         return s;
     }
+    /**
+     * The page's border as two strips, one along its top edge and one along its bottom, less the
+     * corner squares: the frame line and the air beside it, from the wall's edge to the page's,
+     * where a hold and a sideways swipe change place. Both edges take that gesture, so both are
+     * measured, under the one id and the top first: the topic's card, marker and demonstration sit
+     * on the top strip, and the bottom one is reached by a second leader from the same card. The
+     * bottom strip runs under the keyboard swipe's pill, which is measured as a control of its own
+     * and drawn over the strip.
+     */
+    private void pageBorder(Snapshot s, Rect wall) {
+        View wallView = finder.findHelpView(R.id.terminal_pane_wall);
+        if (!(wallView instanceof PaneWallLayout)) return;
+        for (BorderDrag.Border side : PLACE_BORDERS) {
+            Rect strip = new Rect();
+            if (!((PaneWallLayout) wallView).borderZone(side, strip)) continue;
+            strip.offset(wall.left, wall.top);
+            add(s, "border", strip, 0);
+        }
+    }
+    /** The borders a hold and a sideways swipe change place from, in the order they are measured. */
+    private static final BorderDrag.Border[] PLACE_BORDERS =
+        {BorderDrag.Border.TOP, BorderDrag.Border.BOTTOM};
+
+    /**
+     * The pill on the page's bottom border that marks the keyboard swipe, where the wall draws
+     * it. Left out while the swipe is off, because the wall draws no pill then.
+     */
+    private void keyboardGrabber(Snapshot s, Rect wall) {
+        View wallView = finder.findHelpView(R.id.terminal_pane_wall);
+        if (wallView instanceof PaneWallLayout && !((PaneWallLayout) wallView).isGrabberShown())
+            return;
+        float density = context.getResources().getDisplayMetrics().density;
+        RectF pill = new RectF();
+        BorderGrabber.bounds(pill, wall.exactCenterX(), wall.bottom, 1f, 0f, 1f, density);
+        float air = GRABBER_AIR_DP * density;
+        pill.inset(-air, -air);
+        Rect out = new Rect();
+        pill.roundOut(out);
+        add(s, "keyboard_grabber", out, 0);
+    }
+
+    /** The top-left corner square of a page that is not the terminal: the Widgets or Display page. */
+    private Rect wallCorner(Rect wall) {
+        float density = context.getResources().getDisplayMetrics().density;
+        int size = Math.round(com.termux.app.chrome.CornerZones.clampSize(
+            com.termux.app.chrome.CornerZones.paneSizePx(density), wall.width(), wall.height()));
+        return size <= 0 ? null : new Rect(wall.left, wall.top, wall.left + size, wall.top + size);
+    }
+
     /**
      * One corner zone of the pane the user is on: the square a corner hold has to land in, so the
      * box is where the gesture is made rather than a guess at it. It is not a hit area - a tap

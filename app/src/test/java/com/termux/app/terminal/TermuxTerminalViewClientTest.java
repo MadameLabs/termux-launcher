@@ -82,6 +82,18 @@ public class TermuxTerminalViewClientTest {
     }
 
     @Test
+    public void passingCtrlSpaceToAndroidIsOffByDefaultAndFollowsTheSetting() throws IOException {
+        FakeTerminalHost host = host();
+        TermuxTerminalViewClient client = client(host);
+        assertFalse(client.shouldPassCtrlSpaceToAndroid());
+
+        host.preferences().setPassCtrlSpaceToAndroidEnabled(true);
+        assertTrue(client.shouldPassCtrlSpaceToAndroid());
+        // Independent of the ctrl-space-workaround property.
+        assertFalse(client.shouldUseCtrlSpaceWorkaround());
+    }
+
+    @Test
     public void charBasedInputAndCtrlSpaceWorkaroundFollowTheirProperties() throws IOException {
         TermuxTerminalViewClient off = client(host());
         assertFalse(off.shouldEnforceCharBasedInput());
@@ -122,6 +134,16 @@ public class TermuxTerminalViewClientTest {
         FakeTerminalHost host = host();
         host.hasToolbar = false;
         assertTrue(client(host).isTerminalViewSelected());
+    }
+
+    @Test
+    public void aSizeSetInSettingsReachesEveryPaneNotJustTheFocusedOne() throws IOException {
+        FakeTerminalHost host = host();
+
+        client(host).applyGlobalFontSize();
+
+        assertTrue(host.called("refreshPaneFontSizes"));
+        assertEquals(1, host.flushDockRequests);
     }
 
     @Test

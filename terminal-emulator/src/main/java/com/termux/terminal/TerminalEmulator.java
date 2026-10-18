@@ -43,12 +43,23 @@ public final class TerminalEmulator {
      */
     public static final int MOUSE_LEFT_BUTTON_MOVED = 32;
 
+    /**
+     * Mouse moving with no button held: xterm's "no button" code 3 plus 32 for motion. Reported only
+     * while any-event tracking (DECSET 1003) is on.
+     */
+    public static final int MOUSE_MOVED_NO_BUTTON = 35;
+
     public static final int MOUSE_WHEELUP_BUTTON = 64;
 
     public static final int MOUSE_WHEELDOWN_BUTTON = 65;
     
     public static final int MOUSE_WHEEL_LEFT = 66;
     public static final int MOUSE_WHEEL_RIGHT = 67;
+
+    /** Modifier bits xterm adds to a mouse report's button code. */
+    public static final int MOUSE_MODIFIER_SHIFT = 4;
+    public static final int MOUSE_MODIFIER_ALT = 8;
+    public static final int MOUSE_MODIFIER_CTRL = 16;
 
     /**
      * Used for invalid data - http://en.wikipedia.org/wiki/Replacement_character#Replacement_character
@@ -261,6 +272,21 @@ public final class TerminalEmulator {
     private static final int DECSET_BIT_MOUSE_PROTOCOL_SGR = 1 << 9;
 
     /**
+     * DECSET 1003 - like 1002, but report motion with no button held too.
+     */
+    private static final int DECSET_BIT_MOUSE_TRACKING_ANY_EVENT = 1 << 17;
+
+    /**
+     * DECSET 1016 - SGR-Pixels: the SGR format (whether or not 1006 is set), with the position in
+     * pixels of the text area instead of cells, as in xterm, kitty, foot and WezTerm.
+     */
+    private static final int DECSET_BIT_MOUSE_PROTOCOL_SGR_PIXELS = 1 << 18;
+
+    /** DECSET 1000, 1002 and 1003, of which at most one is on. */
+    private static final int DECSET_BITS_MOUSE_TRACKING = DECSET_BIT_MOUSE_TRACKING_PRESS_RELEASE
+        | DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT | DECSET_BIT_MOUSE_TRACKING_ANY_EVENT;
+
+    /**
      * DECSET 2004 - see {@link #paste(String)}
      */
     private static final int DECSET_BIT_BRACKETED_PASTE_MODE = 1 << 10;
@@ -303,6 +329,15 @@ public final class TerminalEmulator {
      * a size query.
      */
     private static final int DECSET_BIT_IN_BAND_RESIZE_NOTIFICATIONS = 1 << 15;
+
+    /**
+     * DECSET 7727 - dictation marks, a private mode of this terminal. While it is set (together with
+     * bracketed paste) the launcher's voice dictation announces itself to the program with OSC 7727
+     * marks around its pastes, so the program can tell dictated phrases from typing. The emulator
+     * only keeps the bit; the marks are written by the dictation code, see
+     * {@link #isDictationMarksEnabled()}.
+     */
+    private static final int DECSET_BIT_DICTATION_MARKS = 1 << 16;
 
     /**
      * How long a synchronized update may hold the screen. The hold is a promise the program has to
@@ -402,6 +437,9 @@ public final class TerminalEmulator {
      */
     final TerminalBuffer mAltBuffer;
 
+    /** @see #setClipboardCleanupEnabled(boolean) */
+    private boolean mClipboardCleanupEnabled = true;
+
     /**
      * The current screen buffer, pointing at either {@link #mMainBuffer} or {@link #mAltBuffer}.
      */
@@ -416,6 +454,26 @@ public final class TerminalEmulator {
 
     /** Desktop notifications a program asked for with {@code OSC 99}. */
     private final KittyNotifications mKittyNotifications = new KittyNotifications();
+
+    /** The extended clipboard a program drives with {@code OSC 5522}; shares the OSC 52 callbacks. */
+    private final KittyClipboard mKittyClipboard = new KittyClipboard();
+
+    private final KittyClipboard.Handler mKittyClipboardHandler = new KittyClipboard.Handler() {
+        @Override
+        public String readText() {
+            return mSession.onReadTextFromClipboard();
+        }
+
+        @Override
+        public void writeText(String text) {
+            mSession.onCopyTextToClipboard(text);
+        }
+
+        @Override
+        public void write(String escapeSequence) {
+            mSession.write(escapeSequence);
+        }
+    };
 
     /**
      * The text of the last {@code OSC 66} block written, or null when the last thing written was
@@ -777,14 +835,10 @@ public final class TerminalEmulator {
 
     private void setDecsetinternalBit(int internalBit, boolean set) {
         if (set) {
-            // The mouse modes are mutually exclusive.
-            if (internalBit == DECSET_BIT_MOUSE_TRACKING_PRESS_RELEASE) {
-                setDecsetinternalBit(DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT, false);
-            } else if (internalBit == DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT) {
-                setDecsetinternalBit(DECSET_BIT_MOUSE_TRACKING_PRESS_RELEASE, false);
+            // The mouse tracking modes are mutually exclusive.
+            if ((internalBit & DECSET_BITS_MOUSE_TRACKING) != 0) {
+                mCurrentDecSetFlags &= ~DECSET_BITS_MOUSE_TRACKING;
             }
-        }
-        if (set) {
             mCurrentDecSetFlags |= internalBit;
         } else {
             mCurrentDecSetFlags &= ~internalBit;
@@ -810,12 +864,15 @@ public final class TerminalEmulator {
             case 1000:
                 return DECSET_BIT_MOUSE_TRACKING_PRESS_RELEASE;
             case 1002:
-            case 1003:
                 return DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT;
+            case 1003:
+                return DECSET_BIT_MOUSE_TRACKING_ANY_EVENT;
             case 1004:
                 return DECSET_BIT_SEND_FOCUS_EVENTS;
             case 1006:
                 return DECSET_BIT_MOUSE_PROTOCOL_SGR;
+            case 1016:
+                return DECSET_BIT_MOUSE_PROTOCOL_SGR_PIXELS;
             case 2004:
                 return DECSET_BIT_BRACKETED_PASTE_MODE;
             case 2026:
@@ -824,6 +881,8 @@ public final class TerminalEmulator {
                 return DECSET_BIT_COLOR_PREFERENCE_NOTIFICATIONS;
             case 2048:
                 return DECSET_BIT_IN_BAND_RESIZE_NOTIFICATIONS;
+            case 7727:
+                return DECSET_BIT_DICTATION_MARKS;
             default:
                 return -1;
         }
@@ -872,6 +931,36 @@ public final class TerminalEmulator {
      * @param mouseButton one of the MOUSE_* constants of this class.
      */
     public void sendMouseEvent(int mouseButton, int column, int row, boolean pressed) {
+        sendMouseEvent(mouseButton, column, row, pressed, 0);
+    }
+
+    /**
+     * @param mouseButton one of the MOUSE_* constants of this class.
+     * @param modifiers any of {@link #MOUSE_MODIFIER_SHIFT}, {@link #MOUSE_MODIFIER_ALT} and
+     *                  {@link #MOUSE_MODIFIER_CTRL}, which xterm adds to the button code of press,
+     *                  release and motion alike.
+     */
+    public void sendMouseEvent(int mouseButton, int column, int row, boolean pressed, int modifiers) {
+        // Without a pixel position, a program that asked for pixels gets the cell's top-left one.
+        column = Math.max(1, Math.min(mColumns, column));
+        row = Math.max(1, Math.min(mRows, row));
+        sendMouseEvent(mouseButton, column, row, (column - 1) * mCellWidthPixels,
+            (row - 1) * mCellHeightPixels, pressed, modifiers);
+    }
+
+    /**
+     * Report a mouse event at a cell and at the pixel inside it. The pixel is only used while
+     * SGR-Pixels (DECSET 1016) is on, and is clamped to the text area there.
+     *
+     * @param column the 1-based cell column, clamped to the screen.
+     * @param row the 1-based cell row, clamped to the screen.
+     * @param pixelX the 0-based pixel from the left of the text area, in the cell size the program
+     *               is told ({@link #getCellWidthPixels()}), so that {@code pixelX / cell width}
+     *               is {@code column - 1}. It goes out 1-based, as xterm sends it.
+     * @param pixelY the same from the top of the text area.
+     */
+    public void sendMouseEvent(int mouseButton, int column, int row, int pixelX, int pixelY, boolean pressed, int modifiers) {
+        modifiers &= MOUSE_MODIFIER_SHIFT | MOUSE_MODIFIER_ALT | MOUSE_MODIFIER_CTRL;
         if (column < 1)
             column = 1;
         if (column > mColumns)
@@ -880,13 +969,20 @@ public final class TerminalEmulator {
             row = 1;
         if (row > mRows)
             row = mRows;
-        if (mouseButton == MOUSE_LEFT_BUTTON_MOVED && !isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT)) {
+        if (mouseButton == MOUSE_LEFT_BUTTON_MOVED && !isMouseTrackingMotionActive()) {
             // Do not send tracking.
+        } else if (mouseButton == MOUSE_MOVED_NO_BUTTON && !isMouseTrackingAnyEventActive()) {
+            // Motion with no button held is only for any-event tracking.
+        } else if (isMousePixelPositionActive()) {
+            pixelX = Math.max(0, Math.min(mColumns * mCellWidthPixels - 1, pixelX));
+            pixelY = Math.max(0, Math.min(mRows * mCellHeightPixels - 1, pixelY));
+            mSession.write(String.format(Locale.US, "\033[<%d;%d;%d" + (pressed ? 'M' : 'm'),
+                mouseButton | modifiers, pixelX + 1, pixelY + 1));
         } else if (isDecsetInternalBitSet(DECSET_BIT_MOUSE_PROTOCOL_SGR)) {
-            mSession.write(String.format("\033[<%d;%d;%d" + (pressed ? 'M' : 'm'), mouseButton, column, row));
+            mSession.write(String.format("\033[<%d;%d;%d" + (pressed ? 'M' : 'm'), mouseButton | modifiers, column, row));
         } else {
             // 3 for release of all buttons.
-            mouseButton = pressed ? mouseButton : 3;
+            mouseButton = (pressed ? mouseButton : 3) | modifiers;
             // Clip to screen, and clip to the limits of 8-bit data.
             boolean out_of_bounds = column > 255 - 32 || row > 255 - 32;
             if (!out_of_bounds) {
@@ -942,6 +1038,22 @@ public final class TerminalEmulator {
     }
 
     /**
+     * Where {@link #resize} to {@code rows} rows, at the same columns, would move the rows now on
+     * screen: how many rows down each surviving row lands (negative is up), before any resize has
+     * happened. The bottom anchor is judged the way {@link #resize} judges it, against the cursor
+     * on the screen as it is. 0 when the row count does not change, and 0 on the alternate screen:
+     * a shrinking alternate buffer keeps its old ring but wraps it at the new, smaller total, so its
+     * rows do not land anywhere stable — the full-screen program repaints after the resize anyway.
+     *
+     * @see TerminalBuffer#predictRowsOnlyResizeShift
+     */
+    public int predictRowsOnlyResizeShift(int rows, boolean keepCursorAtBottom) {
+        if (rows == mRows || rows < 2 || mScreen == mAltBuffer) return 0;
+        keepCursorAtBottom &= mCursorRow >= mRows - 2;
+        return mScreen.predictRowsOnlyResizeShift(rows, mCursorRow, keepCursorAtBottom);
+    }
+
+    /**
      * Tell the program its new size, if it asked for that with mode 2048: "CSI 48 ; rows ; columns ;
      * height ; width t", where the two pixel figures are those of the whole text area, the same ones
      * XTWINOPS 14 reports.
@@ -956,14 +1068,19 @@ public final class TerminalEmulator {
     /**
      * Whether a synchronized update (mode 2026) is holding screen updates back from the client right
      * now. A hold whose timeout has passed ends here, so the caller that asks is also the one that
-     * unfreezes the screen — there is no separate expiry path to keep in step with this one.
+     * unfreezes the screen — there is no separate expiry path to keep in step with this one. The
+     * kitty graphics window that rides on the hold ends with it, on the same answer, unless a picture
+     * is still arriving (see {@link KittyGraphicsProtocol#synchronizedHoldEnded}).
      */
     public boolean isScreenUpdateHeld() {
-        if (!isDecsetInternalBitSet(DECSET_BIT_SYNCHRONIZED_UPDATE))
+        if (!isDecsetInternalBitSet(DECSET_BIT_SYNCHRONIZED_UPDATE)) {
+            mKittyGraphics.synchronizedHoldEnded();
             return false;
+        }
         if (System.currentTimeMillis() >= mSynchronizedUpdateDeadline) {
             setDecsetinternalBit(DECSET_BIT_SYNCHRONIZED_UPDATE, false);
             mSynchronizedUpdateDeadline = 0;
+            mKittyGraphics.synchronizedHoldEnded();
             return false;
         }
         return true;
@@ -1106,6 +1223,19 @@ public final class TerminalEmulator {
         return isDecsetInternalBitSet(DECSET_BIT_CURSOR_ENABLED);
     }
 
+    /** Whether DECSET 2004, bracketed paste, is set. */
+    public boolean isBracketedPasteMode() {
+        return isDecsetInternalBitSet(DECSET_BIT_BRACKETED_PASTE_MODE);
+    }
+
+    /**
+     * Whether DECSET 7727, dictation marks, is set. Marks are only worth sending while
+     * {@link #isBracketedPasteMode()} holds as well: the paste brackets are what bound a phrase.
+     */
+    public boolean isDictationMarksEnabled() {
+        return isDecsetInternalBitSet(DECSET_BIT_DICTATION_MARKS);
+    }
+
     public boolean shouldCursorBeVisible() {
         if (!isCursorEnabled())
             return false;
@@ -1127,20 +1257,19 @@ public final class TerminalEmulator {
     }
 
     /**
-     * Whether copying a selection that includes a wrapped row trims that row's trailing padding
-     * spaces the same way an unwrapped row is trimmed. Consulted by both {@link #mMainBuffer} and
-     * {@link #mAltBuffer}, which hold no preferences access of their own; the app pushes the
-     * "Trim trailing spaces on wrapped lines" setting here on every new session and again whenever
-     * the preference changes.
+     * Whether copy and paste run through {@link ClipboardCleanup}: copying drops a line's
+     * trailing spaces and tabs and any blank lines left at the end, and pasting a single line
+     * loses its trailing whitespace and newline so it runs instead of queuing an empty line
+     * behind it. An emulator has no preferences access of its own; the app pushes the "Clipboard
+     * Cleanup" setting here on every new session and again whenever the preference changes.
      */
-    public void setTrimWrappedTrailingSpaces(boolean trimWrappedTrailingSpaces) {
-        mMainBuffer.setTrimWrappedTrailingSpaces(trimWrappedTrailingSpaces);
-        mAltBuffer.setTrimWrappedTrailingSpaces(trimWrappedTrailingSpaces);
+    public void setClipboardCleanupEnabled(boolean clipboardCleanupEnabled) {
+        mClipboardCleanupEnabled = clipboardCleanupEnabled;
     }
 
-    /** @see #setTrimWrappedTrailingSpaces(boolean) */
-    public boolean isTrimWrappedTrailingSpaces() {
-        return mMainBuffer.isTrimWrappedTrailingSpaces();
+    /** @see #setClipboardCleanupEnabled(boolean) */
+    public boolean isClipboardCleanupEnabled() {
+        return mClipboardCleanupEnabled;
     }
 
     public boolean isKeypadApplicationMode() {
@@ -1155,14 +1284,30 @@ public final class TerminalEmulator {
      * If mouse events are being sent as escape codes to the terminal.
      */
     public boolean isMouseTrackingActive() {
-        return isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_PRESS_RELEASE) || isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT);
+        return isDecsetInternalBitSet(DECSET_BITS_MOUSE_TRACKING);
     }
 
     /**
      * If motion while a button is held should be reported, i.e. DECSET 1002 or 1003 is set.
      */
     public boolean isMouseTrackingMotionActive() {
-        return isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT);
+        return isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT | DECSET_BIT_MOUSE_TRACKING_ANY_EVENT);
+    }
+
+    /**
+     * If motion with no button held should be reported too, i.e. DECSET 1003 is set; see
+     * {@link #MOUSE_MOVED_NO_BUTTON}.
+     */
+    public boolean isMouseTrackingAnyEventActive() {
+        return isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_ANY_EVENT);
+    }
+
+    /**
+     * If mouse positions go out in pixels rather than cells (DECSET 1016), so a caller that moves
+     * the pointer within a cell has something new to report.
+     */
+    public boolean isMousePixelPositionActive() {
+        return isDecsetInternalBitSet(DECSET_BIT_MOUSE_PROTOCOL_SGR_PIXELS);
     }
 
     /**
@@ -1183,6 +1328,13 @@ public final class TerminalEmulator {
      * @param length the number of bytes in the array to process
      */
     public void append(byte[] buffer, int length) {
+        int startRow = mCursorRow, startCol = mCursorCol;
+        appendInternal(buffer, length);
+        if (mCursorRow != startRow || mCursorCol != startCol)
+            mCursorPositionChangedAtMillis = mClock.nowMillis();
+    }
+
+    private void appendInternal(byte[] buffer, int length) {
         // The app pushes a new palette by resetting the emulator's colors directly rather than
         // through an escape sequence, so a mode 2031 report can fall due between two sequences.
         // Noticing it here costs a flag test per pty read while the mode is off, which it usually is.
@@ -1203,6 +1355,35 @@ public final class TerminalEmulator {
             processByte(buffer[i++]);
         }
     }
+
+    /** A clock the cursor-trail timestamp reads, injectable so a JVM test can control time. */
+    public interface Clock {
+        long nowMillis();
+    }
+
+    /** Monotonic, so a wall-clock change cannot open or shut the trail's delay gate. */
+    public static long monotonicMillis() {
+        return System.nanoTime() / 1_000_000L;
+    }
+
+    private Clock mClock = TerminalEmulator::monotonicMillis;
+
+    /** For tests only: makes {@link #getCursorPositionChangedAtMillis()} deterministic. */
+    void setClockForTests(Clock clock) {
+        mClock = clock;
+    }
+
+    /**
+     * When the client program last actually moved the cursor, on {@link Clock#nowMillis()}. Kitty's
+     * cursor trail only picks up a new target once this many milliseconds have passed
+     * ({@code cursor_trail}'s delay), so a burst of redraws that leave the cursor where it was does
+     * not retrigger the trail on every one of them.
+     */
+    public long getCursorPositionChangedAtMillis() {
+        return mCursorPositionChangedAtMillis;
+    }
+
+    private long mCursorPositionChangedAtMillis;
 
     private void processByte(byte byteToProcess) {
         if (mUtf8ToFollow > 0) {
@@ -2299,6 +2480,8 @@ public final class TerminalEmulator {
             // SGR Mouse Mode
             case 1006:
             case 1015:
+            // SGR-Pixels Mouse Mode
+            case 1016:
             case // Interpret "meta" key, sets eighth bit.
             1034:
                 break;
@@ -2318,6 +2501,10 @@ public final class TerminalEmulator {
                     TerminalBuffer newScreen = setting ? mAltBuffer : mMainBuffer;
                     if (newScreen != mScreen) {
                         mKittyGraphics.screenSwitched();
+                        // The alternate screen is blanked as it is entered and forgotten as it is
+                        // left, and its pictures with it: they are a layer over its cells, which
+                        // the blanking below does not reach.
+                        if (mAltBuffer.deleteKittyImages(-1, true) > 0) mKittyPlacementGeneration++;
                         clearExtraCursors();
                         boolean resized = !(newScreen.mColumns == mColumns && newScreen.mScreenRows == mRows);
                         if (setting)
@@ -2350,9 +2537,17 @@ public final class TerminalEmulator {
                 // Synchronized output. Setting it starts the hold and arms its timeout; resetting it
                 // ends the hold and hands the client the one update the whole frame is worth.
                 if (setting) {
-                    mSynchronizedUpdateDeadline = System.currentTimeMillis() + mSynchronizedUpdateTimeoutMillis;
+                    // A hold that ran out without anyone asking still ended then, and a window
+                    // kept open past its hold for a picture still arriving ends with the next
+                    // update: either is sealed before the new one can collect anything.
+                    long now = System.currentTimeMillis();
+                    if (mSynchronizedUpdateDeadline == 0 || now >= mSynchronizedUpdateDeadline)
+                        mKittyGraphics.endSynchronizedWindow();
+                    mSynchronizedUpdateDeadline = now + mSynchronizedUpdateTimeoutMillis;
                 } else {
                     mSynchronizedUpdateDeadline = 0;
+                    // Sealed first, so a window with nothing left to decode is part of this update.
+                    mKittyGraphics.endSynchronizedWindow();
                     mSession.onScreenChanged();
                 }
                 break;
@@ -2367,6 +2562,9 @@ public final class TerminalEmulator {
                 // program that just asked does not have to wait for a resize to learn it.
                 if (setting)
                     sendInBandResizeReport();
+                break;
+            case 7727:
+                // Dictation marks - setting bit is enough, the dictation code reads it.
                 break;
             default:
                 unknownParameter(externalBit);
@@ -3666,6 +3864,10 @@ public final class TerminalEmulator {
                     }
                 }
                 break;
+            case // Kitty extended clipboard: "5522;type=read|write|wdata|walias;payload".
+            5522:
+                mKittyClipboard.handle(textParameter, bellOrStringTerminator, mKittyClipboardHandler);
+                break;
             case // Shell integration marks: "133;A" prompt, "133;B" command, "133;C" output, "133;D[;code]" done.
             133:
                 doShellIntegration(textParameter);
@@ -4052,28 +4254,43 @@ public final class TerminalEmulator {
         } catch (NumberFormatException e) {
             return;
         }
+        int percent = -1;
+        if (parts.length > 2) {
+            try {
+                // Clamped from below here: on the wire a negative percentage is a malformed
+                // zero, whereas a negative passed to setProgress means "keep the last value".
+                percent = Math.max(0, Integer.parseInt(parts[2].trim()));
+            } catch (NumberFormatException ignored) {
+                // Keep the previous value.
+            }
+        }
+        setProgress(state, percent);
+    }
+
+    /**
+     * The one place a progress report lands, whether it came in as {@code OSC 9;4} or from the
+     * launcher's local API: {@code state} is a {@code PROGRESS_STATE_*} constant and
+     * {@code percent} the new value, or negative to keep the last one (what a report without a
+     * percentage means). Out-of-range percentages are clamped. Returns false for a state this
+     * terminal does not know, which is left alone rather than reset.
+     */
+    public boolean setProgress(int state, int percent) {
         switch (state) {
             case PROGRESS_STATE_NONE:
                 mProgressState = PROGRESS_STATE_NONE;
                 mProgressValue = 0;
-                break;
+                return true;
             case PROGRESS_STATE_INDETERMINATE:
                 mProgressState = state;
-                break;
+                return true;
             case PROGRESS_STATE_NORMAL:
             case PROGRESS_STATE_ERROR:
             case PROGRESS_STATE_PAUSED:
                 mProgressState = state;
-                if (parts.length > 2) {
-                    try {
-                        mProgressValue = Math.max(0, Math.min(100, Integer.parseInt(parts[2].trim())));
-                    } catch (NumberFormatException ignored) {
-                        // Keep the previous value.
-                    }
-                }
-                break;
+                if (percent >= 0) mProgressValue = Math.min(100, percent);
+                return true;
             default:
-                break;
+                return false;
         }
     }
 
@@ -4249,15 +4466,26 @@ public final class TerminalEmulator {
         }
     }
 
+    /**
+     * Raise the length limit for the OSCs that carry payloads. The prefix is tested once, when the
+     * sequence first reaches its length: it never changes after that, and both prefixes are ASCII,
+     * so a surrogate pair stepping over that length cannot be one of them.
+     */
     private void updateOscHandling() {
-        if (mOSCOrDeviceControlArgs.length() >= 5 &&
-            mOSCOrDeviceControlArgs.substring(0, 5).equals("1337;")) {
+        final int length = mOSCOrDeviceControlArgs.length();
+        if (length == 5 && startsWith(mOSCOrDeviceControlArgs, "1337;")) {
             mIgnoreCrLfForOsc = true;
             mOscStringMaxLength = MAX_IMAGE_SEQUENCE_LENGTH;
-        } else if (mOSCOrDeviceControlArgs.length() >= 3 &&
-            mOSCOrDeviceControlArgs.substring(0, 3).equals("52;")) {
+        } else if (length == 3 && startsWith(mOSCOrDeviceControlArgs, "52;")) {
             mOscStringMaxLength = MAX_CLIPBOARD_SEQUENCE_LENGTH;
         }
+    }
+
+    private static boolean startsWith(CharSequence text, String prefix) {
+        if (text.length() < prefix.length()) return false;
+        for (int i = 0; i < prefix.length(); i++)
+            if (text.charAt(i) != prefix.charAt(i)) return false;
+        return true;
     }
 
     private boolean appendStringSequenceCodePoint(int codePoint) {
@@ -4675,6 +4903,7 @@ public final class TerminalEmulator {
         mITermImage = null;
         mKittyGraphics.reset();
         mKittyNotifications.reset();
+        mKittyClipboard.reset();
         mPointerShapeStack.clear();
         setPointerShape(null);
         clearExtraCursors();
@@ -4768,11 +4997,9 @@ public final class TerminalEmulator {
     }
 
     /**
-     * Bumped whenever an animation frame flip replaces the pixels of a placed kitty image in
-     * place. Placements are drawn from {@link TerminalBuffer#getSixelBitmap}, keyed by a cell
-     * style that does not move when the bitmap behind it is swapped, so this is the only thing a
-     * renderer can compare for a row holding bitmap cells. Sixel and iTerm images never move it:
-     * their pixels are written once, so a row showing one is recorded once.
+     * Bumped whenever a kitty placement is added, moved, re-cropped or deleted, or an animation
+     * frame flip points placements at new pixels. Placements are a layer over the cells, so no cell
+     * the renderer compares moves when they do; this is what tells it something did.
      */
     public long getKittyPlacementGeneration() {
         return mKittyPlacementGeneration;
@@ -4786,42 +5013,86 @@ public final class TerminalEmulator {
         return mKittyGraphics.hasVirtualPlacement(imageId, placementId);
     }
 
-    boolean placeKittyGraphics(Bitmap bitmap, KittyGraphicsProtocol.Command command, long imageId,
-                               int row, int col, int cellWidth, int cellHeight, int[] transform) {
+    /**
+     * Put a kitty placement on the current screen: anchor its top-left cell at ({@code row},
+     * {@code col}), and draw {@code bitmap}'s {@code source} rectangle {srcX, srcY, srcW, srcH} into
+     * {@code width} x {@code height} reported pixels, {@code offsetX}/{@code offsetY} into that cell.
+     *
+     * <p>A placement command with a placement id replaces its own (image, placement) pair, and it
+     * does so in place: the existing placement object is re-anchored and its fields updated, so a
+     * program that moves a picture a few pixels a frame costs a field write and one redraw, with
+     * nothing decoded, cropped or composited. A transmission that displays ({@code a=T}) replaces
+     * the image, so its old placements go.</p>
+     *
+     * @param ownsBitmap whether the placement owns {@code bitmap} (an unstored transmission) or
+     *     shares the image store's.
+     */
+    boolean placeKittyGraphics(Bitmap bitmap, boolean ownsBitmap, long ownedBytes,
+                               KittyGraphicsProtocol.Command command, long imageId, int row, int col,
+                               int[] source, int width, int height, int offsetX, int offsetY,
+                               int cellWidth, int cellHeight) {
+        // A picture taller than the screen may have pushed its own top row into the scrollback
+        // while the cursor moved past it; it is anchored there, as the text it came with is.
+        if (bitmap == null || row < -mScreen.getActiveTranscriptRows() || row >= mRows
+            || col < 0 || col >= mColumns)
+            return false;
         mPlacingKittyGraphics = true;
         try {
-            return placeKittyGraphicsLocked(bitmap, command, imageId, row, col, cellWidth, cellHeight,
-                transform);
+            KittyPlacement placement = null;
+            if (command.action == 'p') {
+                // Unidentified placements are additive, which is what makes several per image work.
+                if (command.placementId != 0) {
+                    placement = mScreen.findKittyPlacement(imageId, command.placementId);
+                    if (placement != null && placement.anchor != null)
+                        placement.anchor.removeKittyPlacement(placement);
+                }
+            } else if (imageId != 0) {
+                mMainBuffer.deleteKittyImages(imageId, true);
+                mAltBuffer.deleteKittyImages(imageId, true);
+            }
+            long previousBytes = placement == null ? 0 : placement.ownedBytes;
+            long addedBytes = ownsBitmap ? Math.max(0, ownedBytes) : 0;
+            if (addedBytes > 0
+                && getKittyGraphicsBytes() - previousBytes + addedBytes > KittyGraphicsProtocol.MAX_DECODED_BYTES) {
+                return false;
+            }
+            if (placement == null) placement = new KittyPlacement(imageId, command.placementId);
+            placement.bitmap = bitmap;
+            placement.ownsBitmap = ownsBitmap;
+            placement.ownedBytes = addedBytes;
+            placement.z = command.z;
+            placement.column = col;
+            placement.sourceX = source[0];
+            placement.sourceY = source[1];
+            placement.sourceWidth = source[2];
+            placement.sourceHeight = source[3];
+            placement.width = width;
+            placement.height = height;
+            placement.offsetX = offsetX;
+            placement.offsetY = offsetY;
+            placement.cellWidth = Math.max(1, cellWidth);
+            placement.cellHeight = Math.max(1, cellHeight);
+            placement.fitToColumns(mColumns);
+            placement.rows = Math.max(1, (height + offsetY + placement.cellHeight - 1) / placement.cellHeight);
+            mScreen.putKittyPlacement(placement, row);
+            mKittyPlacementGeneration++;
+            return true;
         } finally {
             mPlacingKittyGraphics = false;
         }
     }
 
-    private boolean placeKittyGraphicsLocked(Bitmap bitmap, KittyGraphicsProtocol.Command command,
-                                             long imageId, int row, int col, int cellWidth,
-                                             int cellHeight, int[] transform) {
-        if (command.action == 'p') {
-            // A placement command replaces only its own (image, placement) pair; unidentified
-            // placements are additive, which is what makes multiple placements per image work.
-            if (command.placementId != 0) {
-                mScreen.deleteKittyImages((existing, column, cellRow) ->
-                    existing.kittyImageId == imageId && existing.kittyPlacementId == command.placementId, true);
-            }
-        } else if (imageId != 0) {
-            // Retransmitting an image replaces it, so its previous placements go with it.
-            mMainBuffer.deleteKittyImages(imageId, true);
-            mAltBuffer.deleteKittyImages(imageId, true);
-        }
-        long availableWidth = Math.max(0L, (long) (mColumns - col) * cellWidth);
-        long roundedWidth = ((bitmap.getWidth() + cellWidth - 1L) / cellWidth) * cellWidth;
-        long placedWidth = Math.min(availableWidth, roundedWidth);
-        long placedHeight = ((bitmap.getHeight() + cellHeight - 1L) / cellHeight) * cellHeight;
-        long placedBytes = placedWidth * placedHeight * 4L;
-        if (placedBytes <= 0 || getKittyGraphicsBytes() + placedBytes > KittyGraphicsProtocol.MAX_DECODED_BYTES)
-            return false;
-        int[] delta = mScreen.addKittyImage(bitmap, imageId, command.placementId, command.z, row, col,
-            cellWidth, cellHeight, transform);
-        return delta[0] != 0 || delta[1] != 0;
+    /**
+     * The kitty placements that reach into the {@code rowCount} rows from external row
+     * {@code topRow} of the current screen, for the renderer to draw over the cells.
+     */
+    public void collectKittyPlacements(int topRow, int rowCount, java.util.List<KittyPlacement> out) {
+        mScreen.collectVisibleKittyPlacements(topRow, rowCount, out);
+    }
+
+    /** The kitty graphics protocol of this terminal, for tests in this package. */
+    KittyGraphicsProtocol kittyGraphics() {
+        return mKittyGraphics;
     }
 
     /**
@@ -4894,16 +5165,19 @@ public final class TerminalEmulator {
     }
 
     /** Live placements of one stored kitty image on both screens, for animation frame flips. */
-    java.util.List<TerminalBitmap> kittyPlacementsFor(long imageId) {
-        java.util.List<TerminalBitmap> result = new java.util.ArrayList<>();
+    java.util.List<KittyPlacement> kittyPlacementsFor(long imageId) {
+        java.util.List<KittyPlacement> result = new java.util.ArrayList<>();
         mMainBuffer.collectKittyPlacements(imageId, result);
         mAltBuffer.collectKittyPlacements(imageId, result);
         return result;
     }
 
-    /** Delete kitty placement cells the filter matches on the current screen. */
-    int deleteKittyPlacements(TerminalBuffer.KittyPlacementFilter filter, boolean includeScrollback) {
-        return mScreen.deleteKittyImages(filter, includeScrollback);
+    /** Delete the kitty placements the filter matches on the current screen, returning them. */
+    java.util.List<KittyPlacement> deleteKittyPlacements(TerminalBuffer.KittyPlacementFilter filter,
+                                                         boolean includeScrollback) {
+        java.util.List<KittyPlacement> deleted = mScreen.deleteKittyImages(filter, includeScrollback);
+        if (!deleted.isEmpty()) mKittyPlacementGeneration++;
+        return deleted;
     }
 
     void advanceKittyGraphicsCursor(KittyGraphicsProtocol.Command command, int imageWidth, int imageHeight,
@@ -4924,21 +5198,29 @@ public final class TerminalEmulator {
 
     /** Remove one image's placements from both screens, as a retransmission replacement requires. */
     void deleteKittyImageEverywhere(long imageId) {
-        mMainBuffer.deleteKittyImages(imageId, true);
-        mAltBuffer.deleteKittyImages(imageId, true);
+        if (mMainBuffer.deleteKittyImages(imageId, true) + mAltBuffer.deleteKittyImages(imageId, true) > 0)
+            mKittyPlacementGeneration++;
     }
 
     void deleteVisibleKittyGraphics() {
-        mScreen.deleteKittyImages(-1, false);
+        if (mScreen.deleteKittyImages(-1, false) > 0) mKittyPlacementGeneration++;
     }
 
     void deleteAllKittyGraphics() {
-        mMainBuffer.deleteKittyImages(-1, true);
-        mAltBuffer.deleteKittyImages(-1, true);
+        if (mMainBuffer.deleteKittyImages(-1, true) + mAltBuffer.deleteKittyImages(-1, true) > 0)
+            mKittyPlacementGeneration++;
     }
 
+    /**
+     * The long-press selection's text, for copy, cut and read-aloud. With Clipboard Cleanup on
+     * this runs through {@link ClipboardCleanup#forCopy(String)}; it is the one caller of this
+     * method ({@link com.termux.view.textselection.TextSelectionCursorController}), so cleanup
+     * lands here rather than in {@link TerminalBuffer#getSelectedText}, whose other callers
+     * (transcripts, find, AI context) must see the text exactly as it sits on screen.
+     */
     public String getSelectedText(int x1, int y1, int x2, int y2) {
-        return mScreen.getSelectedText(x1, y1, x2, y2);
+        String selectedText = mScreen.getSelectedText(x1, y1, x2, y2);
+        return mClipboardCleanupEnabled ? ClipboardCleanup.forCopy(selectedText) : selectedText;
     }
 
     /** used to read aloud the character under the cursor in A11Y */
@@ -4966,9 +5248,13 @@ public final class TerminalEmulator {
      * If DECSET 2004 is set, prefix paste with "\033[200~" and suffix with "\033[201~".
      */
     public void paste(String text) {
-        // First: Always remove escape key and C1 control characters [0x80,0x9F]:
+        // First: with Clipboard Cleanup on, trim a single-line paste's trailing whitespace and
+        // newline (Windows Terminal's TrimPaste) so a copied one-line command runs immediately
+        // instead of queuing an empty line behind it. A multi-line paste is left alone.
+        if (mClipboardCleanupEnabled) text = ClipboardCleanup.forPaste(text);
+        // Second: Always remove escape key and C1 control characters [0x80,0x9F]:
         text = text.replaceAll("(\u001B|[\u0080-\u009F])", "");
-        // Second: Replace all newlines (\n) or CRLF (\r\n) with carriage returns (\r).
+        // Third: Replace all newlines (\n) or CRLF (\r\n) with carriage returns (\r).
         text = text.replaceAll("\r?\n", "\r");
         // Then: Implement bracketed paste mode if enabled:
         boolean bracketed = isDecsetInternalBitSet(DECSET_BIT_BRACKETED_PASTE_MODE);

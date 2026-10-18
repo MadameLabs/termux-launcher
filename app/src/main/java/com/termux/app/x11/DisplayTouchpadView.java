@@ -14,6 +14,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.graphics.ColorUtils;
 
+import com.termux.app.haptics.Haptics;
 import com.termux.shared.termux.font.NerdFontSpans;
 import com.termux.x11.LorieView;
 import com.termux.x11.input.InputStub;
@@ -32,8 +33,9 @@ import com.termux.x11.input.InputStub;
  * <p>It lies over the place, so it is drawn solid: one opaque rounded panel in the overlay
  * surface colour, square-cornered against the dock or rounded as a card with the surfaces, and
  * with no rim at rest. The only stroke it draws is the ring that appears while a drag is held.
- * Standing in a split keyboard's parting it is flush instead — no inset, and the halves' own
- * radius — so the parting reads as a piece cut out of one surface. The strip stands inside that
+ * Standing in a split keyboard's parting it is one more key instead: the host seats it where a
+ * key would stand, and it takes the caps' fill and radius, on the keyboard's own background
+ * between the two key runs. The strip stands inside that
  * panel along its trailing edge, a faint track down its centre with a short grip pill in the
  * accent colour, and the dot grid that marks the pointing area stops at the strip's own edge; a
  * gap too narrow to spare the strip's width and still leave room to point in drops it rather
@@ -113,10 +115,12 @@ public final class DisplayTouchpadView extends View {
     @Nullable private android.animation.ValueAnimator mGripSettle;
     private final int mTouchSlop;
     private final boolean mCard;
+    /** The overlay panel's fill, which the pad wears over the whole keyboard. */
+    private final int mSurfaceColor;
     /**
      * The pad stands in a split keyboard's parting rather than over the whole keyboard: it is
-     * then flush with the halves either side of it, so it drops the card's inset and takes
-     * their radius instead of its own.
+     * then one more key among the keys, so it drops the card's inset and takes the caps' radius
+     * and fill instead of its own.
      */
     private boolean mInGap;
     private float mGapRadiusPx;
@@ -180,7 +184,7 @@ public final class DisplayTouchpadView extends View {
         LorieView display = mSink.display();
         if (display == null) return;
         mDragging = true;
-        performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        Haptics.tick(this, HapticFeedbackConstants.LONG_PRESS);
         display.sendMouseEvent(0f, 0f, InputStub.BUTTON_LEFT, true, true);
         invalidate();
     }
@@ -193,7 +197,8 @@ public final class DisplayTouchpadView extends View {
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         // The pad lies over the place in both shapes, so it is solid in both: the surface colour
         // at full alpha, and no rim at rest. The only stroke left is the drag ring below.
-        mFillPaint.setColor(ColorUtils.setAlphaComponent(surfaceColor, 255));
+        mSurfaceColor = ColorUtils.setAlphaComponent(surfaceColor, 255);
+        mFillPaint.setColor(mSurfaceColor);
         mStrokePaint.setStyle(Paint.Style.STROKE);
         mStrokePaint.setStrokeWidth(dp(1.5f));
         mStrokePaint.setColor(ColorUtils.setAlphaComponent(onSurfaceColor, 120));
@@ -201,7 +206,7 @@ public final class DisplayTouchpadView extends View {
         mGlyphPaint.setColor(accentColor);
         mGlyphPaint.setTypeface(NerdFontSpans.typeface(context));
         mGlyphPaint.setTextAlign(Paint.Align.CENTER);
-        mGlyphPaint.setTextSize(dp(13f));
+        mGlyphPaint.setTextSize(sp(13f));
         mDotPaint.setColor(ColorUtils.setAlphaComponent(onSurfaceColor, 40));
         // The strip's own idiom: a faint track in on-surface, same low alpha as the dot grid,
         // and a grip pill in the full accent colour so a thumb can find it at a glance.
@@ -224,19 +229,22 @@ public final class DisplayTouchpadView extends View {
     }
 
     /**
-     * Whether the pad is standing in a split keyboard's parting, and the radius the halves'
-     * slabs are drawn with. Flush in the gap: no inset, and the halves' shape, so the three
-     * read as one surface with the parting cut out of it.
+     * Whether the pad is standing in a split keyboard's parting, and the key caps' radius and
+     * fill it then wears so it reads as one more key. Over the whole keyboard it keeps its own
+     * panel.
      */
-    public void setInSplitGap(boolean inGap, float slabRadiusPx) {
-        if (mInGap == inGap && Float.compare(mGapRadiusPx, slabRadiusPx) == 0) return;
+    public void setInSplitGap(boolean inGap, float capRadiusPx, int capColor) {
+        int fill = inGap ? capColor : mSurfaceColor;
+        if (mInGap == inGap && Float.compare(mGapRadiusPx, capRadiusPx) == 0
+            && mFillPaint.getColor() == fill) return;
         mInGap = inGap;
-        mGapRadiusPx = slabRadiusPx;
+        mGapRadiusPx = capRadiusPx;
+        mFillPaint.setColor(fill);
         layOutPanel(getWidth(), getHeight());
         invalidate();
     }
 
-    /** The panel's own radius: the halves' in the parting, its card corner over the keyboard. */
+    /** The panel's own radius: the caps' in the parting, its card corner over the keyboard. */
     private float panelRadius() {
         return mInGap ? mGapRadiusPx : dp(RADIUS_DP);
     }
@@ -415,7 +423,7 @@ public final class DisplayTouchpadView extends View {
                 if (mOnBack) {
                     mOnBack = false;
                     if (mBack.contains(event.getX(), event.getY())) {
-                        performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
+                        Haptics.tick(this, HapticFeedbackConstants.CONTEXT_CLICK);
                         if (mListener != null) mListener.onExitRequested();
                     }
                     return true;
@@ -522,11 +530,11 @@ public final class DisplayTouchpadView extends View {
             case LEFT:
             case RIGHT:
                 if (display == null) return;
-                performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
+                Haptics.tick(this, HapticFeedbackConstants.CONTEXT_CLICK);
                 sendChord(display, swipe == TouchpadGesturePolicy.Swipe.RIGHT);
                 break;
             case DOWN:
-                performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK);
+                Haptics.tick(this, HapticFeedbackConstants.CONTEXT_CLICK);
                 if (mListener != null) mListener.onExitRequested();
                 break;
             default:
@@ -622,7 +630,7 @@ public final class DisplayTouchpadView extends View {
         float unit = -Math.signum((float) notches) * SCROLL_NOTCH_UNITS;
         for (int i = 0, n = Math.abs(notches); i < n; i++) {
             if (display != null) display.sendMouseWheelEvent(0f, unit);
-            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+            Haptics.tick(this, HapticFeedbackConstants.CLOCK_TICK);
         }
     }
 
@@ -686,6 +694,12 @@ public final class DisplayTouchpadView extends View {
         stopFling();
         recycleVelocity();
         super.onDetachedFromWindow();
+    }
+
+    /** Font-scale-aware px for a size in sp. */
+    private float sp(float value) {
+        return android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, value,
+            getResources().getDisplayMetrics());
     }
 
     private float dp(float value) {

@@ -1,32 +1,37 @@
 # Voice dictation
 
-The built-in terminal keyboard can dictate. Swipe the microphone gesture, speak, and the text is
-written into the terminal session you started from.
+The built-in terminal keyboard can dictate through Groq. Swipe the microphone gesture, speak, and
+the text is written into the terminal session you started from.
 
-Out of the box, that gesture hands the job to whatever speech recognizer Android offers. Configure a
-Groq key and the launcher does the dictation itself, which is what makes the rest of this page
-possible: you choose the transcription service, and you can have the text corrected, shortened,
-decorated with emoji, or turned into a shell command before it reaches your prompt.
+This is the path taken when **Speech engine** is **Android system** (see [Voice input](Voice_Input.md)
+for the on-device engine). Out of the box, that engine hands the job to whatever speech recognizer
+Android offers. Configure a Groq key and the launcher does the dictation itself, which is what makes
+the rest of this page possible: you choose the transcription service, and you can have the text
+corrected, shortened, decorated with emoji, or turned into a shell command before it reaches your
+prompt.
 
 Nothing here runs a command for you. Terminal mode writes command text and stops; you read it and
 press Enter yourself, or you do not.
 
 ## Quick start
 
-1. Open **Settings ▸ Keyboard & input ▸ Voice and post-processing**.
-2. Turn on **Enable voice post-processing**.
+1. Open **Settings → Keyboard → Voice input** and set **Speech engine** to **Android system**.
+2. Open **Voice and post-processing** on the same page and turn on **Enable voice post-processing**.
 3. Paste a [Groq API key](https://console.groq.com/keys) into **Groq API key**.
-4. Swipe the Enter key toward the microphone and speak. Long-press it instead to pick a mode first.
+4. Swipe up on the Enter key and speak. Swipe up and hold instead to pick a mode first. The
+   **Dictate** key records the same way.
 
 Until both the switch and the key are set, the gesture keeps its original behaviour. A feature you
-have not configured does not take the gesture away from you.
+have not configured does not take the gesture away from you. With **Speech engine** on
+**On-device**, the on-device card is used instead, and Groq only steps in where that engine falls
+back to the Android recognizer (no speech model, the microphone refused).
 
 ## The gesture
 
 | Gesture | What happens |
 | --- | --- |
-| Swipe to the microphone | Records straight away, using whichever mode is currently selected |
-| Long-press the microphone | Opens the panel so you can choose a mode, then record |
+| Swipe up on Enter, or the **Dictate** key | Records straight away, using whichever mode is currently selected |
+| Swipe up on Enter and hold | Opens the panel so you can choose a mode, then record |
 
 The panel shows the state as it goes — recording, transcribing, applying the mode, inserting — and
 **Cancel** abandons the recording without writing anything.

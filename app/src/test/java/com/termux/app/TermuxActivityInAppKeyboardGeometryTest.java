@@ -1,6 +1,5 @@
 package com.termux.app;
 
-import com.termux.app.surfaces.SurfaceEditorController;
 import com.termux.app.chrome.ChromePolicy;
 import com.termux.app.chrome.ChromeRenderer;
 
@@ -13,11 +12,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.RelativeLayout;
-import android.widget.SeekBar;
 
 import com.termux.R;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalViewClient;
+import com.termux.app.place.PlaceLayout;
+import com.termux.app.place.PlaceLayoutStore;
+import com.termux.app.place.PlaceOrientation;
+import com.termux.app.terminal.inappkeyboard.FloatingKeyboardController;
 import com.termux.app.terminal.inappkeyboard.KeyboardGeometryChoreographer;
 import com.termux.app.terminal.inappkeyboard.TermuxInAppKeyboard;
 import com.termux.app.wall.PaneWallController;
@@ -34,6 +36,7 @@ import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.ConscryptMode;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.GraphicsMode;
 import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.util.ReflectionHelpers;
 
@@ -53,18 +56,6 @@ public class TermuxActivityInAppKeyboardGeometryTest {
 
     private TermuxActivity mActivity;
     private TermuxInAppKeyboard mController;
-
-    @Test
-    public void surfaceEditorKeyboardSlidersNormalizeFullStoredRanges() {
-        assertEquals(0, SurfaceEditorController.keyboardEditorProgress(0.5f, 0.5f, 1.6f));
-        assertEquals(100, SurfaceEditorController.keyboardEditorProgress(1.6f, 0.5f, 1.6f));
-        assertEquals(0.5f, SurfaceEditorController.keyboardEditorValue(0, 0.5f, 1.6f), 0.0001f);
-        assertEquals(1.6f, SurfaceEditorController.keyboardEditorValue(100, 0.5f, 1.6f), 0.0001f);
-
-        assertEquals(0, SurfaceEditorController.keyboardEditorProgress(0f, 0f, 8f));
-        assertEquals(100, SurfaceEditorController.keyboardEditorProgress(8f, 0f, 8f));
-        assertEquals(4f, SurfaceEditorController.keyboardEditorValue(50, 0f, 8f), 0.0001f);
-    }
 
     @After
     public void tearDown() {
@@ -100,11 +91,15 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         assertEquals(View.GONE, heightAdjustControls.getVisibility());
 
         // The dock's rows stand in one ordered stack now instead of hanging off each other, so it
-        // is the stack that carries the anchor the chain's last link used to.
+        // is the stack that carries the anchor the chain's last link used to. Updated for the
+        // slot under the keyboard: the anchor is the keyboard's column, which is the keyboard
+        // and whatever bands stand under it, and exactly the keyboard while none do.
         RelativeLayout.LayoutParams rowStackParams = (RelativeLayout.LayoutParams)
             mActivity.findViewById(R.id.accessory_row_stack).getLayoutParams();
-        assertEquals(R.id.inapp_keyboard_container,
+        assertEquals(R.id.accessory_keyboard_column,
             rowStackParams.getRules()[RelativeLayout.ABOVE]);
+        assertSame(mActivity.findViewById(R.id.accessory_keyboard_column),
+            keyboardContainer.getParent());
         assertEquals(0, rowStackParams.getRules()[RelativeLayout.ALIGN_PARENT_BOTTOM]);
         // The keyboard container is GONE whenever the embedded keyboard is hidden, and the
         // floating and split forms take it out of the accessory stack altogether. Without the
@@ -122,7 +117,7 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         for (int layerId : toolbarOnlyLayerIds) {
             RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams)
                 mActivity.findViewById(layerId).getLayoutParams();
-            assertEquals(R.id.inapp_keyboard_container,
+            assertEquals(R.id.accessory_keyboard_column,
                 params.getRules()[RelativeLayout.ABOVE]);
             assertTrue(params.alignWithParent);
         }
@@ -279,16 +274,16 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         assertTrue(mController.isHeightAdjusting());
         assertEquals(View.VISIBLE, mActivity.findViewById(
             R.id.inapp_keyboard_height_adjust_controls).getVisibility());
-        SeekBar spacingSlider = mActivity.findViewById(
+        com.google.android.material.slider.Slider spacingSlider = mActivity.findViewById(
             R.id.inapp_keyboard_key_spacing_slider);
-        SeekBar radiusSlider = mActivity.findViewById(
+        com.google.android.material.slider.Slider radiusSlider = mActivity.findViewById(
             R.id.inapp_keyboard_key_corner_radius_slider);
         assertEquals(View.VISIBLE, spacingSlider.getVisibility());
         assertEquals(View.VISIBLE, radiusSlider.getVisibility());
         assertEquals(Math.round(preferences.getInAppKeyboardKeyMarginScale() * 100f),
-            spacingSlider.getProgress());
+            Math.round(spacingSlider.getValue()));
         assertEquals(Math.round(preferences.getInAppKeyboardKeyCornerRadiusDp() * 10f),
-            radiusSlider.getProgress());
+            Math.round(radiusSlider.getValue()));
         assertFalse(intent.hasExtra(TermuxActivity.EXTRA_IN_APP_KEYBOARD_HEIGHT_ADJUST));
 
         mController.cancelHeightAdjustment();
@@ -331,7 +326,6 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         preferences.setAppLauncherExtraKeysRowEnabled(true);
         preferences.setAppLauncherAppsRowEnabled(true);
         preferences.setAppLauncherAzRowEnabled(false);
-        preferences.setTerminalFlushDockEnabled(false);
 
         ReflectionHelpers.callInstanceMethod(mActivity, "initializeInAppKeyboard",
             ReflectionHelpers.ClassParameter.from(Bundle.class, null));
@@ -368,7 +362,6 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         preferences.setAppLauncherExtraKeysRowEnabled(true);
         preferences.setAppLauncherAppsRowEnabled(true);
         preferences.setAppLauncherAzRowEnabled(false);
-        preferences.setTerminalFlushDockEnabled(true);
         TerminalView terminalView = mActivity.findViewById(R.id.terminal_view);
 
         ReflectionHelpers.callInstanceMethod(mActivity, "initializeInAppKeyboard",
@@ -382,9 +375,12 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         View keyboardContainer = mActivity.findViewById(R.id.inapp_keyboard_container);
         View toolbarPager = mActivity.findViewById(R.id.terminal_toolbar_view_pager);
         View appsBar = mActivity.findViewById(R.id.apps_bar_viewpager);
+        // Updated with a reason: the apps row's host is its icons and the strip its ticks stand
+        // in, with the letters off the dock as much as on it, so the dock counts both.
+        View appsTicks = mActivity.findViewById(R.id.apps_bar_indicator_band);
         int dockContentHeight = toolbarPager.getLayoutParams().height
             + mActivity.findViewById(R.id.terminal_toolbar_command_row).getLayoutParams().height
-            + appsBar.getLayoutParams().height;
+            + appsBar.getLayoutParams().height + appsTicks.getLayoutParams().height;
         int keyboardHeight = desiredKeyboardHeightPx();
         int[] location = new int[2];
         rootRelativeLayout.getLocationInWindow(location);
@@ -431,6 +427,81 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         assertEquals(combinedHeight, accessoryContainer.getLayoutParams().height);
         assertEquals(accessoryContainer.getTop(), terminalView.getBottom());
         assertEquals(rootRelativeLayout.getHeight() - combinedHeight, terminalView.getHeight());
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void switchingTheKeyboardFormWithTheKeyboardUpReservesTheKeyboardAsItIsDressed() {
+        TermuxAppSharedPreferences preferences = prepareActivity(true);
+        preferences.setLayoutStyle(TermuxAppSharedPreferences.LayoutStyle.FLOATING);
+        preferences.setShowTerminalToolbar(true);
+        preferences.setAppLauncherExtraKeysRowEnabled(true);
+        preferences.setAppLauncherAppsRowEnabled(true);
+        preferences.setAppLauncherAzRowEnabled(false);
+        hostKeyboard(null);
+        ReflectionHelpers.callInstanceMethod(mActivity, "addAccessoryLayoutChangeListeners");
+        settleLayout();
+
+        View accessoryContainer = mActivity.findViewById(R.id.accessory_stack_container);
+        View keyboardColumn = mActivity.findViewById(R.id.accessory_keyboard_column);
+        View keyboardContainer = mActivity.findViewById(R.id.inapp_keyboard_container);
+        View toolbarPager = mActivity.findViewById(R.id.terminal_toolbar_view_pager);
+        // Floating to docked dresses the host in the docked card's gaps and rim; docked to split
+        // keeps the dock-side dressing. Either way the pass the switch runs, before any render,
+        // has to reserve the keyboard as it is about to lay out.
+        for (PlaceLayout.KeyboardForm form : new PlaceLayout.KeyboardForm[] {
+            PlaceLayout.KeyboardForm.FLOATING, PlaceLayout.KeyboardForm.DOCKED,
+            PlaceLayout.KeyboardForm.SPLIT}) {
+            switchKeyboardForm(form);
+            if (form == PlaceLayout.KeyboardForm.FLOATING) {
+                settleLayout();
+                continue;
+            }
+            layoutActivityRoot();
+            assertTrue(form + ": the keyboard is up", keyboardContainer.getHeight() > 0);
+            assertEquals(form + ": the switch's own pass reserves the dressed keyboard",
+                keyboardContainer.getHeight(), choreographer().reservedHeightPx());
+
+            settleLayout();
+            int rowsPx = ReflectionHelpers.getField(mActivity, "mAppliedDockContentHeightPx");
+            assertEquals(form + ": the stack is the rows plus the keyboard column",
+                rowsPx + keyboardColumn.getHeight(), accessoryContainer.getHeight());
+            assertEquals(form + ": the extra keys row keeps its height",
+                toolbarPager.getLayoutParams().height, toolbarPager.getHeight());
+        }
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    public void aKeyboardLaidOutAtAHeightTheStackDidNotReserveBooksOneCorrection() {
+        TermuxAppSharedPreferences preferences = prepareActivity(true);
+        preferences.setShowTerminalToolbar(true);
+        preferences.setAppLauncherExtraKeysRowEnabled(true);
+        preferences.setAppLauncherAppsRowEnabled(true);
+        preferences.setAppLauncherAzRowEnabled(false);
+        hostKeyboard(null);
+        ReflectionHelpers.callInstanceMethod(mActivity, "addAccessoryLayoutChangeListeners");
+        settleLayout();
+        View accessoryContainer = mActivity.findViewById(R.id.accessory_stack_container);
+        View keyboardContainer = mActivity.findViewById(R.id.inapp_keyboard_container);
+        int keyboardPx = keyboardContainer.getHeight();
+        assertTrue(keyboardPx > 0);
+
+        // A memo measured against an older host: the stack reserves less than the keyboard takes,
+        // and the keyboard lays out at the very height it had before.
+        KeyboardGeometryChoreographer choreographer = choreographer();
+        ReflectionHelpers.setField(choreographer, "mDesiredHeightPx", keyboardPx - 43);
+        ReflectionHelpers.setField(choreographer, "mHeightDirty", false);
+        ReflectionHelpers.callInstanceMethod(mActivity, "setTerminalToolbarHeight",
+            ReflectionHelpers.ClassParameter.from(boolean.class, true));
+        assertEquals(keyboardPx - 43, choreographer.reservedHeightPx());
+        layoutActivityRoot();
+        assertEquals(keyboardPx, keyboardContainer.getHeight());
+
+        settleLayout();
+        assertEquals(keyboardPx, choreographer.reservedHeightPx());
+        int rowsPx = ReflectionHelpers.getField(mActivity, "mAppliedDockContentHeightPx");
+        assertEquals(rowsPx + keyboardPx, accessoryContainer.getHeight());
     }
 
     @Test
@@ -601,7 +672,6 @@ public class TermuxActivityInAppKeyboardGeometryTest {
         preferences.setAppLauncherAppsRowEnabled(false);
         preferences.setAppLauncherAzRowEnabled(false);
         preferences.setAppLauncherExtraKeysRowEnabled(false);
-        preferences.setTerminalFlushDockEnabled(false);
 
         // Production creates this dynamically through TerminalPaneController during onCreate.
         FrameLayout paneHost = mActivity.findViewById(R.id.terminal_pane_host);
@@ -640,6 +710,30 @@ public class TermuxActivityInAppKeyboardGeometryTest {
 
     private KeyboardGeometryChoreographer choreographer() {
         return ReflectionHelpers.getField(mActivity, "mKeyboardGeometry");
+    }
+
+    /**
+     * The keyboard's share of the arrangement pass (doSyncPlaceLayout): the store takes the form,
+     * the floating frame hosts or releases the keyboard, and the keyboard hears its new form, which
+     * runs the geometry pass synchronously.
+     */
+    private void switchKeyboardForm(PlaceLayout.KeyboardForm form) {
+        PlaceLayoutStore store = ReflectionHelpers.callInstanceMethod(mActivity, "placeLayoutStore");
+        PlaceOrientation orientation = ReflectionHelpers.callInstanceMethod(mActivity,
+            "currentPlaceOrientation");
+        store.setKeyboardForm(orientation, form);
+        FloatingKeyboardController floating = ReflectionHelpers.getField(mActivity,
+            "mFloatingKeyboard");
+        floating.onKeyboardFormResolved(form);
+        mController.onKeyboardFormChanged(form);
+    }
+
+    /** Runs what the last change booked, laying out after each round, until nothing is left. */
+    private void settleLayout() {
+        for (int i = 0; i < 3; i++) {
+            ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+            layoutActivityRoot();
+        }
     }
 
     private void layoutActivityRoot() {

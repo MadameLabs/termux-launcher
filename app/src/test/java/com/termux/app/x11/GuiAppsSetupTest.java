@@ -53,8 +53,14 @@ public class GuiAppsSetupTest {
         assertFalse(command.contains(" xterm"));
     }
 
+    @Test public void theX11RouteAlwaysIncludesTheSessionBus() {
+        // D6: dbus rides along like the keyboard data, whatever was ticked.
+        assertTrue(command(Route.X11_REPO, Distro.DEBIAN, ALL).contains(" dbus"));
+        assertTrue(command(Route.X11_REPO, Distro.DEBIAN, NONE).contains(" dbus"));
+    }
+
     @Test public void theX11RouteWithNothingTickedIsJustTheRepository() {
-        assertEquals("pkg install -y x11-repo && pkg install -y xkeyboard-config",
+        assertEquals("pkg install -y x11-repo && pkg install -y xkeyboard-config dbus openbox",
             command(Route.X11_REPO, Distro.DEBIAN, NONE));
     }
 
@@ -62,7 +68,8 @@ public class GuiAppsSetupTest {
         String command = command(Route.X11_REPO, Distro.DEBIAN,
             EnumSet.of(StarterApp.TEXT_EDITOR));
 
-        assertEquals("pkg install -y x11-repo && pkg install -y xkeyboard-config mousepad", command);
+        assertEquals("pkg install -y x11-repo && pkg install -y xkeyboard-config dbus openbox mousepad",
+            command);
     }
 
     @Test public void theX11RouteIgnoresTheDistroChoice() {
@@ -81,6 +88,9 @@ public class GuiAppsSetupTest {
             assertTrue(distro.name(), command.contains(
                 "command -v proot-distro >/dev/null 2>&1 || pkg install -y proot-distro"));
             assertTrue(command.contains("pkg install -y xkeyboard-config"));
+            // The window manager is the Termux side's, whichever route the apps came from.
+            assertTrue(command.contains("command -v openbox >/dev/null 2>&1 || {"));
+            assertTrue(command.contains("pkg install -y openbox; }"));
             assertTrue(distro.name(), command.contains(
                 "[ -d \"$PREFIX/var/lib/proot-distro/containers/" + distro.alias
                     + "/rootfs\" ] || proot-distro install " + distro.alias));
@@ -142,7 +152,7 @@ public class GuiAppsSetupTest {
         assertTrue(command.contains("apt-get update"));
         assertTrue(command.contains("DEBIAN_FRONTEND=noninteractive apt-get install -y "));
         for (String name : new String[] {"xfonts-base", "fonts-dejavu-core", "libgl1",
-                "libgl1-mesa-dri", "firefox-esr", "pcmanfm", "mousepad", "xterm"}) {
+                "libgl1-mesa-dri", "dbus-x11", "firefox-esr", "pcmanfm", "mousepad", "xterm"}) {
             assertTrue(name, command.contains(name));
         }
     }
@@ -159,7 +169,7 @@ public class GuiAppsSetupTest {
         String command = command(Route.DISTRO, Distro.UBUNTU, ALL);
 
         for (String name : new String[] {"xfonts-base", "fonts-dejavu-core", "libgl1",
-                "libgl1-mesa-dri", "pcmanfm", "mousepad", "xterm"}) {
+                "libgl1-mesa-dri", "dbus-x11", "pcmanfm", "mousepad", "xterm"}) {
             assertTrue(name, command.contains(name));
         }
     }
@@ -170,9 +180,21 @@ public class GuiAppsSetupTest {
         assertTrue(command.contains("pacman -Syu --noconfirm"));
         assertTrue(command.contains("pacman -S --needed --noconfirm "));
         assertFalse(command.contains("apt-get"));
-        for (String name : new String[] {"xorg-fonts-misc", "ttf-dejavu", "mesa", "firefox",
-                "pcmanfm", "mousepad", "xterm"}) {
+        for (String name : new String[] {"xorg-fonts-misc", "ttf-dejavu", "mesa", "dbus",
+                "firefox", "pcmanfm", "mousepad", "xterm"}) {
             assertTrue(name, command.contains(name));
+        }
+    }
+
+    @Test public void everyDistroInstallsItsOwnBusPackage() {
+        // D6: dbus-launch is split into dbus-x11 on Debian/Ubuntu but lives in dbus itself on
+        // Arch (verified against packages.debian.org, packages.ubuntu.com and archlinux.org).
+        assertEquals("dbus-x11", Distro.DEBIAN.busPackage);
+        assertEquals("dbus-x11", Distro.UBUNTU.busPackage);
+        assertEquals("dbus", Distro.ARCH.busPackage);
+        for (Distro distro : Distro.values()) {
+            assertTrue(distro.name(),
+                command(Route.DISTRO, distro, NONE).contains(distro.busPackage));
         }
     }
 
@@ -268,7 +290,7 @@ public class GuiAppsSetupTest {
         String command = GuiAppsSetup.command(Route.X11_REPO, Distro.DEBIAN,
             GuiAppsSetup.defaultStarters(), TourEdition.VAJ);
 
-        assertEquals("pkg install -y xkeyboard-config pcmanfm mousepad", command);
+        assertEquals("pkg install -y xkeyboard-config dbus pcmanfm mousepad && { pkg install -y openbox || true; }", command);
     }
 
     @Test public void vajsX11CommandAddsTheTerminalWhenTicked() {
@@ -277,7 +299,8 @@ public class GuiAppsSetupTest {
         String command = GuiAppsSetup.command(Route.X11_REPO, Distro.DEBIAN, starters,
             TourEdition.VAJ);
 
-        assertEquals("pkg install -y xkeyboard-config pcmanfm mousepad xfce4-terminal", command);
+        assertEquals("pkg install -y xkeyboard-config dbus pcmanfm mousepad xfce4-terminal && { pkg install -y openbox || true; }",
+            command);
     }
 
     @Test public void vajsX11CommandDropsTheBrowserEvenWhenTicked() {
@@ -285,7 +308,7 @@ public class GuiAppsSetupTest {
             EnumSet.of(StarterApp.BROWSER), TourEdition.VAJ);
 
         // VAJ ships no browser at all; ticking it adds nothing to the command.
-        assertEquals("pkg install -y xkeyboard-config", command);
+        assertEquals("pkg install -y xkeyboard-config dbus && { pkg install -y openbox || true; }", command);
         assertFalse(command.contains("firefox"));
     }
 
@@ -293,7 +316,7 @@ public class GuiAppsSetupTest {
         assertEquals(GuiAppsSetup.command(Route.X11_REPO, Distro.DEBIAN, ALL),
             GuiAppsSetup.command(Route.X11_REPO, Distro.DEBIAN, ALL, TourEdition.TERMUX));
         assertEquals("pkg install -y x11-repo && pkg install -y "
-                + "xkeyboard-config firefox pcmanfm mousepad xfce4-terminal",
+                + "xkeyboard-config dbus openbox firefox pcmanfm mousepad xfce4-terminal",
             GuiAppsSetup.command(Route.X11_REPO, Distro.DEBIAN, ALL, TourEdition.TERMUX));
     }
 
@@ -358,5 +381,32 @@ public class GuiAppsSetupTest {
         }
         assertEquals(label + " single quotes", 0, single % 2);
         assertEquals(label + " double quotes", 0, doubles % 2);
+    }
+
+    /**
+     * The Starter Apps hints: the name of the app each tick would actually fetch, which is the
+     * whole reason the rows carry one - Ubuntu's browser is not Debian's.
+     */
+    @Test public void theStarterHintNamesTheBrowserEachChoiceWouldFetch() {
+        assertEquals("Firefox ESR", GuiAppsSetup.starterAppName(
+            GuiAppsSetup.Route.DISTRO, GuiAppsSetup.Distro.DEBIAN, GuiAppsSetup.StarterApp.BROWSER));
+        assertEquals("Falkon", GuiAppsSetup.starterAppName(
+            GuiAppsSetup.Route.DISTRO, GuiAppsSetup.Distro.UBUNTU, GuiAppsSetup.StarterApp.BROWSER));
+        assertEquals("Firefox", GuiAppsSetup.starterAppName(
+            GuiAppsSetup.Route.DISTRO, GuiAppsSetup.Distro.ARCH, GuiAppsSetup.StarterApp.BROWSER));
+        // The X11 route installs Termux's own packages, whatever the distro row happens to say.
+        assertEquals("Firefox", GuiAppsSetup.starterAppName(
+            GuiAppsSetup.Route.X11_REPO, GuiAppsSetup.Distro.UBUNTU,
+            GuiAppsSetup.StarterApp.BROWSER));
+    }
+
+    @Test public void theFileManagerIsTheSameOneEverywhere() {
+        for (GuiAppsSetup.Distro distro : GuiAppsSetup.Distro.values()) {
+            assertEquals("PCManFM", GuiAppsSetup.starterAppName(
+                GuiAppsSetup.Route.DISTRO, distro, GuiAppsSetup.StarterApp.FILE_MANAGER));
+        }
+        assertEquals("PCManFM", GuiAppsSetup.starterAppName(
+            GuiAppsSetup.Route.X11_REPO, GuiAppsSetup.Distro.DEBIAN,
+            GuiAppsSetup.StarterApp.FILE_MANAGER));
     }
 }

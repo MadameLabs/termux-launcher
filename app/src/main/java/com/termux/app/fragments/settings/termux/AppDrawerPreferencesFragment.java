@@ -14,17 +14,16 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
-import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceManager;
 
 import com.termux.app.notice.AppNotice;
 import com.termux.R;
-import com.termux.ai.TaiModelSpec;
+import com.termux.ai.TaiFunction;
 import com.termux.app.fragments.settings.MaterialPreferenceFragment;
 import com.termux.app.launcher.data.LauncherCategoryPasteNotification;
+import com.termux.app.launcher.data.LauncherCategorySortPlan;
 import com.termux.app.launcher.data.LauncherCategorySortProgress;
-import com.termux.app.launcher.data.LauncherCategorySortPrompt;
 import com.termux.app.launcher.data.LauncherCategorySortService;
 import com.termux.app.launcher.data.LauncherCategorySortState;
 
@@ -54,6 +53,8 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
     private static final int REQUEST_POST_NOTIFICATIONS = 4711;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    /** The last waiting count read for the refresh row; shown while a fresh one is counted. */
+    private int lastWaiting;
     private final ExecutorService appListExecutor = Executors.newSingleThreadExecutor(runnable -> {
         Thread thread = new Thread(runnable, "app-drawer-category-apps");
         thread.setDaemon(true);
@@ -110,7 +111,7 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
     }
 
     private void configureCategoryPreferences(@NonNull Context context) {
-        ListPreference viewType = findPreference(KEY_VIEW_TYPE);
+        com.termux.app.fragments.settings.SegmentedPillPreference viewType = findPreference(KEY_VIEW_TYPE);
         if (viewType != null) {
             applyCategoryVisibility(storedViewType());
             viewType.setOnPreferenceChangeListener((preference, newValue) -> {
@@ -143,7 +144,7 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
         androidx.preference.PreferenceDataStore store =
             getPreferenceManager().getPreferenceDataStore();
         if (store == null) {
-            ListPreference viewType = findPreference(KEY_VIEW_TYPE);
+            com.termux.app.fragments.settings.SegmentedPillPreference viewType = findPreference(KEY_VIEW_TYPE);
             return viewType == null ? null : viewType.getValue();
         }
         return store.getString(KEY_VIEW_TYPE, null);
@@ -161,17 +162,22 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
         if (refresh != null) refresh.setVisible(categories);
     }
 
-    /** Loads the catalogue off the main thread — it is a blocking package-manager walk. */
+    /**
+     * Reads the chooser's apps and app sorting's plan off the main thread — a blocking package-manager
+     * walk, the model store and the evidence files — then shows it.
+     */
     private void openChooser(@NonNull Context context) {
         requestNotificationPermissionIfNeeded(context);
         appListExecutor.execute(() -> {
-            List<LauncherCategorySortPrompt.AppEntry> apps = CategorySortDialogs.loadApps(context);
+            CategorySortDialogs.Preview preview = CategorySortDialogs.preview(context);
             handler.post(() -> {
                 if (!isAdded()) return;
                 Context current = getContext();
                 if (current == null) return;
-                CategorySortDialogs.showChooser(current, apps,
-                    () -> startSort(current, CategorySortDialogs.resolveModel(current)),
+                CategorySortDialogs.showChooser(current, preview,
+                    () -> startSort(current, preview.plan),
+                    // The old model choice is an entry to the function's picker sheet.
+                    () -> TaiFunctionPickerSheet.show(this, TaiFunction.APP_CATEGORIES),
                     () -> updateRefreshSummary(current));
             });
         });
@@ -179,25 +185,31 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
 
     /**
      * Re-running is the common case, so it skips the chooser — unless no usable model is installed,
-     * in which case the chooser is the screen that explains why and offers the paste route.
+     * in which case the chooser is the screen that explains why and offers the paste route. The plan
+     * is read off the main thread.
      */
     private void startRefresh(@NonNull Context context) {
-        TaiModelSpec model = CategorySortDialogs.resolveModel(context);
-        if (model == null || CategorySortDialogs.unavailableReason(context, model) != null) {
-            openChooser(context);
-            return;
-        }
-        startSort(context, model);
+        appListExecutor.execute(() -> {
+            LauncherCategorySortPlan plan = CategorySortDialogs.resolvePlan(context);
+            boolean runnable = plan.hasModel() && CategorySortDialogs.unavailableReason(context, plan) == null;
+            handler.post(() -> {
+                if (!isAdded()) return;
+                Context current = getContext();
+                if (current == null) return;
+                if (runnable) startSort(current, plan);
+                else openChooser(current);
+            });
+        });
     }
 
-    private void startSort(@NonNull Context context, @Nullable TaiModelSpec model) {
-        if (model == null) {
+    private void startSort(@NonNull Context context, @NonNull LauncherCategorySortPlan plan) {
+        if (!plan.hasModel()) {
             openChooser(context);
             return;
         }
         Intent intent = new Intent(context, LauncherCategorySortService.class);
         intent.setAction(LauncherCategorySortService.ACTION_SORT);
-        intent.putExtra(LauncherCategorySortService.EXTRA_MODEL_ID, model.id);
+        intent.putExtra(LauncherCategorySortService.EXTRA_MODEL_ID, plan.model);
         ContextCompat.startForegroundService(context, intent);
         updateRefreshSummary(context);
         handler.removeCallbacks(refreshRunnable);
@@ -236,17 +248,30 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
                 DateUtils.FORMAT_SHOW_DATE | DateUtils.FORMAT_SHOW_TIME | DateUtils.FORMAT_ABBREV_ALL),
             state.getAppCount());
         // Apps installed since that run sit in "Other" until the next one; say how many are waiting.
-        int pending = pendingCategoryApps(context);
-        refresh.setSummary(pending <= 0 ? lastRun : lastRun + "\n"
-            + getResources().getQuantityString(
-                R.plurals.settings_app_drawer_category_refresh_pending, pending, pending));
+        // The count is read off the main thread, so the row shows the last one meanwhile rather than
+        // dropping a line and growing it back.
+        refresh.setSummary(lastRunSummary(lastRun, lastWaiting));
+        countWaitingApps(context, waiting -> {
+            lastWaiting = waiting;
+            if (!isAdded() || LauncherCategorySortService.isRunning()) return;
+            String outcomeNow = LauncherCategorySortService.getOutcome();
+            if (outcomeNow != null && !outcomeNow.trim().isEmpty()) return;
+            CategorySortProgressPreference row = findPreference(KEY_CATEGORY_REFRESH);
+            if (row != null) row.setSummary(lastRunSummary(lastRun, waiting));
+        });
+    }
+
+    @NonNull
+    private String lastRunSummary(@NonNull String lastRun, int waiting) {
+        return waiting <= 0 ? lastRun : lastRun + "\n" + getResources().getQuantityString(
+            R.plurals.settings_app_drawer_category_refresh_pending, waiting, waiting);
     }
 
     /**
-     * The count off the provider's in-memory catalogue. A cold provider answers zero and is warmed
-     * with a callback that redraws the row, so the number appears a moment later rather than never.
+     * The count off the provider's in-memory catalogue. A cold provider is warmed with a callback
+     * that redraws the row, so the number appears a moment later rather than never.
      */
-    private int pendingCategoryApps(@NonNull Context context) {
+    private void countWaitingApps(@NonNull Context context, @NonNull java.util.function.IntConsumer onCount) {
         com.termux.app.launcher.data.LauncherAppDataProvider provider =
             com.termux.app.launcher.data.LauncherAppDataProvider.getInstance(context);
         List<com.termux.app.launcher.model.LauncherAppEntry> apps = provider.getAllApps();
@@ -256,9 +281,9 @@ public final class AppDrawerPreferencesFragment extends MaterialPreferenceFragme
                 Context current = getContext();
                 if (current != null) updateRefreshSummary(current);
             });
-            return 0;
+            return;
         }
-        return com.termux.app.launcher.data.LauncherCategoryPendingApps.count(context, apps);
+        com.termux.app.launcher.data.LauncherCategoryPendingApps.countWaitingAsync(context, apps, onCount);
     }
 
     /**

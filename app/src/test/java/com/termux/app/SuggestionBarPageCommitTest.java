@@ -291,7 +291,7 @@ public class SuggestionBarPageCommitTest {
         for (PaneWallPage place : PaneWallPage.values())
             for (PlaceOrientation orientation : PlaceOrientation.values())
                 for (Element element : Element.values())
-                    store.setSlot(place, orientation, element, layout.slot(element));
+                    store.setSlot(orientation, element, layout.slot(element));
         screen.applyEdgeStacks(layout);
         screen.syncPinnedAppsHost(layout);
         screen.applyDockLayout(screen.dockLayoutFor(layout));
@@ -517,6 +517,31 @@ public class SuggestionBarPageCommitTest {
 
         assertNotEquals("the second scrub of the letter did nothing",
             pinned, renderedLabels(bar));
+    }
+
+    /**
+     * A letter picked while the last one's preview is fading out. The render cancels the fade, and
+     * a cancelled fade used to run its clean-up anyway, nulling the letter under the render that was
+     * drawing it: the home screen crashed on the letter's unboxing.
+     */
+    @Test
+    public void aLetterPickedWhileThePreviewFadesOutIsShown() {
+        SuggestionBarView bar = rowInTheDockStack(developersStack());
+        wireTheScrub();
+        bar.persistAzPreview(OTHER_LETTER, 0);
+        idle();
+        bar.clearAzPreviewWithFade();
+        // Into the fade's 120 ms: its animator is started by hand, the step the next frame would
+        // take, because the test clock finishes a posted fade before anything can land inside it.
+        ReflectionHelpers.callInstanceMethod(bar.animate(), "startAnimation");
+
+        bar.persistAzPreview(SCRUB_LETTER, 0);
+        idle();
+
+        assertEquals(Character.valueOf(SCRUB_LETTER), ReflectionHelpers.getField(bar, "activeAzLetter"));
+        for (String label : renderedLabels(bar))
+            assertTrue("the row must hold the new letter's apps, not " + label,
+                label.startsWith(String.valueOf(SCRUB_LETTER)));
     }
 
     /**

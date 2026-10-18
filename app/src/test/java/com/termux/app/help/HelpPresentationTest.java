@@ -58,7 +58,7 @@ public class HelpPresentationTest {
 
     @Before public void setUp() {
         activity = Robolectric.buildActivity(Activity.class).setup().get();
-        activity.setTheme(com.google.android.material.R.style.Theme_MaterialComponents_DayNight_NoActionBar);
+        activity.setTheme(com.termux.R.style.Theme_TermuxActivity_DayNight_NoActionBar);
         root = new FrameLayout(activity);
         activity.setContentView(root);
         wall = new View(activity); wall.setId(R.id.terminal_pane_wall);
@@ -861,7 +861,7 @@ public class HelpPresentationTest {
         ExtraKeysInfo keys = new ExtraKeysInfo("[[{key:'tool:pane.split',popup:'tool:window.new'},'LEFT']]",
             "default", ExtraKeysConstants.CONTROL_CHARS_ALIASES);
         assertEquals("Split", HelpCopy.keyLabel(activity, keys.getMatrix()[0][0]));
-        assertEquals("window", HelpCopy.keyLabel(activity, keys.getMatrix()[0][0].getPopup()));
+        assertEquals("new window", HelpCopy.keyLabel(activity, keys.getMatrix()[0][0].getPopup()));
         assertEquals(keys.getMatrix()[0][1].getDisplay(),
             HelpCopy.keyLabel(activity, keys.getMatrix()[0][1]));
     }

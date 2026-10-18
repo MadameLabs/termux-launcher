@@ -378,6 +378,28 @@ public final class TermuxConstants {
     public static final String TERMUX_GITHUB_ISSUES_REPO_URL = TERMUX_GITHUB_REPO_URL + "/issues";
 
     /**
+     * Termux Launcher (this app) display name, for report text only. Not for paths or package logic.
+     */
+    public static final String TERMUX_LAUNCHER_APP_DISPLAY_NAME = "Termux Launcher";
+
+    /**
+     * Termux Launcher GitHub repo url. Reports point here, not at {@link #TERMUX_GITHUB_REPO_URL} (upstream).
+     */
+    public static final String TERMUX_LAUNCHER_GITHUB_REPO_URL = "https://github.com/PickleHik3/termux-launcher";
+
+    /**
+     * Where the launcher's companion app forks live (Termux:API, Termux:Boot, Termux:Styling). Only
+     * these builds share an edition's user id and signature, so links to them point here, never at
+     * upstream's repos or F-Droid.
+     */
+    public static final String TERMUX_LAUNCHER_COMPANIONS_GITHUB_ORGANIZATION_URL = "https://github.com/PickleHik3";
+
+    /**
+     * Termux Launcher GitHub issues url, where issues from this app's reports are posted.
+     */
+    public static final String TERMUX_LAUNCHER_GITHUB_ISSUES_REPO_URL = TERMUX_LAUNCHER_GITHUB_REPO_URL + "/issues";
+
+    /**
      * Termux F-Droid package url
      */
     // Default: "https://f-droid.org/en/packages/com.termux"
@@ -404,8 +426,8 @@ public final class TermuxConstants {
     /**
      * Termux:API GitHub repo url
      */
-    // Default: "https://github.com/termux/termux-api"
-    public static final String TERMUX_API_GITHUB_REPO_URL = TERMUX_GITHUB_ORGANIZATION_URL + "/" + TERMUX_API_GITHUB_REPO_NAME;
+    // The launcher's fork: "https://github.com/PickleHik3/termux-api"
+    public static final String TERMUX_API_GITHUB_REPO_URL = TERMUX_LAUNCHER_COMPANIONS_GITHUB_ORGANIZATION_URL + "/" + TERMUX_API_GITHUB_REPO_NAME;
 
     /**
      * Termux:API GitHub issues repo url
@@ -419,6 +441,11 @@ public final class TermuxConstants {
     // Nix edition: no F-Droid page exists for com.termux.launcher.nix.api — send users to the
     // fork's releases page where the CI-built APKs live.
     public static final String TERMUX_API_FDROID_PACKAGE_URL = TERMUX_API_GITHUB_REPO_URL + "/releases";
+
+    /**
+     * Termux:API releases: where to install the fork that pairs with this edition.
+     */
+    public static final String TERMUX_API_GITHUB_RELEASES_URL = TERMUX_API_GITHUB_REPO_URL + "/releases";
 
     /**
      * Termux:Boot app name
@@ -441,8 +468,8 @@ public final class TermuxConstants {
     /**
      * Termux:Boot GitHub repo url
      */
-    // Default: "https://github.com/termux/termux-boot"
-    public static final String TERMUX_BOOT_GITHUB_REPO_URL = TERMUX_GITHUB_ORGANIZATION_URL + "/" + TERMUX_BOOT_GITHUB_REPO_NAME;
+    // The launcher's fork: "https://github.com/PickleHik3/termux-boot"
+    public static final String TERMUX_BOOT_GITHUB_REPO_URL = TERMUX_LAUNCHER_COMPANIONS_GITHUB_ORGANIZATION_URL + "/" + TERMUX_BOOT_GITHUB_REPO_NAME;
 
     /**
      * Termux:Boot GitHub issues repo url
@@ -513,8 +540,8 @@ public final class TermuxConstants {
     /**
      * Termux:Styling GitHub repo url
      */
-    // Default: "https://github.com/termux/termux-styling"
-    public static final String TERMUX_STYLING_GITHUB_REPO_URL = TERMUX_GITHUB_ORGANIZATION_URL + "/" + TERMUX_STYLING_GITHUB_REPO_NAME;
+    // The launcher's fork: "https://github.com/PickleHik3/termux-styling"
+    public static final String TERMUX_STYLING_GITHUB_REPO_URL = TERMUX_LAUNCHER_COMPANIONS_GITHUB_ORGANIZATION_URL + "/" + TERMUX_STYLING_GITHUB_REPO_NAME;
 
     /**
      * Termux:Styling GitHub issues repo url

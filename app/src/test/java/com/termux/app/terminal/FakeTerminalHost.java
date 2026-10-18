@@ -366,6 +366,11 @@ class FakeTerminalHost implements TerminalHost {
         return true;
     }
 
+    @Override public boolean refreshPaneFontSizes() {
+        record("refreshPaneFontSizes");
+        return true;
+    }
+
     // --- Soft keyboard ---
 
     @Override public void onSystemImeRequested() {
@@ -841,6 +846,10 @@ class FakeTerminalHost implements TerminalHost {
 
     @Override public void openLookAndFeel() {
         record("openLookAndFeel");
+    }
+
+    @Override public void openAppDrawer() {
+        record("openAppDrawer");
     }
 
     @Override public void openAppsBar() {

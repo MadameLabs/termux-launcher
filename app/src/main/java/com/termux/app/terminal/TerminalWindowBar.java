@@ -83,21 +83,6 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         void onWindowChipTapped(int index);
     }
 
-    /**
-     * The chip strip has run out of scroll and the finger keeps going. The surplus distance is
-     * streamed to the host so "scroll to the last chip, keep pulling, and the page beside the
-     * terminal slides in" is one continuous gesture.
-     */
-    public interface OnEdgeOverswipeListener {
-        /** @return true to take the stream; false leaves the strip's own scrolling alone */
-        boolean onEdgeOverswipeBegin();
-        /** @param dxPx surplus travel since the hand-over, positive to the right */
-        void onEdgeOverswipe(float dxPx);
-        /** @param velocityPxPerSec horizontal release velocity, positive to the right */
-        void onEdgeOverswipeEnd(float velocityPxPerSec);
-        void onEdgeOverswipeCancel();
-    }
-
     /** Visual label plus a spoken label that does not expose Nerd Font private-use glyphs. */
     public static final class WindowItem {
         @NonNull public final String label;
@@ -339,7 +324,6 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     @Nullable private OnChipTappedListener mChipTapListener;
     @Nullable private OnCreateWindowListener mCreateListener;
     @Nullable private OnWindowCloseRequestedListener mCloseListener;
-    @Nullable private OnEdgeOverswipeListener mEdgeOverswipeListener;
     /** Which chip is offering its ×, and for how much longer. */
     private final ChipRevealPolicy mReveal = new ChipRevealPolicy();
     /**
@@ -358,28 +342,8 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     private boolean mGestureRejected;
     private float mTouchDownX;
     private float mTouchDownY;
-    private float mLastTouchX;
-    /** Signed travel the strip could not spend on its own scroll, since the DOWN. */
-    private float mOverswipePx;
-    /** One-way latch: once the surplus is the host's, the strip stops scrolling for this stream. */
-    private boolean mOverswipeOwned;
-    /**
-     * Where the strip stood at the DOWN. A finger that scrolled the chips at all keeps them for
-     * the rest of its stream: running into the last window is not a wish to change place. Only a
-     * strip with nothing to scroll, or one pulled past the edge it already rests at, hands the
-     * finger to the wall.
-     */
-    private int mScrollXAtDown;
-    private boolean mStripScrolled;
     /** The DOWN time of the stream being tracked, so a DOWN seen twice is set up once. */
     private long mStreamDownTime = -1L;
-    /**
-     * The host took the wall away mid-overswipe. The rest of this stream belongs to nobody: not
-     * streamed to the host, not spent on the chips either — a finger that was dragging the wall
-     * must not suddenly scroll the strip under itself.
-     */
-    private boolean mOverswipeInterrupted;
-    @Nullable private android.view.VelocityTracker mOverswipeVelocity;
     private int mSelectedIndex = -1;
     @NonNull private List<WindowItem> mItems = new ArrayList<>();
     private Typeface mTerminalTypeface = Typeface.MONOSPACE;
@@ -432,6 +396,15 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     private boolean mWindowVisible = true;
     /** The chip whose fresh × should be scrolled into view on the next layout pass. */
     private int mPendingRevealScroll = ChipRevealPolicy.NONE;
+    /** The chip that just became the current window, to be scrolled into view on the next layout. */
+    private int mPendingSelectedScroll = -1;
+    /** The strip easing to a chip; the finger takes over from it the moment it lands. */
+    @Nullable private ValueAnimator mScrollAnimator;
+    /**
+     * How far the chips feather out where they run past the viewport: at the readings' end while
+     * there are more to the right, at the badge's end once the row is scrolled.
+     */
+    static final float OVERFLOW_FADE_DP = 16f;
     private boolean mAttached;
 
     public TerminalWindowBar(Context context, AttributeSet attrs) {
@@ -441,10 +414,16 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         setClipToPadding(true);
         setClipChildren(true);
         setOverScrollMode(OVER_SCROLL_NEVER);
+        // The scroll view's own fading edges grow with how much is hidden past each end, so a row
+        // that fits draws none and a row that overflows by a few pixels feathers only a little.
+        setHorizontalFadingEdgeEnabled(true);
+        setFadingEdgeLength(dp(OVERFLOW_FADE_DP));
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         // The parent already supplies the intended gap after the session indicator. A second
         // leading inset here made that gap look like trailing padding owned by the session chip.
-        setPaddingRelative(0, dp(2), dp(5), dp(2));
+        // The trailing end is the status row's to set (setTrailingGapPx): the chips stop one gap
+        // short of the readings, and how much of that gap is the bar's depends on the readings.
+        setPaddingRelative(0, dp(2), 0, dp(2));
         mTabs = new SelectionStrip(context);
         mTabs.setGravity(Gravity.CENTER_VERTICAL);
         mTabs.setOrientation(LinearLayout.HORIZONTAL);
@@ -453,6 +432,26 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         addView(mTabs, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
         reloadTerminalTypeface();
         updatePalette();
+    }
+
+    /**
+     * The space the bar keeps after its last visible chip, inside its own bounds, so the chips'
+     * viewport stops there. Returns whether it changed, so a measuring parent knows to measure
+     * again.
+     */
+    public boolean setTrailingGapPx(int px) {
+        int gap = Math.max(0, px);
+        if (getPaddingEnd() == gap) return false;
+        setPaddingRelative(getPaddingStart(), getPaddingTop(), gap, getPaddingBottom());
+        return true;
+    }
+
+    /**
+     * The chips' own width at rest, as last measured: the close button a chip may be offering is
+     * left out, since it comes and goes on a tap.
+     */
+    public int restingContentWidthPx() {
+        return Math.max(0, mTabs.getMeasuredWidth() - mTabs.closeExtentPx());
     }
 
     public void setOnWindowSelectedListener(@Nullable OnWindowSelectedListener listener) {
@@ -492,18 +491,6 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         return null;
     }
 
-    public void setOnEdgeOverswipeListener(@Nullable OnEdgeOverswipeListener listener) {
-        mEdgeOverswipeListener = listener;
-    }
-
-    /** The wall moved on without this finger; the overswipe ends here, with no end or cancel. */
-    public void cancelOverswipe() {
-        if (!mOverswipeOwned) return;
-        mOverswipeOwned = false;
-        mOverswipeInterrupted = true;
-        mOverswipePx = 0f;
-    }
-
     @Override
     public boolean onInterceptTouchEvent(MotionEvent event) {
         // A finger that lands on a pill gives the pill its DOWN; the strip only meets the stream
@@ -516,15 +503,11 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     private void beginStream(MotionEvent event) {
         if (mStreamDownTime == event.getDownTime()) return;
         mStreamDownTime = event.getDownTime();
-        mTouchDownX = mLastTouchX = event.getX();
+        mTouchDownX = event.getX();
         mTouchDownY = event.getY();
-        mOverswipePx = 0f;
         mGestureHorizontal = false;
         mGestureRejected = false;
-        mOverswipeOwned = false;
-        mOverswipeInterrupted = false;
-        mScrollXAtDown = getScrollX();
-        mStripScrolled = false;
+        cancelScrollAnimation();
         mReveal.onTouchDown();
         // A finger that lands anywhere but on the chip offering its × puts it away — including the
         // one that is on its way to the plus, or to the bar's empty end. The × itself lives inside
@@ -533,11 +516,6 @@ public final class TerminalWindowBar extends HorizontalScrollView {
             mReveal.onTouchElsewhere();
             applyReveal();
         }
-        if (mOverswipeVelocity == null) {
-            mOverswipeVelocity = android.view.VelocityTracker.obtain();
-        }
-        mOverswipeVelocity.clear();
-        mOverswipeVelocity.addMovement(event);
         if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
     }
 
@@ -549,8 +527,6 @@ public final class TerminalWindowBar extends HorizontalScrollView {
             return super.onTouchEvent(event);
         }
         if (action == MotionEvent.ACTION_MOVE) {
-            if (mOverswipeVelocity != null) mOverswipeVelocity.addMovement(event);
-            float dx = event.getX() - mLastTouchX;
             float totalX = event.getX() - mTouchDownX;
             float totalY = event.getY() - mTouchDownY;
             if (!mGestureHorizontal && !mGestureRejected) {
@@ -567,62 +543,15 @@ public final class TerminalWindowBar extends HorizontalScrollView {
                     applyReveal();
                 }
             }
-            mLastTouchX = event.getX();
-            if (mOverswipeInterrupted) return true;
-            if (mOverswipeOwned) {
-                // The surplus is the host's for the rest of this stream: the chips hold still
-                // rather than scrolling back under a finger that is now dragging the wall.
-                mOverswipePx += dx;
-                if (mEdgeOverswipeListener != null) mEdgeOverswipeListener.onEdgeOverswipe(mOverswipePx);
-                return true;
-            }
-            int before = getScrollX();
-            boolean handled = super.onTouchEvent(event);
-            if (getScrollX() != mScrollXAtDown) mStripScrolled = true;
-            // Signed: dragging left scrolls right, so what the strip spent cancels the travel out.
-            float surplus = dx + (getScrollX() - before);
-            if (mGestureHorizontal && !mGestureRejected && !mStripScrolled
-                && Math.abs(surplus) > 0f) {
-                mOverswipePx += surplus;
-                if (Math.abs(mOverswipePx) > mTouchSlop && mEdgeOverswipeListener != null
-                    && mEdgeOverswipeListener.onEdgeOverswipeBegin()) {
-                    mOverswipeOwned = true;
-                    // The slop that proved the intent is not travel, but whatever the finger moved
-                    // beyond it is: a coarse stream can cover much of the bar in its first move,
-                    // and starting the host from rest threw that distance away.
-                    mOverswipePx -= Math.copySign(mTouchSlop, mOverswipePx);
-                    mEdgeOverswipeListener.onEdgeOverswipe(mOverswipePx);
-                }
-            }
-            return handled;
+            // Past the last chip the strip just stops: paging the wall is the border drag's job.
+            return super.onTouchEvent(event);
         }
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
-            boolean owned = mOverswipeOwned;
-            float velocity = 0f;
-            if (mOverswipeVelocity != null) {
-                mOverswipeVelocity.computeCurrentVelocity(1000);
-                velocity = mOverswipeVelocity.getXVelocity();
-                mOverswipeVelocity.recycle();
-                mOverswipeVelocity = null;
-            }
-            boolean interrupted = mOverswipeInterrupted;
-            boolean handled = !interrupted && super.onTouchEvent(event);
+            boolean handled = super.onTouchEvent(event);
             if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(false);
             mStreamDownTime = -1L;
-            mOverswipePx = 0f;
             mGestureHorizontal = false;
             mGestureRejected = false;
-            mOverswipeOwned = false;
-            mOverswipeInterrupted = false;
-            if (interrupted) return true;
-            if (owned && mEdgeOverswipeListener != null) {
-                if (action == MotionEvent.ACTION_UP) {
-                    mEdgeOverswipeListener.onEdgeOverswipeEnd(velocity);
-                } else {
-                    mEdgeOverswipeListener.onEdgeOverswipeCancel();
-                }
-                return true;
-            }
             return handled;
         }
         return super.onTouchEvent(event);
@@ -672,7 +601,9 @@ public final class TerminalWindowBar extends HorizontalScrollView {
                 applyStableTabSelection();
             }
             applyReveal();
-            scrollSelectedIntoView(selectedIndex);
+            // Only a new current window moves the row: a refresh of the same one (a ring turning,
+            // a title changing) leaves wherever the finger scrolled it.
+            if (previousSelected != selectedIndex) scrollSelectedIntoView(selectedIndex);
             return;
         }
 
@@ -1147,10 +1078,10 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     }
 
     /**
-     * Lazy mode turns the ring in steps instead of spinning it: the animator redrew every working
-     * pill each vsync for as long as any shell was busy, which with a long-running agent meant
-     * forever. A stationary arc was tried first and read as stuck, so the ring still moves — eight
-     * stops a turn, on a timer, which is one redraw per stop rather than one per frame.
+     * Lazy mode shows a working window as a colour instead of a turning ring: the chip's fill takes
+     * a tint of the ring colour and its whole edge turns that colour, drawn once, so nothing redraws
+     * for as long as the window stays busy. A stationary arc was tried once and read as a stuck
+     * spinner; a changed chip reads as a state. A reported percentage still draws its still ring.
      */
     public void setLazyMode(boolean lazy) {
         if (mLazyMode == lazy) return;
@@ -1159,28 +1090,21 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     }
 
     private boolean mLazyMode;
-    @Nullable private Runnable mLazyTick;
 
     /**
      * One clock for the whole bar rather than one per pill: setWindows's removeAllViews() then has
      * nothing to clean up, and every ring turns in phase. It only invalidates the pills that carry
-     * a turning arc; a percentage ring and a bell are as static as the label. Both modes drive it
-     * from a timer — smooth mode at about 30 a second, lazy mode at eight stops a turn.
+     * a turning arc; a percentage ring and a bell are as static as the label. It runs on a timer at
+     * about 30 a second, and not at all in lazy mode, where a working chip is a still tint.
      *
      * <p>Deliberately not folded into mSelectionAnimator. Both only invalidate, so they compose;
      * sharing one animator would stall the activity indication for the length of every window switch.
      */
     private void updateBusyAnimator() {
-        boolean wanted = hasIndeterminateWindow() && mAttached && mWindowVisible;
-        boolean smooth = wanted && !mLazyMode;
-        boolean stepped = wanted && mLazyMode;
+        boolean smooth = hasIndeterminateWindow() && mAttached && mWindowVisible && !mLazyMode;
         if (!smooth && mSmoothTick != null) {
             removeCallbacks(mSmoothTick);
             mSmoothTick = null;
-        }
-        if (!stepped && mLazyTick != null) {
-            removeCallbacks(mLazyTick);
-            mLazyTick = null;
         }
         if (smooth && mSmoothTick == null) {
             mSmoothTick = new Runnable() {
@@ -1191,16 +1115,6 @@ public final class TerminalWindowBar extends HorizontalScrollView {
                 }
             };
             postDelayed(mSmoothTick, WindowActivityRing.SMOOTH_TICK_MS);
-        }
-        if (stepped && mLazyTick == null) {
-            mLazyTick = new Runnable() {
-                @Override public void run() {
-                    if (mLazyTick != this) return;
-                    invalidateTurningRings();
-                    postDelayed(this, WindowActivityRing.LAZY_TICK_MS);
-                }
-            };
-            postDelayed(mLazyTick, WindowActivityRing.LAZY_TICK_MS);
         }
     }
 
@@ -1225,7 +1139,13 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         if (mPendingRevealScroll != ChipRevealPolicy.NONE) {
             int index = mPendingRevealScroll;
             mPendingRevealScroll = ChipRevealPolicy.NONE;
+            // The × is what the thumb is reaching for; it outranks the selection's own scroll.
+            mPendingSelectedScroll = -1;
             scrollRevealedIntoView(index);
+        } else if (mPendingSelectedScroll >= 0) {
+            int index = mPendingSelectedScroll;
+            mPendingSelectedScroll = -1;
+            revealSelected(index);
         }
     }
 
@@ -1239,23 +1159,11 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     @Override
     protected void onDetachedFromWindow() {
         mAttached = false;
+        cancelScrollAnimation();
         if (mSmoothTick != null) {
             removeCallbacks(mSmoothTick);
             mSmoothTick = null;
         }
-        if (mLazyTick != null) {
-            removeCallbacks(mLazyTick);
-            mLazyTick = null;
-        }
-        // A stream that was under way when the view left the window never gets its UP; the
-        // tracker goes back to the pool and the latch does not survive into the next attach.
-        if (mOverswipeVelocity != null) {
-            mOverswipeVelocity.recycle();
-            mOverswipeVelocity = null;
-        }
-        mOverswipeOwned = false;
-        mOverswipeInterrupted = false;
-        mOverswipePx = 0f;
         cancelCloseReveal();
         // A × is a four-second offer, not a state: a row that left the window comes back without it.
         mReveal.hide();
@@ -1299,10 +1207,10 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         return mTabs.copyCurrentHighlightBounds(output);
     }
 
-    /** For tests: whether a working window's ring is turning right now, smoothly or in steps. */
+    /** For tests: whether a working window's ring is turning right now. */
     @androidx.annotation.VisibleForTesting
     public boolean isBusyAnimationRunning() {
-        return mSmoothTick != null || mLazyTick != null;
+        return mSmoothTick != null;
     }
 
     private TextView createTab(@NonNull WindowItem item, boolean selected) {
@@ -1415,7 +1323,8 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     private void scrollRevealedIntoView(int index) {
         if (mTabs.closeTarget() != index || index < 0 || index >= mTabs.getChildCount()) return;
         View chip = mTabs.getChildAt(index);
-        int margin = dp(5);
+        // Clear of the feathered edge, so the × is not offered half faded.
+        int margin = Math.max(dp(5), getHorizontalFadingEdgeLength());
         int viewport = getWidth() - getPaddingLeft() - getPaddingRight();
         if (viewport <= 0 || chip.getWidth() <= 0) return;
         int extent = mTabs.closeExtentPx();
@@ -1436,25 +1345,55 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         else scrollTo(target, 0);
     }
 
+    /** Scrolled from onLayout, once the row has been measured with this list in it. */
     private void scrollSelectedIntoView(int selectedIndex) {
-        if (selectedIndex < 0 || selectedIndex >= mTabs.getChildCount()) return;
-        post(() -> {
-            View selected = mTabs.getChildAt(selectedIndex);
-            int target = Math.max(0, selected.getLeft() - dp(5));
-            if (target == getScrollX()) return;
-            // Same reasoning as animateSelectionSlide: an invisible window still gets animated,
-            // it just never shows it, so skip straight to the end state while nobody can see it.
-            if (mWindowVisible) animateScrollTo(target);
-            else scrollTo(target, 0);
-        });
+        if (selectedIndex < 0) return;
+        mPendingSelectedScroll = selectedIndex;
+        requestLayout();
+    }
+
+    /**
+     * The current window's chip, brought whole into view past the faded edges with as little
+     * travel as that takes; a chip already in view leaves the row where it is.
+     */
+    private void revealSelected(int selectedIndex) {
+        // The list can be rebuilt shorter before this runs (an X11 app opening and closing
+        // windows in a burst), so the index is checked again against the row as it is now.
+        if (selectedIndex < 0 || selectedIndex >= mItems.size()
+            || selectedIndex >= mTabs.getChildCount()) return;
+        View selected = mTabs.getChildAt(selectedIndex);
+        int viewport = getWidth() - getPaddingLeft() - getPaddingRight();
+        if (viewport <= 0 || selected.getWidth() <= 0) return;
+        int maxScroll = Math.max(0, mTabs.getWidth() + getPaddingLeft() + getPaddingRight()
+            - getWidth());
+        int target = ChipScrollPolicy.scrollToShow(selected.getLeft(), selected.getRight(),
+            getScrollX(), viewport, getHorizontalFadingEdgeLength(), maxScroll);
+        if (target == getScrollX()) return;
+        // Same reasoning as animateSelectionSlide: an invisible window still gets animated,
+        // it just never shows it, so skip straight to the end state while nobody can see it.
+        if (mAttached && mWindowVisible) animateScrollTo(target);
+        else scrollTo(target, 0);
     }
 
     private void animateScrollTo(int target) {
-        android.animation.ValueAnimator animator = android.animation.ValueAnimator.ofInt(getScrollX(), target);
+        cancelScrollAnimation();
+        ValueAnimator animator = ValueAnimator.ofInt(getScrollX(), target);
         animator.setDuration(WINDOW_SWITCH_ANIMATION_DURATION_MS);
         animator.setInterpolator(settleInterpolator());
         animator.addUpdateListener(value -> scrollTo((Integer) value.getAnimatedValue(), 0));
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override public void onAnimationEnd(Animator animation) {
+                if (mScrollAnimator == animation) mScrollAnimator = null;
+            }
+        });
+        mScrollAnimator = animator;
         animator.start();
+    }
+
+    private void cancelScrollAnimation() {
+        ValueAnimator animator = mScrollAnimator;
+        mScrollAnimator = null;
+        if (animator != null) animator.cancel();
     }
 
     private Interpolator settleInterpolator() {
@@ -1671,7 +1610,9 @@ public final class TerminalWindowBar extends HorizontalScrollView {
     private int plusTint(int accent) {
         WindowChipInk.Palette glass = mGlassPalette;
         if (glass == null || mChromeInk == null) {
-            return ColorUtils.setAlphaComponent(accent, 184);
+            // No band was measured: the role itself, opaque; the icon tier is only ever tuned on
+            // a measured band, never faded by a fixed alpha.
+            return accent;
         }
         return WindowChipInk.towardPolarity(glass.band, accent,
             mChromeInk.polarity() == com.termux.app.chrome.ChromeInk.Polarity.PALE_INK,
@@ -1691,18 +1632,17 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         int secondary = MaterialColors.getColor(context,
             com.termux.shared.R.attr.termuxColorSecondary,
             ContextCompat.getColor(context, R.color.termux_secondary));
-        // Tertiary for the ring, like the row's other "something is happening" accents. Error for
-        // the bell and a failed progress report: it is the one Material role that is warm in every
+        // Secondary for the ring ("something is happening"), tertiary for done, error for the
+        // bell and a failed progress report: error is the one Material role that is warm in every
         // generated palette, and a window waiting on the user has to be findable without reading
-        // any label.
-        mBusyColor = MaterialColors.getColor(context,
-            com.google.android.material.R.attr.colorTertiary, primary);
+        // any label. Done and busy are different roles, so a finished chip never reads as one
+        // that is still going.
+        mBusyColor = secondary;
         mAttentionColor = MaterialColors.getColor(context,
-            com.google.android.material.R.attr.colorError,
+            com.termux.shared.R.attr.termuxColorError,
             ContextCompat.getColor(context, R.color.termux_error));
-        // Material has no success role, and the busy accent cannot stand in for one: a chip that
-        // has finished must not be the colour of a chip that is still going.
-        mDoneColor = ContextCompat.getColor(context, R.color.termux_chip_done);
+        mDoneColor = MaterialColors.getColor(context,
+            com.termux.shared.R.attr.termuxColorTertiary, primary);
 
         WindowChipInk.Palette glass = measureBand(primary);
         if (glass == null) {

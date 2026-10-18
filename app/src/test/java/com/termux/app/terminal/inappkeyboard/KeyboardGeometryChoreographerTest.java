@@ -402,7 +402,7 @@ public class KeyboardGeometryChoreographerTest {
     }
 
     @Test
-    public void geometrySyncDropsTheMeasuredHeightAndRelayoutsTheAccessoryStackTwice() {
+    public void geometrySyncDropsTheMeasuredHeightAndRelayoutsTheAccessoryStackOnce() {
         mSurface.keyboardContainer.measuredHeight = 420;
         mChoreographer.measureHeightPx();
 
@@ -410,9 +410,48 @@ public class KeyboardGeometryChoreographerTest {
 
         assertEquals(0, mChoreographer.desiredHeightPx());
         assertEquals(List.of("inapp-keyboard"), mSurface.geometryReasons);
-        // The second pass runs once the container has actually laid out at the new height.
+        // No second pass after the container's layout: the height was measured independently of
+        // the stack, and a disagreeing layout is the container listener's to report.
         mSurface.keyboardContainer.drainPosted();
-        assertEquals(List.of("inapp-keyboard", "inapp-keyboard:layout"), mSurface.geometryReasons);
+        assertEquals(List.of("inapp-keyboard"), mSurface.geometryReasons);
+    }
+
+    @Test
+    public void theHostIsDressedBeforeEveryMeasureAndARedressBeatsACleanMemo() {
+        mSurface.keyboardContainer.measuredHeight = 611;
+        assertEquals(611, mChoreographer.measureHeightPx());
+        assertEquals(1, mSurface.dressPasses);
+
+        // A form switch redresses the host between two measures; the memo must not answer for it.
+        mSurface.redressPending = true;
+        mSurface.keyboardContainer.measuredHeight = 654;
+        assertEquals(654, mChoreographer.measureHeightPx());
+        assertEquals(2, mSurface.dressPasses);
+        assertEquals(2, mSurface.keyboardContainer.measurePasses);
+
+        // Already dressed: the clean memo answers.
+        assertEquals(654, mChoreographer.measureHeightPx());
+        assertEquals(2, mSurface.keyboardContainer.measurePasses);
+    }
+
+    @Test
+    public void aMissedReservationIsReportedOncePerMissAndReArmedByAMatch() {
+        assertFalse("nothing reserved, nothing to miss", mChoreographer.reservationMissedBy(654));
+
+        mChoreographer.noteReservedHeightPx(611);
+        assertTrue(mChoreographer.reservationMissedBy(654));
+        assertFalse("the same miss is already being corrected",
+            mChoreographer.reservationMissedBy(654));
+
+        mChoreographer.noteReservedHeightPx(654);
+        assertFalse(mChoreographer.reservationMissedBy(654));
+
+        // Met once, the same miss later on is a new one.
+        mChoreographer.noteReservedHeightPx(611);
+        assertTrue(mChoreographer.reservationMissedBy(654));
+        mChoreographer.noteReservedHeightPx(0);
+        assertFalse("a floating or hidden keyboard reserves nothing",
+            mChoreographer.reservationMissedBy(654));
     }
 
     @Test
@@ -525,6 +564,9 @@ public class KeyboardGeometryChoreographerTest {
         boolean dockBackdropSafe = true;
         boolean keyboardShown = true;
         boolean activityAlive = true;
+        /** The next dress changes the host's margins or padding. */
+        boolean redressPending;
+        int dressPasses;
 
         FakeSurface(@NonNull Context context) {
             keyboardContainer = new MeasuredView(context);
@@ -551,6 +593,14 @@ public class KeyboardGeometryChoreographerTest {
         @Override
         public DisplayMetrics displayMetrics() {
             return metrics;
+        }
+
+        @Override
+        public boolean dressKeyboardHost() {
+            dressPasses++;
+            boolean changed = redressPending;
+            redressPending = false;
+            return changed;
         }
 
         @Nullable

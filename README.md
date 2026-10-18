@@ -1,40 +1,27 @@
-# Termux Launcher
-
-> [!NOTE]
-> **This project is entirely vibe-coded.**
-> I’ve been daily-driving it as a launcher on a Nothing Phone (2), and it has been stable so far, does not appear to have any noticeable impact on battery life, and uses about ~350 MB of RAM at idle (for reference, something like smart launcher uses about 250 on fresh install).
->
-> **Security review wanted**
->
-> I’ve made several security-review passes over the codebase using LLMs (FABLE), i would have considered it enough if it continued to be just my launcher, but now that there are others using it, i would really appreciate if an actual developer can have a quick look at the code.
->
-> I’m actively looking for someone with Android, Termux, or application-security experience who would be willing to review the project. If you spot anything security-related, please open an issue or discussion.
-
-> [!IMPORTANT]
-> **This is an independent fork.** Termux Launcher is not affiliated with, endorsed by, or
-> supported by the official [Termux](https://github.com/termux/termux-app) project or its
-> maintainers. It is a separately maintained modification that reuses the Termux name only to
-> describe what it is built on. Do not report issues with this fork to Termux — file them
-> [here](https://github.com/PickleHik3/termux-launcher/issues). The `com.termux` edition shares a
-> package name with official Termux and **replaces it** on the device; the other editions install
-> side by side. Termux is a trademark of its respective owners.
-
 <p align="center">
-  <img src="screenshots/banner.png" alt="Termux Launcher hero showing terminal-first Android features and five device screenshots" width="100%">
+  <img src="screenshots/banner.webp" alt="Termux Launcher showing seven authentic Android screens: terminal home, split panes, widgets, voice dictation, Dawn notes, tlstore, and the app drawer" width="100%">
 </p>
 
-**[🌐 Website & docs](https://picklehik3.github.io/termux-launcher-site/)** | [Releases & changelog](https://github.com/PickleHik3/termux-launcher/releases) | [Local AI API](docs/en/LauncherCtl_API.md) | [Termux AI](docs/en/Termux_AI.md)
+<p align="center">
+  <a href="https://picklehik3.github.io/termux-launcher-site/"><b>🌐 Website &amp; docs</b></a> ·
+  <a href="https://discord.gg/sWSCRh7aVR"><b>💬 Discord</b></a> ·
+  <a href="https://github.com/PickleHik3/termux-launcher/releases">Releases</a>
+</p>
 
+> [!NOTE]
+> This project is entirely vibe-coded. I daily-drive it, but if you have Android or
+> app-security experience, a review would be very welcome. Please open an issue or discussion.
+
+> [!IMPORTANT]
+> **An independent fork, not affiliated with [Termux](https://github.com/termux/termux-app).**
+> Report issues [here](https://github.com/PickleHik3/termux-launcher/issues), not to Termux.
+> The `com.termux` edition **replaces** official Termux on your device; the other editions install side by side.
 
 ## About
 
 Termux Launcher is a terminal-first Android home launcher inspired by [TEL](https://github.com/t-e-l/tel), built on [termux-app](https://github.com/termux/termux-app) and [termux-monet](https://github.com/Termux-Monet/termux-monet).
 What started out as me just wanting sixel image drawing in [TEL](https://github.com/t-e-l/tel) spiraled out of scope to what this project is today.
 All credits go to the amazing developers and contributors of Termux, TEL, and Termux:Monet.
-
-<p align="center">
-  <img src="screenshots/demo.gif" alt="Termux Launcher walkthrough showing the command palette, Kitty graphics, split panes, media, and keyboard shortcuts" width="360">
-</p>
 
 ## Features
 
@@ -64,7 +51,7 @@ Every release ships the same launcher built from the same source; the editions d
 | | Termux edition | Nix edition | VAJ demo edition |
 |---|---|---|---|
 | Package name | `com.termux` | `com.termux.launcher.nix` | `io.vaj.tl` |
-| Release tag | `vX.Y.Z` | `vX.Y.Z-nix` | `vX.Y.Z-vaj` |
+| Release tag | `vX.Y.Z` | `nix-vX.Y.Z` | `vaj-vX.Y.Z` |
 | Alongside official Termux? | ❌ No — same package name, replaces it | ✅ Yes — installs side by side | ✅ Yes — installs side by side |
 | Package manager | `pkg` / APT | [Nix](https://nixos.org) ([guide](docs/en/Nix_Package_Management.md)) | `pkg` / APT |
 | Package repository | official Termux repos | official `nixpkgs` binary cache | small VAJ APT repo (`https://repo.pathayam.xyz`) |
@@ -78,6 +65,10 @@ Companion add-ons must be the matching builds from this project's forks (they sh
 ## Installation
 
 Download the latest APK of your chosen [edition](#editions) from [Releases](https://github.com/PickleHik3/termux-launcher/releases), install it, then select Termux Launcher as your Android home app.
+
+### Stable or pre-release
+
+There are two channels. **Stable** releases (`vX.Y.Z`, one build per edition) are what most people should run. The **pre-release** channel (`vX.Y.Z-pre.N`, with `nix-` and `vaj-` builds alongside, marked *Pre-release* on the releases page) is a rolling build of what is heading for the next stable plus experiments that may still change or be dropped; each drop's notes list everything it has beyond the latest stable. Both channels are signed with the same key and share a version code, so you can install one over the other in either direction and keep your data. When reporting an issue from a pre-release, include the version from Settings › About — it ends in `-pre.N`.
 
 Recommended setup:
 
@@ -119,10 +110,16 @@ In-repo references:
 
 - [Programs and agents inside the terminal](docs/en/Programs_Inside_The_Terminal.md): **read this before assuming stock Termux behaviour** from a script or an AI agent running in a pane: the extra environment variables, the escape sequences the terminal accepts, `launcherctl`, and the one `am start` that must never be run.
 - [Local AI API](docs/en/LauncherCtl_API.md): OpenAI/Ollama-compatible localhost endpoint, app launch, model management, auth, and route tables.
-- [Termux AI](docs/en/Termux_AI.md): local model setup, `tai`, OpenAI-compatible clients, and troubleshooting.
+- [On-device AI](docs/en/On_Device_AI.md): local model setup, `tai`, OpenAI-compatible clients, and troubleshooting.
 - [Building showcase tools](docs/en/Building_Terminal_Showcase_Tools.md): reproducible recipes for Sigye and animated-Kitty Fastfetch, on device and cross-built.
 - [VAJ to Nix migration](docs/en/VAJ_To_Nix_Migration.md): moving off the deprecated VAJ edition.
 - [Developer Docs](docs/en/Developer_Docs.md): advanced API routes, runtime notes, helper scripts, and security details.
+- [Glossary](docs/GLOSSARY.md): the words the code, the docs and the developer use.
+- [Developer specs and research](project-docs/README.md): active specs, delivered records, research and the backlog.
+
+## Getting help
+
+Questions, setups and ideas all go to the [Discord server](https://discord.gg/sWSCRh7aVR). TildeBot, the server's help bot, answers in `#help` first and points you to the right part of the docs, and a human steps in when it can't sort you out. Bugs you can reproduce can also go straight to [GitHub issues](https://github.com/PickleHik3/termux-launcher/issues).
 
 ## Upstream Base
 
@@ -139,5 +136,22 @@ project. See [LICENSE](LICENSE), [license exceptions](LICENSE-EXCEPTIONS.md), an
 **Settings > Open-source licenses**.
 
 Bundled assets carry their own licenses: the weather animations are
-[Meteocons](https://github.com/basmilius/meteocons) (MIT, Copyright 2020-present Bas Milius), and
-the icon font is [Symbols Nerd Font Mono](https://github.com/ryanoasis/nerd-fonts) (SIL OFL 1.1).
+[Meteocons](https://github.com/basmilius/meteocons) (MIT, Copyright 2020-present Bas Milius), the
+voice key's speech detector is [Silero VAD](https://github.com/snakers4/silero-vad) (MIT, Copyright
+2020-present Silero Team), and the icon font is [Symbols Nerd Font Mono](https://github.com/ryanoasis/nerd-fonts) (MIT for the Symbols-only font, with separate licenses for its glyph sources).
+
+### Thanks to the projects behind the launcher
+
+Alongside Termux, Termux:Monet and TEL, a huge thank you to
+[Termux:X11](https://github.com/termux/termux-x11) for the Linux display,
+[Unexpected Keyboard](https://github.com/Julow/Unexpected-Keyboard) for the embedded keyboard,
+[kitty](https://github.com/kovidgoyal/kitty) for its terminal protocols and the code adapted here,
+[Noctalia](https://github.com/noctalia-dev/noctalia-shell) for the theme templates, and
+[herdr](https://github.com/herdrdev/herdr) for the agent-detection rules.
+
+[Ghostty](https://github.com/ghostty-org/ghostty), [Hyprland](https://github.com/hyprwm/Hyprland)
+and [focus.nvim](https://github.com/nvim-focus/focus.nvim) inspired the terminal padding, pane
+tiling and focused-pane behaviour. Thanks also to the speech-model authors, Google AI Edge and
+the LiteRT conversion contributors, and the authors of dawn, fastfetch, sigye and the other
+[tlstore tools](https://github.com/PickleHik3/tlstore). This launcher would not exist without
+all that work. The [notices](THIRD_PARTY_NOTICES.md) describe what is included and adapted.

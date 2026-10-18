@@ -117,6 +117,8 @@ public final class SessionsDrawerView extends LinearLayout
     private static final int CORNERS_TOP = 1;
     private static final int CORNERS_BOTTOM = 2;
     private static final int UNFOLD_SIDE_DP = 12;
+    /** Above and below a row's text and the Save label, which only shows once they wrap. */
+    private static final int TEXT_PADDING_DP = 4;
 
     @Nullable private Listener mListener;
     @NonNull private TerminalDress mDress;
@@ -181,7 +183,7 @@ public final class SessionsDrawerView extends LinearLayout
         mSavedTab = segment(R.string.sessions_drawer_saved, Tab.SAVED);
         segments.addView(mLiveTab, new LayoutParams(0, dp(32), 1f));
         LayoutParams savedParams = new LayoutParams(0, dp(32), 1f);
-        savedParams.leftMargin = dp(4);
+        savedParams.setMarginStart(dp(4));
         segments.addView(mSavedTab, savedParams);
         LayoutParams segmentRow = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         segmentRow.topMargin = dp(6);
@@ -387,7 +389,7 @@ public final class SessionsDrawerView extends LinearLayout
 
     private void buildLiveRows() {
         for (SessionBrowserModel.Session session : mSessions) {
-            mRows.addView(buildSessionRow(session), rowParams(ROW_HEIGHT_DP));
+            mRows.addView(buildSessionRow(session), rowParams());
             if (rowState(session.id) != RowState.IDLE) {
                 mRows.addView(unfold(buildRowUnfold(session), session.current),
                     new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
@@ -395,7 +397,7 @@ public final class SessionsDrawerView extends LinearLayout
             if (mExpandedSessionId == null || mExpandedSessionId != session.id) continue;
             for (int i = 0; i < session.windows.size(); i++) {
                 mRows.addView(buildWindowRow(session, session.windows.get(i),
-                    i == session.windows.size() - 1), rowParams(WINDOW_ROW_HEIGHT_DP));
+                    i == session.windows.size() - 1), rowParams());
             }
         }
     }
@@ -404,6 +406,7 @@ public final class SessionsDrawerView extends LinearLayout
     private View buildSessionRow(@NonNull SessionBrowserModel.Session session) {
         boolean unfolded = rowState(session.id) != RowState.IDLE;
         LinearLayout row = baseRow(session.current, unfolded ? CORNERS_TOP : CORNERS_ALL);
+        row.setMinimumHeight(dp(ROW_HEIGHT_DP));
         row.setPaddingRelative(dp(8), dp(2), dp(2), dp(2));
 
         TextView chevron = label(14f, mDress.subTextColor);
@@ -414,17 +417,17 @@ public final class SessionsDrawerView extends LinearLayout
             mExpandedSessionId = expanded ? null : session.id;
             rebuild();
         });
-        row.addView(chevron, new LayoutParams(dp(22), LayoutParams.MATCH_PARENT));
+        row.addView(chevron, glyphParams(chevron, 22));
 
         // The session you are in is the bold one on the filled row; a session with an agent in it
         // wears the agent's colour on its name, so a blocked agent is findable without opening the
         // session it is in. A separate marker for either was a column the narrow drawer cannot spare.
         LinearLayout text = textBlock();
-        TextView title = label(TITLE_SP, agentTint(session));
+        TextView title = twoLines(label(TITLE_SP, agentTint(session)));
         title.setText(NerdFontSpans.span(getContext(), sessionTitle(session)));
         title.setTypeface(Typeface.create("sans-serif-medium",
             session.current ? Typeface.BOLD : Typeface.NORMAL));
-        TextView subtitle = label(COUNTS_SP, mDress.subTextColor);
+        TextView subtitle = twoLines(label(COUNTS_SP, mDress.subTextColor));
         subtitle.setText(counts(session));
         text.addView(title);
         text.addView(subtitle);
@@ -444,7 +447,7 @@ public final class SessionsDrawerView extends LinearLayout
             }
             rebuild();
         });
-        row.addView(more, new LayoutParams(dp(34), LayoutParams.MATCH_PARENT));
+        row.addView(more, glyphParams(more, 34));
 
         row.setContentDescription(sessionTitle(session) + " · " + counts(session));
         row.setOnClickListener(view -> {
@@ -500,6 +503,7 @@ public final class SessionsDrawerView extends LinearLayout
     private View buildWindowRow(@NonNull SessionBrowserModel.Session session,
                                 @NonNull SessionBrowserModel.Window window, boolean last) {
         LinearLayout row = baseRow(false, CORNERS_ALL);
+        row.setMinimumHeight(dp(WINDOW_ROW_HEIGHT_DP));
         row.setPaddingRelative(dp(24), dp(1), dp(6), dp(1));
         TextView connector = label(12f, mDress.subTextColor);
         connector.setText(last ? "└" : "├");
@@ -508,11 +512,11 @@ public final class SessionsDrawerView extends LinearLayout
 
         boolean focused = session.current && window.current;
         LinearLayout text = textBlock();
-        TextView title = label(SUBTITLE_SP + 1.5f, mDress.textColor);
+        TextView title = twoLines(label(SUBTITLE_SP + 1.5f, mDress.textColor));
         title.setText(NerdFontSpans.span(getContext(), windowTitle(window)));
         title.setTypeface(Typeface.create("sans-serif-medium",
             focused ? Typeface.BOLD : Typeface.NORMAL));
-        TextView subtitle = label(COUNTS_SP, mDress.subTextColor);
+        TextView subtitle = twoLines(label(COUNTS_SP, mDress.subTextColor));
         subtitle.setText(getResources().getQuantityString(R.plurals.session_browser_pane_count,
             window.panes.size(), window.panes.size()));
         text.addView(title);
@@ -528,7 +532,7 @@ public final class SessionsDrawerView extends LinearLayout
 
     private void buildSavedRows() {
         for (SavedWorkspace workspace : mSaved) {
-            mRows.addView(buildSavedRow(workspace), rowParams(ROW_HEIGHT_DP));
+            mRows.addView(buildSavedRow(workspace), rowParams());
             if (savedState(workspace.name) == SavedState.IDLE) continue;
             mRows.addView(unfold(buildSavedUnfold(workspace), false),
                 new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
@@ -539,11 +543,12 @@ public final class SessionsDrawerView extends LinearLayout
     private View buildSavedRow(@NonNull SavedWorkspace workspace) {
         boolean unfolded = savedState(workspace.name) != SavedState.IDLE;
         LinearLayout row = baseRow(false, unfolded ? CORNERS_TOP : CORNERS_ALL);
+        row.setMinimumHeight(dp(ROW_HEIGHT_DP));
         row.setPaddingRelative(dp(12), dp(2), dp(2), dp(2));
         LinearLayout text = textBlock();
-        TextView title = label(TITLE_SP, mDress.textColor);
+        TextView title = twoLines(label(TITLE_SP, mDress.textColor));
         title.setText(workspace.name);
-        TextView subtitle = label(COUNTS_SP, mDress.subTextColor);
+        TextView subtitle = twoLines(label(COUNTS_SP, mDress.subTextColor));
         subtitle.setText(savedSubtitle(workspace));
         text.addView(title);
         text.addView(subtitle);
@@ -563,7 +568,7 @@ public final class SessionsDrawerView extends LinearLayout
             }
             rebuild();
         });
-        row.addView(more, new LayoutParams(dp(34), LayoutParams.MATCH_PARENT));
+        row.addView(more, glyphParams(more, 34));
 
         row.setContentDescription(workspace.name + " · " + subtitle.getText());
         row.setOnClickListener(view -> {
@@ -622,10 +627,11 @@ public final class SessionsDrawerView extends LinearLayout
     private void buildSaveFooter() {
         if (!mSaveFieldOpen) {
             TextView entry = label(ACTION_SP, mDress.textColor);
-            entry.setText(R.string.sessions_drawer_save_workspace);
+            twoLines(entry).setText(R.string.sessions_drawer_save_workspace);
             entry.setGravity(Gravity.CENTER_VERTICAL);
             entry.setMinHeight(dp(40));
-            entry.setPaddingRelative(dp(8), 0, dp(8), 0);
+            // Vertical padding only shows once the label wraps; one line still sits in the 40dp.
+            entry.setPaddingRelative(dp(8), dp(TEXT_PADDING_DP), dp(8), dp(TEXT_PADDING_DP));
             entry.setBackground(rowSurface(false, CORNERS_ALL));
             entry.setOnClickListener(view -> {
                 collapseAll();
@@ -813,7 +819,7 @@ public final class SessionsDrawerView extends LinearLayout
                 if (child.getVisibility() == GONE) continue;
                 child.measure(unspecified, unspecified);
                 LayoutParams params = (LayoutParams) child.getLayoutParams();
-                width += child.getMeasuredWidth() + params.leftMargin + params.rightMargin;
+                width += child.getMeasuredWidth() + params.getMarginStart() + params.getMarginEnd();
             }
             return width;
         }
@@ -824,7 +830,7 @@ public final class SessionsDrawerView extends LinearLayout
                 LayoutParams params = (LayoutParams) getChildAt(i).getLayoutParams();
                 params.width = stacked ? LayoutParams.MATCH_PARENT : LayoutParams.WRAP_CONTENT;
                 params.weight = stacked ? 0f : 1f;
-                params.topMargin = stacked && i > 0 ? params.leftMargin : 0;
+                params.topMargin = stacked && i > 0 ? params.getMarginStart() : 0;
             }
         }
     }
@@ -842,15 +848,17 @@ public final class SessionsDrawerView extends LinearLayout
         button.setOnClickListener(view -> action.run());
         LayoutParams params = new LayoutParams(
             LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 1f);
-        params.leftMargin = dp(2);
+        params.setMarginStart(dp(2));
         strip.addView(button, params);
     }
 
     @NonNull
     private View checkBox(int labelRes, boolean checked, @NonNull OnChecked onChecked) {
-        CheckBox box = new CheckBox(getContext());
+        com.google.android.material.checkbox.MaterialCheckBox box =
+            new com.google.android.material.checkbox.MaterialCheckBox(getContext());
         box.setText(labelRes);
-        box.setTextSize(TypedValue.COMPLEX_UNIT_SP, SUBTITLE_SP + 1f);
+        com.termux.app.material.M3.textAppearance(box,
+            com.google.android.material.R.attr.textAppearanceBodyMedium);
         box.setTextColor(mDress.textColor);
         box.setChecked(checked);
         box.setMinHeight(dp(36));
@@ -912,14 +920,42 @@ public final class SessionsDrawerView extends LinearLayout
         LinearLayout text = new LinearLayout(getContext());
         text.setOrientation(VERTICAL);
         text.setGravity(Gravity.CENTER_VERTICAL);
+        // Inside the row's minimum height at 1.0; it keeps wrapped lines off the row's edge.
+        text.setPadding(0, dp(TEXT_PADDING_DP), 0, dp(TEXT_PADDING_DP));
         return text;
     }
 
+    /**
+     * A row's slot in the list. Its height is a minimum the row sets on itself, not a fixed one: at a
+     * large font scale a title on two lines needs more than the 1.0 height.
+     */
     @NonNull
-    private LayoutParams rowParams(int heightDp) {
-        LayoutParams params = new LayoutParams(LayoutParams.MATCH_PARENT, dp(heightDp));
+    private LayoutParams rowParams() {
+        LayoutParams params = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT);
         params.topMargin = dp(2);
         return params;
+    }
+
+    /**
+     * A row's trailing or leading glyph: its 1.0 width as a minimum, so a glyph grown by the font
+     * scale is not cut at the sides.
+     */
+    @NonNull
+    private LayoutParams glyphParams(@NonNull TextView glyph, int minWidthDp) {
+        glyph.setMinWidth(dp(minWidthDp));
+        return new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT);
+    }
+
+    /**
+     * Lets a label take a second line before it ellipsizes. The drawer widens with the font scale
+     * only so far, so past that a name wraps; only one too long for two lines is cut.
+     */
+    @NonNull
+    private TextView twoLines(@NonNull TextView view) {
+        view.setSingleLine(false);
+        view.setMaxLines(2);
+        view.setEllipsize(TextUtils.TruncateAt.END);
+        return view;
     }
 
     @NonNull
@@ -971,7 +1007,7 @@ public final class SessionsDrawerView extends LinearLayout
     private int agentTint(@NonNull SessionBrowserModel.Session session) {
         Context context = getContext();
         if (session.agentState == AgentStatus.State.BLOCKED) {
-            return MaterialColors.getColor(context, com.google.android.material.R.attr.colorError,
+            return MaterialColors.getColor(context, androidx.appcompat.R.attr.colorError,
                 ContextCompat.getColor(context, R.color.termux_error));
         }
         if (session.agentState == AgentStatus.State.WORKING) {

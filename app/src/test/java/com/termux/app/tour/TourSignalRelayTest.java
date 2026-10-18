@@ -510,7 +510,7 @@ public class TourSignalRelayTest {
     }
 
     @Test
-    public void onlyAnEditorThatSavedAPinSaysSo() {
+    public void anEditorClosedWithPinsSaysSo() {
         relay.onPinEditorOpened();
         signals.clear();
         relay.onPinEditorClosed(true, 3);
@@ -519,14 +519,61 @@ public class TourSignalRelayTest {
     }
 
     @Test
-    public void anEditorClosedWithAnEmptyDockOrWithoutSavingSaysNothing() {
+    public void anEditorClosedWithoutSavingOrWithAnEmptyDockStillCompletesTheLesson() {
         relay.onPinEditorOpened();
         signals.clear();
-        // Saved, and left nothing pinned: the lesson is a pinned app.
+        // The hold raised the editor and the user closed it again: the lesson has been had,
+        // pinned apps or not. A card that kept asking read as a tour that would not move on.
         relay.onPinEditorClosed(true, 0);
-        // Opened and closed again, changing nothing.
         relay.onPinEditorClosed(false, 4);
         relay.onPinEditorClosed(false, 0);
-        assertTrue(signals.isEmpty());
+        assertEquals(3, signals.size());
+        for (String signal : signals) assertEquals(TourSignals.PINNED_APPS_SAVED, signal);
+    }
+
+    // The three border lessons: the border drag, the keyboard swipe and the status swipe.
+
+    @Test
+    public void theBorderDragIsAChangeOfPlaceAndAReturnToTheOneTheRunIsTaughtOn() {
+        relay.setHomePlace("TERMINAL");
+        relay.onPlaceSettled("TERMINAL");
+        assertTrue(relay.isOnHomePlace());
+        // Any other place is a change, whichever border the user dragged towards.
+        relay.onPlaceSettled("WIDGETS");
+        assertFalse(relay.isOnHomePlace());
+        relay.onPlaceSettled("DISPLAY");
+        relay.onPlaceSettled("TERMINAL");
+        assertTrue(relay.isOnHomePlace());
+        assertEquals(java.util.Arrays.asList(TourSignals.PLACE_CHANGED, TourSignals.PLACE_CHANGED,
+            TourSignals.PLACE_RETURNED), signals);
+    }
+
+    @Test
+    public void theStatusBarIsReadAsCompactUntilItHasSaidOtherwise() {
+        assertFalse(relay.isStatusBarExpanded());
+        relay.onStatusBarCollapsedSettled(true);
+        assertFalse(relay.isStatusBarExpanded());
+        relay.onStatusBarCollapsedSettled(false);
+        assertTrue(relay.isStatusBarExpanded());
+        relay.onStatusBarCollapsedSettled(true);
+        assertFalse(relay.isStatusBarExpanded());
+    }
+
+    @Test
+    public void theStatusSwipeLessonSeesTheFoldBothWays() {
+        relay.onStatusBarCollapsedSettled(true);
+        relay.onStatusBarCollapsedSettled(false);
+        relay.onStatusBarCollapsedSettled(true);
+        assertEquals(java.util.Arrays.asList(TourSignals.STATUS_BAR_EXPANDED,
+            TourSignals.STATUS_BAR_COLLAPSED), signals);
+    }
+
+    @Test
+    public void theKeyboardSwipeLessonSeesTheKeyboardGoAndComeBack() {
+        relay.onKeyboardShownSettled(true);
+        relay.onKeyboardShownSettled(false);
+        relay.onKeyboardShownSettled(true);
+        assertEquals(java.util.Arrays.asList(TourSignals.KEYBOARD_HIDDEN,
+            TourSignals.KEYBOARD_SHOWN), signals);
     }
 }

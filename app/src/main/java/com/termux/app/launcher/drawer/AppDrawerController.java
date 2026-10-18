@@ -28,7 +28,6 @@ import com.termux.app.SuggestionBarView;
 import com.termux.app.dock.DockLayout;
 import com.termux.app.launcher.data.LauncherAppDataProvider;
 import com.termux.app.launcher.data.LauncherCategoryPendingApps;
-import com.termux.app.launcher.data.LauncherCategorySortState;
 import com.termux.app.notice.AppNotice;
 import com.termux.app.launcher.drawer.AppDrawerTransitionGeometry.Frame;
 import com.termux.app.terminal.ClipboardText;
@@ -324,6 +323,8 @@ public final class AppDrawerController implements Choreographer.FrameCallback,
 
     private boolean mFrameScheduled;
     private long mLastFrameTimeNanos;
+    /** True while {@link #doFrame} runs: a kick from inside it continues the loop and keeps its clock. */
+    private boolean mInFrame;
 
     public AppDrawerController(@NonNull Host host) {
         mHost = host;
@@ -413,6 +414,28 @@ public final class AppDrawerController implements Choreographer.FrameCallback,
         // function of p, so the chain has to be integrated while the finger is moving or the letters
         // would arrive already settled on the frame the finger left the glass.
         kick();
+    }
+
+    /**
+     * Opens the plane without a finger, for a key or a tool: the cold-open half of
+     * {@link #beginDrag} followed by a settle open. Does nothing when the plane is already up.
+     * The caller names the pull and seed the same way the pinned apps row's own drag does.
+     */
+    public void open(@NonNull AppDrawerGestureArbiter.Pull pull,
+                     @NonNull AppDrawerPullGeometry.Seed seed) {
+        if (!bindViews()) return;
+        if (mEngaged || mOpen) return;
+        if (!captureGeometry(pull, seed)) return;
+        mDirection = AppDrawerCommitPolicy.Direction.OPENING;
+        mProgress.reset(0f);
+        prepareOverlay();
+        mDragging = false;
+        mGrabProgress = 0f;
+        mCloseTimeAnim = false;
+        mEngaged = true;
+        mHost.hideSystemKeyboard();
+        applyFrame(0f);
+        settle(true, 0f);
     }
 
     /** Every {@code ACTION_MOVE} of a claimed drag. The plane tracks this 1:1, unsmoothed. */
@@ -645,7 +668,11 @@ public final class AppDrawerController implements Choreographer.FrameCallback,
     private void kick() {
         if (mFrameScheduled) return;
         mFrameScheduled = true;
-        mLastFrameTimeNanos = 0L;
+        // A loop starting from rest has no previous frame to measure against; a re-post from inside
+        // doFrame keeps its clock, or every frame would advance the spring by the minimum step
+        // whatever the frame took — on a slow frame the settle then crawls (a plane springing shut
+        // with the keyboard still pushed off screen), and its own writes keep the frames slow.
+        if (!mInFrame) mLastFrameTimeNanos = 0L;
         Choreographer.getInstance().postFrameCallback(this);
     }
 
@@ -664,6 +691,15 @@ public final class AppDrawerController implements Choreographer.FrameCallback,
 
     @Override
     public void doFrame(long frameTimeNanos) {
+        mInFrame = true;
+        try {
+            doFrameInner(frameTimeNanos);
+        } finally {
+            mInFrame = false;
+        }
+    }
+
+    private void doFrameInner(long frameTimeNanos) {
         mFrameScheduled = false;
         float dt = mLastFrameTimeNanos == 0L
             ? Spring.MIN_DT
@@ -767,23 +803,26 @@ public final class AppDrawerController implements Choreographer.FrameCallback,
      * The categories layout's nudge: apps installed since the last categorization run land in
      * "Other" until it is run again, and past a handful of them the drawer says so once, on the
      * open. Silent for every other layout, for a user who has never run it, and until the count
-     * changes again.
+     * changes again. Counted off the main thread; an answer that arrives after the drawer closed
+     * or left the categories layout is dropped and asked again on the next open.
      */
     private void nudgeCategorizationIfPending() {
         if (mLayoutConfig.viewType != AppDrawerViewType.CATEGORIES) return;
         Context context = mHost.context();
-        if (!new LauncherCategorySortState(context).hasRun()) {
-            mCategoryNudge.reset();
-            return;
-        }
-        int pending = LauncherCategoryPendingApps.count(context,
-            LauncherAppDataProvider.getInstance(context).getAllApps());
-        if (!mCategoryNudge.onDrawerOpened(pending)) return;
-        AppNotice.shell(context,
-            context.getResources().getQuantityString(R.plurals.app_drawer_category_pending_notice,
-                pending, pending),
-            context.getString(R.string.app_drawer_category_pending_notice_hint), null, false,
-            mHost::openAppDrawerSettings);
+        LauncherCategoryPendingApps.countWaitingAsync(context,
+            LauncherAppDataProvider.getInstance(context).getAllApps(), waiting -> {
+                if (waiting == LauncherCategoryPendingApps.NEVER_SORTED) {
+                    mCategoryNudge.reset();
+                    return;
+                }
+                if (!mOpen || mLayoutConfig.viewType != AppDrawerViewType.CATEGORIES) return;
+                if (!mCategoryNudge.onDrawerOpened(waiting)) return;
+                AppNotice.shell(context,
+                    context.getResources().getQuantityString(R.plurals.app_drawer_category_pending_notice,
+                        waiting, waiting),
+                    context.getString(R.string.app_drawer_category_pending_notice_hint), null, false,
+                    mHost::openAppDrawerSettings);
+            });
     }
 
     /**
@@ -1313,7 +1352,7 @@ public final class AppDrawerController implements Choreographer.FrameCallback,
             : preferences.getDockGlassGrain();
         plane.applyGlassMaterial(
             InAppKeyboardPaletteFactory.resolveDockGlassBaseColor(mHost.context()),
-            MaterialColors.getColor(mHost.context(), com.google.android.material.R.attr.colorPrimary,
+            MaterialColors.getColor(mHost.context(), androidx.appcompat.R.attr.colorPrimary,
                 ContextCompat.getColor(mHost.context(), R.color.termux_primary)),
             opacity, grain);
         glass.setVisibility(View.VISIBLE);

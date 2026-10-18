@@ -290,7 +290,7 @@ public class TerminalSheetControllerTest {
         assertEquals(8, card.leftMargin);
         assertEquals(0, card.bottomMargin);
         assertEquals("the terminal's ceiling is what stops a long list", 40, card.topMargin);
-        assertEquals(Gravity.BOTTOM | Gravity.START, card.gravity);
+        assertEquals(Gravity.BOTTOM | Gravity.LEFT, card.gravity);
     }
 
     /** A list panel has no height of its own to wrap, so it takes the terminal's. */
@@ -328,7 +328,7 @@ public class TerminalSheetControllerTest {
         assertEquals("every pane of the split, so it is the terminal's panel and not a pane's",
             520, card.height);
         assertEquals("45% of a 384px area, which bites well before the 340dp cap", 173, card.width);
-        assertEquals(Gravity.TOP | Gravity.START, card.gravity);
+        assertEquals(Gravity.TOP | Gravity.LEFT, card.gravity);
         assertTrue("a drawer travelling its own width has to be cut off by the plane",
             ((ViewGroup) host.findView(R.id.terminal_sheet_stack)).getClipChildren());
     }
@@ -353,6 +353,35 @@ public class TerminalSheetControllerTest {
 
         sheet.dismiss();
         assertEquals("both leave together", 0, stack.getChildCount());
+    }
+
+    /**
+     * The scrim wears the terminal frame's corners, so it never darkens the notches outside the
+     * frame's arcs — and follows the area when it changes size, as it does when the keyboard rises.
+     */
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    public void aDrawerScrimFollowsTheTerminalCorners() {
+        FakeSheetHost host = new FakeSheetHost();
+        host.terminalCornerRadiusPx = 30f;
+        TerminalSheetController sheet = new TerminalSheetController(host);
+
+        sheet.show("", new TextView(host.context()), true, null, null, false,
+            TerminalSheetController.Placement.terminalLeading());
+
+        ViewGroup stack = host.findView(R.id.terminal_sheet_stack);
+        Drawable background = stack.getChildAt(0).getBackground();
+        assertTrue("a shape, not a square colour",
+            background instanceof android.graphics.drawable.GradientDrawable);
+        android.graphics.drawable.GradientDrawable shape =
+            (android.graphics.drawable.GradientDrawable) background;
+        assertEquals("the terminal's own radius", 30f, shape.getCornerRadius(), 0.001f);
+
+        // A short area — the keyboard up over a split — caps the corners the way a pane's are.
+        host.terminalRect.set(8, 40, 392, 100);
+        host.plane.getViewTreeObserver().dispatchOnGlobalLayout();
+        assertEquals(PaneShape.radiusForBounds(30f, 384, 60), shape.getCornerRadius(), 0.001f);
+        assertEquals(20f, shape.getCornerRadius(), 0.001f);
     }
 
     /** In a right-to-left layout the leading edge is the other one, and so is the drawer. */

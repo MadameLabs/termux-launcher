@@ -2,26 +2,17 @@ package com.termux.app.launcher;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
 import android.widget.HorizontalScrollView;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -37,7 +28,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
-import com.google.android.material.color.MaterialColors;
+import com.google.android.material.bottomsheet.BottomSheetDragHandleView;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.checkbox.MaterialCheckBox;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipDrawable;
+import com.google.android.material.shape.MaterialShapeDrawable;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.termux.R;
 import com.termux.app.launcher.data.LauncherAppDataProvider;
 import com.termux.app.launcher.data.LauncherConfigRepository;
@@ -46,6 +44,7 @@ import com.termux.app.launcher.model.LauncherAppEntry;
 import com.termux.app.launcher.model.PinnedAppItem;
 import com.termux.app.launcher.model.PinnedFolderItem;
 import com.termux.app.launcher.model.PinnedItem;
+import com.termux.app.material.M3;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -98,17 +97,20 @@ public final class PinnedAppsEditor {
     private final LauncherUsageStatsStore usageStats;
 
     private final float density;
-    private final int colorPanel;
     private final int colorText;
     private final int colorSubtle;
-    private final int colorOutline;
     private final int colorAccent;
 
     private List<LauncherAppEntry> allApps = new ArrayList<>();
     private final Map<String, LauncherAppEntry> appByStableId = new LinkedHashMap<>();
 
-    private final Set<String> selectedIds = new LinkedHashSet<>();
+    /**
+     * The pins as Done will save them, and the only record of what is pinned: the order list,
+     * the ticks in the apps list and the most-used chips are all drawn from it.
+     */
     private final List<PinnedItem> orderedSelected = new ArrayList<>();
+    /** Redraws the ticks and chips after the order list drops a row; set once the sheet is built. */
+    @Nullable private Runnable refreshChecklist;
 
     private final boolean[] folderMode = new boolean[] {false};
 
@@ -120,11 +122,9 @@ public final class PinnedAppsEditor {
         this.repository = LauncherConfigRepository.getInstance(context);
         this.usageStats = LauncherUsageStatsStore.getInstance(context);
         this.density = context.getResources().getDisplayMetrics().density;
-        this.colorText = MaterialColors.getColor(context, com.termux.shared.R.attr.termuxColorOnSurface, 0xFFECEFF4);
-        this.colorSubtle = MaterialColors.getColor(context, com.termux.shared.R.attr.termuxColorOnSurfaceVariant, 0xFF9AA3B2);
-        this.colorPanel = MaterialColors.getColor(context, com.termux.shared.R.attr.termuxColorSurfacePanelHigh, 0xFF202837);
-        this.colorOutline = MaterialColors.getColor(context, com.termux.shared.R.attr.termuxColorOutlineVariant, 0xFF3A4456);
-        this.colorAccent = MaterialColors.getColor(context, com.termux.shared.R.attr.termuxColorPrimary, 0xFF8AB4F8);
+        this.colorText = M3.onSurface(context);
+        this.colorSubtle = M3.onSurfaceVariant(context);
+        this.colorAccent = M3.primary(context);
     }
 
     /** Builds and shows the editor. Loads the app list (async if needed) before presenting. */
@@ -159,11 +159,11 @@ public final class PinnedAppsEditor {
         for (LauncherAppEntry entry : allApps) {
             appByStableId.put(entry.appRef.stableId(), entry);
         }
-        selectedIds.clear();
         orderedSelected.clear();
+        Set<String> seen = new LinkedHashSet<>();
         for (PinnedItem item : repository.loadPinnedItems()) {
             String stable = stableIdForPinnedItem(item);
-            if (stable == null || !selectedIds.add(stable)) continue;
+            if (stable == null || !seen.add(stable)) continue;
             orderedSelected.add(clonePinnedItem(item));
         }
     }
@@ -175,22 +175,14 @@ public final class PinnedAppsEditor {
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(dp(20), dp(16), dp(20), dp(16));
-        root.setClipToOutline(true);
-        GradientDrawable sheetBg = new GradientDrawable();
-        sheetBg.setCornerRadii(new float[] {
-            dp(28), dp(28), dp(28), dp(28), dp(12), dp(12), dp(12), dp(12)
-        });
-        sheetBg.setColor(withAlpha(colorPanel, 0xFA));
-        sheetBg.setStroke(dp(1), withAlpha(colorOutline, 0x55));
-        root.setBackground(sheetBg);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            root.setElevation(dp(16));
-        }
+        root.addView(new BottomSheetDragHandleView(context), new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        root.addView(textView("Edit pinned apps", 22f, colorText, Typeface.DEFAULT_BOLD, false));
+        root.addView(textView("Edit pinned apps",
+            com.google.android.material.R.attr.textAppearanceHeadlineSmall, colorText, false));
         TextView subtitle = textView(
             "Choose apps, drag to reorder, or create a folder from the selected pins.",
-            13f, colorSubtle, Typeface.DEFAULT, false);
+            com.google.android.material.R.attr.textAppearanceBodyMedium, colorSubtle, false);
         subtitle.setPadding(0, dp(6), 0, dp(16));
         root.addView(subtitle);
 
@@ -203,11 +195,7 @@ public final class PinnedAppsEditor {
         orderedRecycler.setOverScrollMode(View.OVER_SCROLL_NEVER);
         orderedRecycler.setClipToPadding(false);
         orderedRecycler.setPadding(0, dp(4), 0, dp(4));
-        GradientDrawable orderedBg = new GradientDrawable();
-        orderedBg.setCornerRadius(dp(18));
-        orderedBg.setColor(withAlpha(colorPanel, 0xAA));
-        orderedBg.setStroke(dp(1), withAlpha(colorOutline, 0x44));
-        orderedRecycler.setBackground(orderedBg);
+        orderedRecycler.setBackground(listSurface());
         // The list scrolls on its own, like the apps list below it. As a nested-scrolling child it
         // handed the movement it could not use, a pull down at its top, up to the bottom sheet,
         // which read that as a pull to dismiss and closed the editor mid-scroll.
@@ -257,57 +245,49 @@ public final class PinnedAppsEditor {
 
         root.addView(sectionHeader("Apps", dp(18)));
 
-        final EditText searchInput = new EditText(context);
+        final TextInputLayout searchLayout = new TextInputLayout(context);
+        final TextInputEditText searchInput = new TextInputEditText(searchLayout.getContext());
         searchInput.setHint("Search apps");
         searchInput.setSingleLine(true);
-        searchInput.setTextColor(colorText);
-        searchInput.setHintTextColor(colorSubtle);
-        searchInput.setTextSize(15f);
-        searchInput.setMinHeight(dp(48));
-        searchInput.setPadding(dp(14), 0, dp(14), 0);
-        GradientDrawable searchBg = new GradientDrawable();
-        searchBg.setCornerRadius(dp(16));
-        searchBg.setColor(withAlpha(colorPanel, 0xC8));
-        searchBg.setStroke(dp(1), withAlpha(colorOutline, 0x55));
-        searchInput.setBackground(searchBg);
+        searchLayout.addView(searchInput, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         LinearLayout.LayoutParams searchParams = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         searchParams.setMargins(0, 0, 0, dp(10));
-        root.addView(searchInput, searchParams);
+        root.addView(searchLayout, searchParams);
 
         final List<LauncherAppEntry> filtered = new ArrayList<>(allApps);
         final ListView listView = new ListView(context);
         final AppsAdapter appsAdapter = new AppsAdapter(filtered);
         listView.setDivider(null);
         listView.setDividerHeight(0);
-        listView.setSelector(new ColorDrawable(0x00000000));
-        listView.setCacheColorHint(0x00000000);
+        listView.setSelector(android.R.color.transparent);
         listView.setClipToPadding(false);
         listView.setPadding(0, dp(6), 0, dp(6));
-        GradientDrawable listBg = new GradientDrawable();
-        listBg.setCornerRadius(dp(18));
-        listBg.setColor(withAlpha(colorPanel, 0x88));
-        listBg.setStroke(dp(1), withAlpha(colorOutline, 0x33));
-        listView.setBackground(listBg);
+        listView.setBackground(listSurface());
         listView.setAdapter(appsAdapter);
         listView.setOnTouchListener((v, e) -> {
             v.getParent().requestDisallowInterceptTouchEvent(true);
             return false;
         });
+        final Runnable[] refreshAll = new Runnable[1];
         listView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < 0 || position >= filtered.size()) return;
             toggleApp(filtered.get(position));
-            appsAdapter.notifyDataSetChanged();
-            orderAdapter.notifyDataSetChanged();
+            refreshAll[0].run();
         });
         root.addView(listView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(250)));
 
-        // Build most-used chips now that toggle/refresh hooks exist.
-        final Runnable[] refreshAll = new Runnable[1];
-        refreshAll[0] = () -> {
+        // Every change to the pins redraws every view of them. A row removed from the order list
+        // animates out on its own, so it refreshes only the ticks and chips; anything else
+        // rebinds the order list too.
+        refreshChecklist = () -> {
             appsAdapter.notifyDataSetChanged();
-            orderAdapter.notifyDataSetChanged();
             rebuildMostUsedChips(mostUsedRow, mostUsed, refreshAll[0]);
+        };
+        refreshAll[0] = () -> {
+            orderAdapter.notifyDataSetChanged();
+            refreshChecklist.run();
         };
         rebuildMostUsedChips(mostUsedRow, mostUsed, refreshAll[0]);
 
@@ -329,25 +309,20 @@ public final class PinnedAppsEditor {
         buttons.setOrientation(LinearLayout.HORIZONTAL);
         buttons.setGravity(Gravity.CENTER_VERTICAL);
 
-        final ImageButton folderAction = new ImageButton(context);
-        folderAction.setImageResource(R.drawable.ic_create_new_folder_24);
+        final MaterialButton folderAction = new MaterialButton(context, null,
+            com.google.android.material.R.attr.materialIconButtonFilledTonalStyle);
+        folderAction.setIconResource(R.drawable.ic_create_new_folder_24);
         folderAction.setContentDescription("Create folder from selection");
-        folderAction.setColorFilter(colorText);
-        folderAction.setBackgroundColor(0x00000000);
-        GradientDrawable folderActionBg = new GradientDrawable();
-        folderActionBg.setShape(GradientDrawable.OVAL);
-        folderActionBg.setColor(withAlpha(colorPanel, 0xD8));
-        folderActionBg.setStroke(dp(1), withAlpha(colorOutline, 0x55));
-        folderAction.setBackground(folderActionBg);
-        folderAction.setPadding(dp(6), dp(6), dp(6), dp(6));
+        folderAction.setCheckable(true);
 
-        Button cancel = ghostButton("Close");
+        MaterialButton cancel = textButton("Close");
         cancel.setOnClickListener(v -> dialog.dismiss());
-        final Button save = ghostButton("Done");
+        final MaterialButton save = new MaterialButton(context);
+        save.setText("Done");
 
         final Runnable refreshFolderUi = () -> {
             save.setText(folderMode[0] ? "Create" : "Done");
-            folderAction.setAlpha(folderMode[0] ? 1f : 0.6f);
+            folderAction.setChecked(folderMode[0]);
         };
         folderAction.setOnClickListener(v -> {
             folderMode[0] = !folderMode[0];
@@ -361,7 +336,8 @@ public final class PinnedAppsEditor {
             if (onSaved != null) onSaved.run();
         });
 
-        LinearLayout.LayoutParams folderParams = new LinearLayout.LayoutParams(dp(38), dp(38));
+        LinearLayout.LayoutParams folderParams = new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         folderParams.setMargins(0, 0, dp(12), 0);
         buttons.addView(folderAction, folderParams);
         buttons.addView(new View(context), new LinearLayout.LayoutParams(0, 0, 1f));
@@ -386,42 +362,26 @@ public final class PinnedAppsEditor {
         });
         dialog.show();
         if (listener != null) listener.onPinEditorOpened();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(0x00000000));
-            dialog.getWindow().setDimAmount(0.35f);
-        }
     }
 
     private void rebuildMostUsedChips(@NonNull LinearLayout row, @NonNull List<LauncherAppEntry> mostUsed, @NonNull Runnable refreshAll) {
         row.removeAllViews();
         for (LauncherAppEntry entry : mostUsed) {
-            boolean pinned = selectedIds.contains(entry.appRef.stableId());
-            LinearLayout chip = new LinearLayout(context);
-            chip.setOrientation(LinearLayout.VERTICAL);
-            chip.setGravity(Gravity.CENTER_HORIZONTAL);
-            chip.setPadding(dp(10), dp(8), dp(10), dp(8));
-            GradientDrawable chipBg = new GradientDrawable();
-            chipBg.setCornerRadius(dp(16));
-            chipBg.setColor(withAlpha(pinned ? colorAccent : colorPanel, pinned ? 0x44 : 0xAA));
-            chipBg.setStroke(dp(1), withAlpha(pinned ? colorAccent : colorOutline, 0x66));
-            chip.setBackground(chipBg);
-
-            ImageView icon = new ImageView(context);
+            boolean pinned = isPinned(entry);
+            Chip chip = new Chip(context);
+            chip.setChipDrawable(ChipDrawable.createFromAttributes(context, null, 0,
+                com.google.android.material.R.style.Widget_Material3_Chip_Filter));
+            chip.setText(entry.label);
+            chip.setSingleLine(true);
+            chip.setCheckable(true);
+            chip.setChecked(pinned);
+            chip.setCheckedIconVisible(false);
             Drawable chipArtwork = LauncherAppDataProvider.artworkFor(context, entry);
-            if (chipArtwork != null) icon.setImageDrawable(chipArtwork);
-            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(34), dp(34));
-            chip.addView(icon, iconParams);
-
-            TextView label = new TextView(context);
-            label.setText(entry.label);
-            label.setTextColor(colorText);
-            label.setTextSize(11f);
-            label.setSingleLine(true);
-            label.setMaxWidth(dp(64));
-            label.setGravity(Gravity.CENTER);
-            label.setPadding(0, dp(4), 0, 0);
-            chip.addView(label);
-
+            if (chipArtwork != null) {
+                chip.setChipIcon(chipArtwork);
+                chip.setChipIconVisible(true);
+                chip.setChipIconSize(dp(24));
+            }
             chip.setOnClickListener(v -> {
                 toggleApp(entry);
                 refreshAll.run();
@@ -437,23 +397,28 @@ public final class PinnedAppsEditor {
     // ---- selection / persistence ------------------------------------------
 
     private void toggleApp(@NonNull LauncherAppEntry entry) {
-        String stable = entry.appRef.stableId();
-        if (selectedIds.contains(stable)) {
-            selectedIds.remove(stable);
-            removePinnedByStableId(orderedSelected, stable);
+        if (isPinned(entry)) {
+            removePinnedByStableId(orderedSelected, entry.appRef.stableId());
         } else {
-            selectedIds.add(stable);
             orderedSelected.add(new PinnedAppItem(entry.appRef.copy()));
         }
         persistImmediate();
     }
 
     private void removeAt(int pos, @NonNull PinnedOrderAdapter adapter) {
-        String stable = stableIdForPinnedItem(orderedSelected.get(pos));
         orderedSelected.remove(pos);
-        if (stable != null) selectedIds.remove(stable);
         adapter.notifyItemRemoved(pos);
+        if (refreshChecklist != null) refreshChecklist.run();
         persistImmediate();
+    }
+
+    /** Whether the app is one of the pins Done will save — what its tick and chip show. */
+    private boolean isPinned(@NonNull LauncherAppEntry entry) {
+        String stable = entry.appRef.stableId();
+        for (PinnedItem item : orderedSelected) {
+            if (stable.equals(stableIdForPinnedItem(item))) return true;
+        }
+        return false;
     }
 
     private void persistImmediate() {
@@ -494,7 +459,7 @@ public final class PinnedAppsEditor {
     private List<LauncherAppEntry> computeMostUsed() {
         List<LauncherAppEntry> candidates = new ArrayList<>();
         for (LauncherAppEntry entry : allApps) {
-            if (!selectedIds.contains(entry.appRef.stableId())) candidates.add(entry);
+            if (!isPinned(entry)) candidates.add(entry);
         }
         List<LauncherAppEntry> ranked = usageStats.rankForAz(candidates);
         if (ranked.size() > MOST_USED_COUNT) {
@@ -534,14 +499,15 @@ public final class PinnedAppsEditor {
             LauncherAppEntry entry = items.get(position);
             ImageView icon = (ImageView) row.getChildAt(0);
             TextView label = (TextView) row.getChildAt(1);
-            CheckBox check = (CheckBox) row.getChildAt(2);
+            MaterialCheckBox check = (MaterialCheckBox) row.getChildAt(2);
             icon.setImageDrawable(LauncherAppDataProvider.artworkFor(context, entry));
             label.setText(entry.label);
-            check.setChecked(selectedIds.contains(entry.appRef.stableId()));
-            GradientDrawable bg = new GradientDrawable();
-            bg.setCornerRadius(dp(14));
-            bg.setColor(check.isChecked() ? withAlpha(colorAccent, 0x22) : 0x00000000);
-            row.setBackground(bg);
+            check.setChecked(isPinned(entry));
+            row.setBackground(check.isChecked() ? M3.surface(context,
+                com.google.android.material.R.attr.shapeAppearanceCornerMedium,
+                M3.color(context, com.google.android.material.R.attr.colorSecondaryContainer,
+                    com.google.android.material.R.color.m3_sys_color_dark_secondary_container))
+                : null);
             return row;
         }
 
@@ -554,15 +520,14 @@ public final class PinnedAppsEditor {
             ImageView icon = new ImageView(context);
             row.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
             TextView label = new TextView(context);
+            M3.textAppearance(label, com.google.android.material.R.attr.textAppearanceBodyLarge);
             label.setTextColor(colorText);
-            label.setTextSize(15f);
             label.setSingleLine(true);
-            label.setPadding(dp(14), 0, dp(8), 0);
+            label.setPaddingRelative(dp(14), 0, dp(8), 0);
             row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-            CheckBox check = new CheckBox(context);
+            MaterialCheckBox check = new MaterialCheckBox(context);
             check.setClickable(false);
             check.setFocusable(false);
-            check.setButtonTintList(ColorStateList.valueOf(colorAccent));
             row.addView(check, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             return row;
         }
@@ -576,14 +541,14 @@ public final class PinnedAppsEditor {
             final ImageView dragHandle;
             final ImageView icon;
             final TextView label;
-            final ImageButton delete;
+            final MaterialButton delete;
 
             Holder(@NonNull LinearLayout row) {
                 super(row);
                 dragHandle = (ImageView) row.getChildAt(0);
                 icon = (ImageView) row.getChildAt(1);
                 label = (TextView) row.getChildAt(2);
-                delete = (ImageButton) row.getChildAt(3);
+                delete = (MaterialButton) row.getChildAt(3);
             }
         }
 
@@ -609,17 +574,19 @@ public final class PinnedAppsEditor {
             row.addView(icon, iconParams);
 
             TextView label = new TextView(context);
+            M3.textAppearance(label, com.google.android.material.R.attr.textAppearanceBodyLarge);
             label.setTextColor(colorText);
-            label.setTextSize(15f);
             label.setSingleLine(true);
-            label.setPadding(dp(12), 0, dp(8), 0);
+            label.setPaddingRelative(dp(12), 0, dp(8), 0);
             row.addView(label, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-            ImageButton delete = new ImageButton(context);
-            delete.setImageResource(R.drawable.ic_delete_sweep_24);
-            delete.setColorFilter(colorSubtle);
-            delete.setBackgroundColor(0x00000000);
-            row.addView(delete, new LinearLayout.LayoutParams(dp(32), dp(32)));
+            MaterialButton delete = new MaterialButton(context, null,
+                com.google.android.material.R.attr.materialIconButtonStyle);
+            delete.setIconResource(R.drawable.ic_delete_sweep_24);
+            delete.setIconTint(ColorStateList.valueOf(colorSubtle));
+            delete.setContentDescription("Remove from pinned apps");
+            row.addView(delete, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
             return new Holder(row);
         }
@@ -680,38 +647,39 @@ public final class PinnedAppsEditor {
     }
 
     private TextView sectionHeader(@NonNull String text, int topPad) {
-        TextView header = textView(text, 13f, colorText, Typeface.DEFAULT_BOLD, true);
-        header.setLetterSpacing(0.08f);
+        TextView header = textView(text,
+            com.google.android.material.R.attr.textAppearanceTitleSmall, colorText, true);
         header.setPadding(0, topPad, 0, dp(8));
         return header;
     }
 
-    private TextView textView(@NonNull String text, float sizeSp, int color, @NonNull Typeface typeface, boolean allCaps) {
+    private TextView textView(@NonNull String text, int textAppearanceAttr, int color,
+                              boolean allCaps) {
         TextView tv = new TextView(context);
         tv.setText(text);
+        M3.textAppearance(tv, textAppearanceAttr);
         tv.setTextColor(color);
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeSp);
-        tv.setTypeface(typeface);
         tv.setAllCaps(allCaps);
-        tv.setIncludeFontPadding(false);
         return tv;
     }
 
-    private Button ghostButton(@NonNull String text) {
-        Button button = new Button(context);
+    /** The grouped-list surface the pinned order and the apps list sit on. */
+    @NonNull
+    private MaterialShapeDrawable listSurface() {
+        return M3.surface(context, com.google.android.material.R.attr.shapeAppearanceCornerLarge,
+            M3.surfaceContainer(context));
+    }
+
+    @NonNull
+    private MaterialButton textButton(@NonNull String text) {
+        MaterialButton button = new MaterialButton(context, null,
+            androidx.appcompat.R.attr.borderlessButtonStyle);
         button.setText(text);
-        button.setAllCaps(false);
-        button.setTextColor(colorAccent);
-        button.setBackgroundColor(0x00000000);
         return button;
     }
 
     private int dp(int value) {
         return Math.round(value * density);
-    }
-
-    private static int withAlpha(int color, int alpha) {
-        return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
     @Nullable
