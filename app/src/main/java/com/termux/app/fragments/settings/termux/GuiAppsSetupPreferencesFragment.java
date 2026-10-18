@@ -94,7 +94,7 @@ public final class GuiAppsSetupPreferencesFragment extends MaterialPreferenceFra
         setPreferencesFromResource(R.xml.gui_apps_setup_preferences, rootKey);
         SettingsLayoutUtils.applyScreenLayout(this);
 
-        TourEdition edition = TourEdition.of(context.getPackageName());
+        TourEdition edition = TourEdition.running(context);
         List<GuiAppsSetup.Route> routes = GuiAppsSetup.routesFor(edition);
         SegmentedPillPreference route = findPreference(KEY_ROUTE);
         if (routes.isEmpty()) {
@@ -316,7 +316,7 @@ public final class GuiAppsSetupPreferencesFragment extends MaterialPreferenceFra
     @Nullable
     String command() {
         Context context = getContext();
-        TourEdition edition = TourEdition.of(context == null ? null : context.getPackageName());
+        TourEdition edition = TourEdition.running(context);
         SegmentedPillPreference route = findPreference(KEY_ROUTE);
         GuiAppsSetup.Route resolvedRoute = routeFromKey(route == null ? null : route.getValue());
         if (resolvedRoute == null) resolvedRoute = GuiAppsSetup.defaultRoute(edition);

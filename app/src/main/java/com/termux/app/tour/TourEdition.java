@@ -1,10 +1,15 @@
 package com.termux.app.tour;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.BuildConfig;
+
 /**
- * Which of the three shipped editions is running, as far as the closing card has to care.
+ * Which of the three shipped editions is running, as far as the screens that print install
+ * commands have to care.
  *
  * <p>The package name identifies the shipped editions. A Nix build installed as com.termux also
  * needs its package variant, since its application ID matches the regular Termux edition.
@@ -21,12 +26,13 @@ public enum TourEdition {
     public static final String NIX_PACKAGE_NAME = "com.termux.launcher.nix";
     public static final String VAJ_PACKAGE_NAME = "io.vaj.tl";
 
-    /** The edition that ships under {@code packageName}; anything unknown is treated as Termux. */
+    /** The edition this build is: its own package name and the bootstrap variant it was built with. */
     @NonNull
-    public static TourEdition of(@Nullable String packageName) {
-        return of(packageName, null);
+    public static TourEdition running(@Nullable Context context) {
+        return of(context == null ? null : context.getPackageName(), BuildConfig.TERMUX_PACKAGE_VARIANT);
     }
 
+    /** The edition for {@code packageName} built with {@code packageVariant}; anything unknown is Termux. */
     @NonNull
     public static TourEdition of(@Nullable String packageName, @Nullable String packageVariant) {
         if ("nix".equals(packageVariant)) return NIX;

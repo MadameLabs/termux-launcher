@@ -729,7 +729,7 @@ public final class X11PaneFrame extends PaneContentFrame implements SurfacePage 
      */
     private void applyEmptyState() {
         DisplayEmptyStatePolicy.State state = DisplayEmptyStatePolicy.decide(mEnabled,
-            X11CliInstaller.hasKeyboardData(), TourEdition.of(getContext().getPackageName()));
+            X11CliInstaller.hasKeyboardData(), TourEdition.running(getContext()));
         View message = findViewById(R.id.x11_pane_empty_message);
         if (message instanceof android.widget.TextView) {
             ((android.widget.TextView) message).setText(state.messageRes);
@@ -797,7 +797,7 @@ public final class X11PaneFrame extends PaneContentFrame implements SurfacePage 
     private void installKeyboardData() {
         if (mHost == null) return;
         java.util.List<String> command =
-            KeyboardDataInstall.command(TourEdition.of(getContext().getPackageName()));
+            KeyboardDataInstall.command(TourEdition.running(getContext()));
         if (command != null) mHost.installKeyboardData(command);
     }
 
