@@ -427,6 +427,13 @@ the pill's pause, the silence timeout). What is said collects in the panel as he
 while the user speaks.
 _Avoid_: voice typing (the Android recognizer's path), voice session
 
+**Groq dictation** *(MadameLabs fork only)*:
+The fork's dictation through Groq, on the Android-recognizer path: with **Speech engine** on
+**Android system** and a Groq key set, the voice key and the Dictate key record, transcribe on Groq
+and optionally apply a mode (Correct, Shorten, Emoji, Terminal) before writing the text into the
+session it started from. It has its own panel, not the pill. See `docs/en/Voice_Dictation.md`.
+_Avoid_: voice post-processing (the setting's name, not the feature's), cleanup (the on-device pass)
+
 **Insert**:
 ✓: the dictation typed once where the keyboard would type on the place on screen, never with an
 Enter. Where nothing takes typing, it copies instead.

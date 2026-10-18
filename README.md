@@ -8,6 +8,23 @@
   <a href="https://github.com/PickleHik3/termux-launcher/releases">Releases</a>
 </p>
 
+> [!WARNING]
+> **This is the Madame Labs fork** of [PickleHik3/termux-launcher](https://github.com/PickleHik3/termux-launcher),
+> based on its Nix edition and built to install as **`com.termux`** with the Nix bootstrap — a
+> combination upstream does not ship. It adds Groq voice dictation with post-processing
+> ([docs](docs/en/Voice_Dictation.md)), a command input row under the extra keys, Back to lower
+> the built-in keyboard, and HyperOS fixes for the keyboard and full screen. There are no
+> releases here; build it yourself:
+>
+> ```sh
+> TERMUX_APP_PACKAGE_NAME=com.termux TERMUX_PACKAGE_VARIANT=nix ./gradlew :app:assembleDebug
+> ```
+>
+> The APK is signed with the repository's shared test key, so it cannot update a `com.termux`
+> from Google Play or F-Droid: that app must be uninstalled first, which deletes its home
+> directory. Report problems with this fork [here](https://github.com/MadameLabs/termux-launcher/issues),
+> not upstream. The rest of this README is upstream's.
+
 > [!NOTE]
 > This project is entirely vibe-coded. I daily-drive it, but if you have Android or
 > app-security experience, a review would be very welcome. Please open an issue or discussion.
