@@ -1710,26 +1710,31 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
             TERMUX_APP.KEY_IN_APP_KEYBOARD_TAP_CORRECTION, value, false);
     }
 
-    /** {@code system} or {@code on_device}; anything else stored reads as the default. */
+    /** {@code system}, {@code on_device} or {@code groq}; anything else stored reads as the default. */
     public String getInAppKeyboardVoiceEngine() {
-        String value = SharedPreferenceUtils.getString(mSharedPreferences,
+        return normalizeVoiceEngine(SharedPreferenceUtils.getString(mSharedPreferences,
             TERMUX_APP.KEY_IN_APP_KEYBOARD_VOICE_ENGINE,
-            TERMUX_APP.DEFAULT_IN_APP_KEYBOARD_VOICE_ENGINE, true);
-        return TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE.equals(value)
-            ? TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE
-            : TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_SYSTEM;
+            TERMUX_APP.DEFAULT_IN_APP_KEYBOARD_VOICE_ENGINE, true));
     }
 
     public void setInAppKeyboardVoiceEngine(String value) {
-        String engine = TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE.equals(value)
-            ? TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE
-            : TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_SYSTEM;
         SharedPreferenceUtils.setString(mSharedPreferences,
-            TERMUX_APP.KEY_IN_APP_KEYBOARD_VOICE_ENGINE, engine, false);
+            TERMUX_APP.KEY_IN_APP_KEYBOARD_VOICE_ENGINE, normalizeVoiceEngine(value), false);
+    }
+
+    private static String normalizeVoiceEngine(String value) {
+        if (TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE.equals(value)) return TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE;
+        if (TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_GROQ.equals(value)) return TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_GROQ;
+        return TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_SYSTEM;
     }
 
     public boolean isInAppKeyboardVoiceOnDevice() {
         return TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE.equals(getInAppKeyboardVoiceEngine());
+    }
+
+    /** Groq's Whisper in the voice card, in place of an on-device speech model. */
+    public boolean isInAppKeyboardVoiceGroq() {
+        return TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_GROQ.equals(getInAppKeyboardVoiceEngine());
     }
 
     /** Whether the speech engine was ever picked; unpicked, the app goes on-device once a speech model is installed. */

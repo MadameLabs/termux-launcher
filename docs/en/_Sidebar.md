@@ -41,7 +41,6 @@
 - [On-device AI](On_Device_AI.md)
 - [On-device AI models](On_Device_AI_Models.md)
 - [Voice input](Voice_Input.md)
-- [Voice dictation (Groq)](Voice_Dictation.md)
 - [Text to speech](Text_To_Speech.md)
 - [tlstore](Tlstore.md)
 - [Permissions and Shizuku](Shizuku.md)

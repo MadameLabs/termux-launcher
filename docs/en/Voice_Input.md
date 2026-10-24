@@ -4,11 +4,13 @@ Voice input turns speech into text on the phone. What you say collects in a smal
 right until you move it; nothing is typed while you speak. When you stop, you decide what happens to
 the text: type it once at the cursor, copy it, or throw it away.
 
-There are two engines, chosen in **Settings → Keyboard → Voice input → Speech engine**.
+There are three engines, chosen in **Settings → Keyboard → Voice input → Speech engine**.
 **On-device** runs a speech model you download (Whisper or Parakeet) in the launcher's own AI
-runtime, and the audio never leaves the phone. **Android system** hands the microphone to the
-phone's own recognizer, which types its result straight away. Until you choose, the launcher uses
-**Android system** and switches to **On-device** by itself once a speech model is installed.
+runtime, and the audio never leaves the phone. **Groq** (this fork only) uses the same card, but
+each phrase is transcribed by Groq's Whisper; see [Groq](#groq). **Android system** hands the
+microphone to the phone's own recognizer, which types its result straight away. Until you choose,
+the launcher uses **Android system** and switches to **On-device** by itself once a speech model
+is installed.
 
 ## Quick start
 
@@ -31,8 +33,8 @@ phone's own recognizer, which types its result straight away. Until you choose, 
 - **The Android recognizer.** With **Speech engine** set to **Android system**, both keys open the
   phone's recognizer and its result is typed directly, without the card. The on-device engine also
   falls back to it, with a one-line notice, when it cannot start: no speech model, the microphone
-  refused, or the runtime refusing the model. With a Groq key set up, the recognizer's place is
-  taken by [Groq dictation](Voice_Dictation.md).
+  refused, or the runtime refusing the model. The Groq engine falls back the same way when Groq is
+  not set up as the remote model.
 
 Leaving the app stops listening. The text heard so far stays in the card.
 
@@ -177,6 +179,29 @@ whether cleanup is on or off. The strip says **Cleaned up** and **Undo** takes i
   dictation. Until it is sure, it uses your keyboard layout's language, then your phone's. When it
   hears a language other than those, the card names it beside Listening. Parakeet detects the
   language itself.
+
+## Groq
+
+*This fork only.* With **Speech engine** on **Groq**, nothing is downloaded: each phrase the card
+cuts at a pause is sent to Groq's `whisper-large-v3-turbo` as it ends, so the card fills while you
+talk, as with an on-device model. Everything after transcription is the same: the card, cleanup,
+spoken commands, **Insert** and **Copy**.
+
+1. Open **Settings → On-device AI → Remote model**, choose **Groq** and paste a
+   [Groq API key](https://console.groq.com/keys). That one key serves dictation and, when you pick
+   the remote model for it, cleanup.
+2. Set **Speech engine** to **Groq**. Choosing it before the key is stored opens the Remote model
+   screen instead.
+
+- **Voice language** works as for multilingual Whisper: a language you choose is sent with every
+  phrase; **Auto-detect** lets Groq name the language of the first phrase and keeps it.
+- Phrases are cut at the **Phrase pause** and at most every 30 s. Each phrase is one request, and
+  Groq bills a request as at least 10 s of audio, so short phrases spend more of a free plan's
+  allowance than their length.
+- Your audio leaves the phone for Groq, phrase by phrase. The recording is never kept: each
+  phrase's file is deleted once it is sent.
+- When Groq refuses (a rejected key, a rate limit) or cannot be reached, the dictation stops and
+  the card names the reason; text already heard stays in the card.
 
 ## Listening settings
 

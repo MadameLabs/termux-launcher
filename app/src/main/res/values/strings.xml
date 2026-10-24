@@ -2315,80 +2315,13 @@
     <string name="voice_typing_chooser_title">Choose speech recognizer</string>
     <string name="voice_typing_unavailable">Speech recognition unavailable</string>
 
-    <!-- Voice dictation with post-processing. Error strings name a category and never echo the
-         transcript, the request or the key. -->
-    <string name="voice_dictation_title">Voice dictation</string>
-    <string name="voice_mode_correction">Correct</string>
-    <string name="voice_mode_shorten">Shorten</string>
-    <string name="voice_mode_emoji">Emoji</string>
-    <string name="voice_mode_terminal">Terminal</string>
-    <string name="voice_action_record">Record</string>
-    <string name="voice_action_stop">Stop</string>
-    <string name="voice_action_stop_and_send">Stop &amp; send</string>
-    <string name="voice_action_cancel">Cancel</string>
-    <string name="voice_state_ready">Ready to record</string>
-    <string name="voice_state_recording">Recording…</string>
-    <string name="voice_state_transcribing">Transcribing…</string>
-    <string name="voice_state_post_processing">Applying the selected mode…</string>
-    <string name="voice_state_delivering">Inserting…</string>
-    <string name="voice_hint_target">The text goes to the session that was active when you started.</string>
-    <string name="voice_warning_post_processing">Transformation failed; the raw transcript was inserted</string>
-    <string name="voice_error_microphone">Microphone unavailable or permission denied</string>
-    <string name="voice_error_no_audio">Nothing was recorded</string>
-    <string name="voice_error_missing_key">Set a Groq key in voice settings first</string>
-    <string name="voice_error_credential">The Groq key was rejected</string>
-    <string name="voice_error_rate_limit">Groq rate limit or quota reached</string>
-    <string name="voice_error_network">No connection to the transcription service</string>
-    <string name="voice_error_service">The transcription service could not answer</string>
-    <string name="voice_error_empty_transcript">Nothing was understood in the recording</string>
-    <string name="voice_error_session_gone">The original session is gone; nothing was inserted</string>
-
-    <string name="voice_preferences_title">Voice and post-processing</string>
-    <string name="voice_preferences_summary">Dictate with Groq and transform the text before it reaches the prompt</string>
-    <string name="voice_settings_enabled_title">Enable voice post-processing</string>
-    <string name="voice_settings_enabled_summary">Replaces the system recognizer with Groq dictation and shows the mode chips</string>
-    <string name="voice_settings_credentials_header">Groq credentials</string>
-    <string name="voice_settings_api_key_title">Groq API key</string>
-    <string name="voice_settings_api_key_summary_set">A key is stored (Android Keystore)</string>
-    <string name="voice_settings_api_key_summary_unset">No key stored</string>
-    <string name="voice_settings_api_key_saved">Key stored</string>
-    <string name="voice_settings_api_key_cleared">Key removed</string>
-    <string name="voice_settings_models_header">Models</string>
-    <string name="voice_settings_text_model_title">Text model</string>
-    <string name="voice_settings_speech_model_title">Speech model</string>
-    <string name="voice_settings_language_title">Dictation language</string>
-    <string name="voice_settings_temperature_title">Creativity (0–1)</string>
-    <string name="voice_settings_prompts_header">Prompts</string>
-    <string name="voice_settings_correction_prompt_title">Correction prompt</string>
-    <string name="voice_settings_shorten_prompt_title">Shortening prompt</string>
-    <string name="voice_settings_emoji_prompt_title">Emoji prompt</string>
-    <string name="voice_settings_terminal_prompt_title">Terminal prompt</string>
-    <string name="voice_settings_output_prompt_title">Output instruction</string>
-    <string name="voice_settings_modes_header">Modes and vocabulary</string>
-    <string name="voice_settings_show_terminal_title">Show terminal mode</string>
-    <string name="voice_settings_show_terminal_summary">Turns a spoken intent into command text; it never runs it</string>
-    <string name="voice_settings_vocabulary_title">Custom vocabulary</string>
-    <string name="voice_settings_vocabulary_summary">One term per line. Spelling reference only: a term that was not spoken is never inserted.</string>
-
-    <!--
-      Default post-processing prompts. They are instructions sent to a language model, not UI
-      labels, and they are localized on purpose: the instruction and the dictation should speak
-      the same language, or the model drifts toward the language it was instructed in.
-      Every one of them is overridable in the settings screen; a blank field falls back here.
-      The emoji prompt must never claim the wording cannot change — it also runs alongside
-      correction and shortening, which exist precisely to change it.
-    -->
-    <string name="voice_default_correction_prompt">Correct the transcript: remove hesitations, repetitions and false starts, and fix punctuation and spelling. Preserve the original meaning, language and tone. Do not add or remove information.</string>
-    <string name="voice_default_shorten_prompt">Rewrite the transcript with fewer words, keeping every fact and the original language. Cut wording, never content: nothing that was said may disappear.</string>
-    <string name="voice_default_emoji_prompt">Also add fitting emoji, sparingly and only where they help reading. Never use an emoji in place of a word, and never add one to convey something that was not said.</string>
-    <string name="voice_default_terminal_prompt">Turn the described intent into a single POSIX shell command line for Android/Termux. Answer with the command alone: no backticks, no code block, no explanation, no comment. If the intent does not describe a command, repeat the received text unchanged.</string>
-    <string name="voice_default_output_prompt">Answer with the final text to be inserted and nothing else: no prefix, no quotes, no markup, and no remark about the task.</string>
-
     <!-- On-device voice input from the in-app keyboard's voice key (Whisper in the TAI runtime) -->
     <string name="settings_keyboard_voice_header">Voice input</string>
     <string name="settings_keyboard_voice_engine_title">Speech engine</string>
     <string name="settings_keyboard_voice_engine_system">Android system</string>
     <string name="settings_keyboard_voice_engine_on_device">On-device</string>
+    <!-- A provider's name: not translated. -->
+    <string name="settings_keyboard_voice_engine_groq" translatable="false">Groq</string>
     <string name="settings_keyboard_voice_language_title">Voice language</string>
     <string name="settings_keyboard_voice_language_auto">Auto-detect</string>
     <string name="settings_keyboard_voice_polish_title">Clean up dictation</string>
@@ -2495,6 +2428,7 @@
     <string name="read_aloud_stop">Stop reading</string>
     <string name="read_aloud_voice">Voice: %1$s. Choose another</string>
     <string name="voice_input_no_model">No speech model installed — using the Android recognizer</string>
+    <string name="voice_input_groq_not_ready">Groq is not set up as the remote model — using the Android recognizer</string>
     <string name="voice_input_fallback">%1$s — using the Android recognizer</string>
     <string name="voice_input_stopped">Voice input stopped: %1$s</string>
     <string name="voice_input_runtime_closed">the speech model closed</string>

@@ -11,8 +11,8 @@
 > [!WARNING]
 > **This is the Madame Labs fork** of [PickleHik3/termux-launcher](https://github.com/PickleHik3/termux-launcher),
 > based on its Nix edition and built to install as **`com.termux`** with the Nix bootstrap — a
-> combination upstream does not ship. It adds Groq voice dictation with post-processing
-> ([docs](docs/en/Voice_Dictation.md)), a command input row under the extra keys, Back to lower
+> combination upstream does not ship. It adds Groq as a speech engine for the voice card
+> ([docs](docs/en/Voice_Input.md#groq)), a command input row under the extra keys, Back to lower
 > the built-in keyboard, and HyperOS fixes for the keyboard and full screen. There are no
 > releases here; build it yourself:
 >

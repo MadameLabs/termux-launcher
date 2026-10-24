@@ -2614,6 +2614,7 @@ public final class TaiManager {
     @NonNull
     public JSONObject transcribe(@NonNull String body, long timeoutMs) throws JSONException {
         JSONObject request = parseBody(body);
+        if (GroqTranscriber.isModelId(request.optString("model", ""))) return transcribeWithGroq(request, timeoutMs);
         TaiModelSpec spec = resolveSpeechModel(request);
         if (spec == null) return speechModelError(request);
         String path = request.optString("file", "").trim();
@@ -2657,10 +2658,36 @@ public final class TaiManager {
         }
     }
 
+    /**
+     * The Groq speech engine's phrase ({@link GroqTranscriber}): sent from the app process, with no
+     * speech model, residency or runtime process involved. The upload is deleted as the on-device
+     * path deletes it; a script's own file is left alone.
+     */
+    @NonNull
+    private JSONObject transcribeWithGroq(@NonNull JSONObject request, long timeoutMs) throws JSONException {
+        String path = request.optString("file", "").trim();
+        if (path.isEmpty()) return openAiRequestError(400, "stt_audio_missing", "Provide the audio as multipart 'file' or a 'file' path.", "file");
+        File audio = new File(path);
+        try {
+            GroqTranscriber groq = GroqTranscriber.fromSettings(appContext);
+            if (groq == null) return GroqTranscriber.notConfigured();
+            return groq.transcribe(audio, stringOverride(request, "language"), biasPromptFor(request), timeoutMs);
+        } finally {
+            if (isSttIpcFile(audio)) {
+                //noinspection ResultOfMethodCallIgnored
+                audio.delete();
+            }
+        }
+    }
+
     /** Loads the speech model ahead of its first request, so the load overlaps the first words spoken. */
     @NonNull
     public JSONObject sttWarm(@NonNull String body) throws JSONException {
         JSONObject request = parseBody(body);
+        if (GroqTranscriber.isModelId(request.optString("model", ""))) {
+            // Nothing to load: only whether there is a key to send with the first phrase.
+            return GroqTranscriber.isReady(appContext) ? new JSONObject().put("ok", true) : GroqTranscriber.notConfigured();
+        }
         TaiModelSpec spec = resolveSpeechModel(request);
         if (spec == null) return speechModelError(request);
         if (shouldDelegateRuntime()) return runtimeRequest(TaiRuntimeIpc.OP_STT_WARM, delegatedSpeechBody(request, spec));

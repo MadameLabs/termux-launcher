@@ -167,6 +167,12 @@ public class KeyboardPreferencesFragment extends MaterialPreferenceFragment {
                     openSpeechModelSettings(context);
                     return false;
                 }
+                // Groq dictates with the remote model's Groq key; without it, that screen opens.
+                if (TermuxPreferenceConstants.TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_GROQ.equals(newValue)
+                    && !com.termux.ai.GroqTranscriber.isReady(context)) {
+                    openRemoteModelSettings();
+                    return false;
+                }
                 return true;
             });
         }
@@ -198,6 +204,13 @@ public class KeyboardPreferencesFragment extends MaterialPreferenceFragment {
             ((com.termux.app.activities.SettingsActivity) getActivity()).openScreen(
                 SpeechModelPreferencesFragment.class,
                 R.string.settings_keyboard_voice_model_title, null);
+        }
+    }
+
+    private void openRemoteModelSettings() {
+        if (getActivity() instanceof com.termux.app.activities.SettingsActivity) {
+            ((com.termux.app.activities.SettingsActivity) getActivity()).openScreen(
+                TaiRemotePreferencesFragment.class, R.string.tai_remote_screen_title, null);
         }
     }
 

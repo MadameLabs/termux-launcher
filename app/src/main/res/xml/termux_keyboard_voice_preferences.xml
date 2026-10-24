@@ -9,12 +9,6 @@
             app:entries="@array/settings_keyboard_voice_engine_entries"
             app:entryValues="@array/settings_keyboard_voice_engine_values"
             app:defaultValue="system" />
-        <Preference
-            app:key="voice_post_processing"
-            app:persistent="false"
-            app:title="@string/voice_preferences_title"
-            app:summary="@string/voice_preferences_summary"
-            app:fragment="com.termux.app.fragments.settings.termux.VoicePreferencesFragment" />
         <ListPreference
             app:key="keyboard_voice_language"
             app:title="@string/settings_keyboard_voice_language_title"

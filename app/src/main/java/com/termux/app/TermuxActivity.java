@@ -849,10 +849,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private boolean mVoiceMicrophonePromptShowing;
     /** Whether the microphone was asked for from the voice key rather than the Dictate key. */
     private boolean mVoiceMicrophoneAskedFromKeyboard;
-    /** The Groq dictation path's microphone prompt; apart from the on-device one above. */
-    private static final int REQUEST_CODE_VOICE_MICROPHONE = 4720;
-    /** Built on the first voice gesture: the Groq dictation path with its post-processing modes. */
-    @Nullable private com.termux.app.voice.VoiceDictationController mVoiceDictationController;
     /** Visible sessions = service sessions minus secondary panes. Backs the window bar and browser. */
     private final java.util.List<com.termux.shared.termux.shell.command.runner.terminal.TermuxSession> mDrawerSessions = new java.util.ArrayList<>();
 
@@ -8951,8 +8947,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mBackgroundProcessHandler.removeCallbacks(mBackgroundProcessResync);
         mStatusCardHost.dismiss();
         mKeybindHintPresenter.hideNow(false);
-        // A recording must not keep the microphone open behind a backgrounded launcher.
-        if (mVoiceDictationController != null) mVoiceDictationController.onActivityStopped();
         if (mStatsController != null) mStatsController.stop();
         if (mAiIndicatorController != null) mAiIndicatorController.stop();
         PrivilegedBackendManager.getInstance().removeAvailabilityListener(mPrivilegedAvailabilityListener);
@@ -9085,10 +9079,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // with the Activity rather than outlive it.
         com.termux.app.terminal.TerminalKeyInspector.close();
         mChrome.onDestroy();
-        if (mVoiceDictationController != null) {
-            mVoiceDictationController.shutdown();
-            mVoiceDictationController = null;
-        }
         unregisterPreferredHomeChangeReceiver();
         cancelVoiceInput();
         if (mIsInvalidState)
@@ -16700,44 +16690,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
     }
 
-    /**
-     * The voice gesture, routed to whichever dictation path is configured.
-     *
-     * <p>With Groq voice set up, the swipe records straight away and the long press opens the mode
-     * panel first. Without it, both keep the original behaviour of handing the job to a platform
-     * speech recogniser — an unconfigured feature must not take the gesture away.
-     */
     private void launchVoiceTyping(boolean chooser) {
-        com.termux.app.voice.VoiceDictationController controller = voiceDictationController();
-        if (controller.isConfigured()) {
-            controller.onVoiceGesture(chooser);
-            return;
-        }
-        launchPlatformVoiceTyping(chooser);
-    }
-
-    @NonNull
-    private com.termux.app.voice.VoiceDictationController voiceDictationController() {
-        if (mVoiceDictationController == null) {
-            mVoiceDictationController = new com.termux.app.voice.VoiceDictationController(this,
-                new com.termux.app.voice.VoiceDictationController.SessionSource() {
-                    @Nullable
-                    @Override
-                    public TerminalSession currentSession() {
-                        return getCurrentSession();
-                    }
-
-                    @Override
-                    public void write(@NonNull TerminalSession session, @NonNull String text) {
-                        // A single write of the finished text: no Enter, no shell invocation.
-                        session.write(text);
-                    }
-                }, REQUEST_CODE_VOICE_MICROPHONE);
-        }
-        return mVoiceDictationController;
-    }
-
-    private void launchPlatformVoiceTyping(boolean chooser) {
         TerminalSession target = getCurrentSession();
         if (target == null) return;
         Intent recognition = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
@@ -16774,17 +16727,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mVoiceInput != null) return;
         if (fromKeyboard && (mInAppKeyboard == null || !mInAppKeyboard.isVisible())) return;
         com.termux.ai.TaiSettings tai = new com.termux.ai.TaiSettings(this);
-        // The settings' choice, or another installed speech model when that one's files are gone.
-        com.termux.ai.TaiModelSpec model = com.termux.ai.TaiSpeechModels.resolveActive(this);
-        if (model == null) {
-            AppNotice.show(this, R.string.voice_input_no_model, false);
+        // Groq transcribes each phrase remotely and needs only the remote model's Groq key; the
+        // on-device engine needs the settings' speech model, or another installed one when that
+        // one's files are gone. Either way the card, the cleanup and Insert are the same.
+        boolean groq = mPreferences.isInAppKeyboardVoiceGroq();
+        com.termux.ai.TaiModelSpec model = groq ? null : com.termux.ai.TaiSpeechModels.resolveActive(this);
+        if (groq ? !com.termux.ai.GroqTranscriber.isReady(this) : model == null) {
+            AppNotice.show(this, groq ? R.string.voice_input_groq_not_ready : R.string.voice_input_no_model, false);
             launchVoiceTyping(false);
             return;
         }
-        String modelId = model.id;
+        String modelId = groq ? com.termux.ai.GroqTranscriber.MODEL_ID : model.id;
         // Each installed graph carries its own window in its file name; the setting is only the
-        // preference for the next download.
-        int windowSeconds = com.termux.ai.TaiSpeechModels.windowSeconds(model);
+        // preference for the next download. Groq's Whisper reads 30 s at once.
+        int windowSeconds = groq ? com.termux.ai.GroqTranscriber.WINDOW_SECONDS
+            : com.termux.ai.TaiSpeechModels.windowSeconds(model);
         if (windowSeconds <= 0) windowSeconds = tai.getSttWindowSeconds();
         if (androidx.core.content.ContextCompat.checkSelfPermission(this,
                 android.Manifest.permission.RECORD_AUDIO)
@@ -16842,7 +16799,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             // speech model's own guess arrives later (onSpeechLanguage), and the keyboard's or the
             // phone's language is assumed only for text that reads as no language in particular.
             cleanup.setLanguageHint(language.forced != null ? language.forced
-                : com.termux.ai.TaiSpeechModels.isEnglishOnly(model) ? "en" : null);
+                : model != null && com.termux.ai.TaiSpeechModels.isEnglishOnly(model) ? "en" : null);
             cleanup.setLanguageFallback(VoiceLanguage.resolve(mPreferences.getInAppKeyboardVoiceLanguage(),
                 mInAppKeyboard == null ? null : mInAppKeyboard.getActiveTextLayoutId(), userLocale()).code);
             mVoiceCleanup = cleanup;
@@ -16880,14 +16837,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * the graph falls back to while it is not sure what it hears; nothing for an English-only
      * graph or Parakeet, which decide alone. Both one-time notices live here: a setting Whisper
      * does not know (English is used), and a non-English choice against an {@code .en} model (the
-     * choice is ignored).
+     * choice is ignored). Groq ({@code model} null) is a multilingual Whisper: it is sent the
+     * forced language, and with Auto detects it, the hint only deciding when the card says so.
      */
     @NonNull
-    private VoiceLanguage.Choice resolveVoiceLanguage(@NonNull com.termux.ai.TaiModelSpec model) {
+    private VoiceLanguage.Choice resolveVoiceLanguage(@Nullable com.termux.ai.TaiModelSpec model) {
         mVoiceSpokenLanguage = null;
         String setting = mPreferences.getInAppKeyboardVoiceLanguage();
-        if (com.termux.ai.TaiSpeechModels.isParakeet(model.id, model.localPath)) return VoiceLanguage.Choice.NONE;
-        boolean englishOnly = com.termux.ai.TaiSpeechModels.isEnglishOnly(model);
+        if (model != null && com.termux.ai.TaiSpeechModels.isParakeet(model.id, model.localPath)) return VoiceLanguage.Choice.NONE;
+        boolean englishOnly = model != null && com.termux.ai.TaiSpeechModels.isEnglishOnly(model);
         if (englishOnly) {
             if (!VoiceLanguage.AUTO.equals(setting) && !VoiceLanguage.FALLBACK.equals(setting)
                 && !mVoiceEnglishOnlyNoticed) {
@@ -16952,11 +16910,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     /**
-     * The speech engine in use: the one picked in Keyboard settings, or, never picked, on-device as
-     * soon as a speech model is installed and Android's recognizer before that.
+     * Whether the voice card takes the dictation: the engine picked in Keyboard settings is
+     * on-device or Groq, or, never picked, a speech model is installed. Android's recognizer
+     * otherwise.
      */
     private boolean voiceUsesOnDevice() {
-        if (mPreferences.isInAppKeyboardVoiceEngineChosen()) return mPreferences.isInAppKeyboardVoiceOnDevice();
+        if (mPreferences.isInAppKeyboardVoiceEngineChosen()) {
+            return mPreferences.isInAppKeyboardVoiceOnDevice() || mPreferences.isInAppKeyboardVoiceGroq();
+        }
         return com.termux.ai.TaiSpeechModels.resolveActive(this) != null;
     }
 
@@ -17524,13 +17485,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         Logger.logVerbose(LOG_TAG, "onRequestPermissionsResult: requestCode: " + requestCode + ", permissions: " + Arrays.toString(permissions) + ", grantResults: " + Arrays.toString(grantResults));
-        if (requestCode == REQUEST_CODE_VOICE_MICROPHONE) {
-            boolean granted = grantResults.length > 0
-                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            if (mVoiceDictationController != null)
-                mVoiceDictationController.onMicrophonePermissionResult(granted);
-            return;
-        }
         if (requestCode == PermissionUtils.REQUEST_GRANT_STORAGE_PERMISSION) {
             requestStoragePermission(true);
         } else if (requestCode == REQUEST_CODE_WEATHER_LOCATION) {

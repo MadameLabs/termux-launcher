@@ -16,8 +16,8 @@ Include:
 
 ## Scope
 
-In scope: what this fork adds or changes — Groq voice dictation and the storage of its API key,
-the terminal command input row, the `com.termux` + Nix build identity and
+In scope: what this fork adds or changes — the Groq speech engine (it sends dictation audio to
+Groq with the remote model's key), the terminal command input row, the `com.termux` + Nix build identity and
 `scripts/nix/com-termux-profile-compat.nix`.
 
 Report elsewhere:

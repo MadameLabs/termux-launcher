@@ -42,11 +42,12 @@ can now carry the regular Termux package name, edition checks must go through
 
 **What the fork adds on top of upstream** (keep it through every sync):
 
-- Groq voice dictation with post-processing modes (`app/voice/`, `VoicePreferencesFragment`,
-  `docs/en/Voice_Dictation.md`). It takes the Android-recognizer path: with **Speech engine** on
-  **Android system** and a Groq key set, the voice key and the Dictate key record through Groq;
-  without a key they keep the platform recognizer. Its microphone request code (4720) is its own,
-  apart from upstream's on-device voice input (4717).
+- The **Groq** speech engine for upstream's voice card (`com.termux.ai.GroqTranscriber`,
+  `docs/en/Voice_Input.md#groq`). **Speech engine** `groq` runs the on-device card unchanged with
+  the virtual model id `GroqTranscriber.MODEL_ID`; `TaiManager.transcribe` and `sttWarm` answer
+  that id in the app process, before any speech-model resolution, so nothing of the runtime
+  process is involved. The key is the remote model's (`TaiRemoteSettings`, Groq preset): the fork
+  keeps no key of its own. Cleanup is upstream's, unchanged.
 - The terminal toolbar's command input row below the key pages (`terminal_toolbar_command_row`,
   `TerminalToolbarViewPager.bindCommandRow`).
 - Back lowers the embedded keyboard (`InAppKeyboardBack`, registered outermost in the back
