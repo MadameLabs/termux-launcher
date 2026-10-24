@@ -45,6 +45,7 @@ import android.view.autofill.AutofillValue;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputContentInfo;
 import android.widget.Scroller;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
@@ -270,6 +271,19 @@ public final class TerminalView extends View {
 
     /** Working space for the position of the event being handled; see {@link #pointAt}. */
     private final MousePoint mMousePointScratch = new MousePoint();
+
+    /**
+     * Whether the gesture now down is reported to the program as touches (DECSET 5523), decided
+     * on its first finger so that a mode flipped mid-gesture never hands the gesture recogniser
+     * half a stream. See {@link #handleTouchReports}.
+     */
+    private boolean mTouchReportsGesture;
+
+    /** Bit {@code id} is set while pointer {@code id} of that gesture is down and reported. */
+    private int mTouchReportPointers;
+
+    /** The text-area pixel each reported pointer was last reported at, by pointer id. */
+    private final int[] mTouchReportLastX = new int[Integer.SIZE], mTouchReportLastY = new int[Integer.SIZE];
 
     /**
      * Keep track of the time when a touch event leading to sending mouse scroll events started.
@@ -686,9 +700,12 @@ public final class TerminalView extends View {
                     return true;
                 if (mHoldConsumedGesture)
                     return true;
-                // Do not start scrolling until last fling has been taken care of:
-                if (!mScroller.isFinished())
+                // Do not start scrolling until last fling has been taken care of. A flick that
+                // keeps the running one going is still a scroll, so it is no tap either.
+                if (!mScroller.isFinished()) {
+                    mScrollDelivery.flung(mScroller.getCurrY(), mScroller.getFinalY());
                     return true;
+                }
                 // A sideways swipe is not a vertical fling, however much it drifted.
                 if (mScrollAxis == SCROLL_AXIS_HORIZONTAL && !e2.isFromSource(InputDevice.SOURCE_MOUSE))
                     return true;
@@ -697,6 +714,7 @@ public final class TerminalView extends View {
                     mSmoothFlingActive = true;
                     mScroller.fling(0, Math.round(getScrollPixelPosition()), 0, -(int) velocityY, 0, 0,
                         getScrollPixelMinimum(), 0);
+                    mScrollDelivery.flung(mScroller.getStartY(), mScroller.getFinalY());
                     postOnAnimation(mSmoothScrollRunnable);
                     return true;
                 }
@@ -707,6 +725,9 @@ public final class TerminalView extends View {
                 	//this doesn't fling in less
                     mScroller.fling(0, mTopRow, 0, -(int) (velocityY * SCALE), 0, 0, -mEmulator.getScreen().getActiveTranscriptRows(), 0);
                 }
+                // The lift is read by onUp next: while the wheel runs on, a program tracking the
+                // mouse must not also get it as a click, nor the client a tap to raise the keyboard.
+                mScrollDelivery.flung(mScroller.getStartY(), mScroller.getFinalY());
                 postOnAnimation(new Runnable() {
 
                     private int mLastY = 0;
@@ -848,7 +869,35 @@ public final class TerminalView extends View {
         // Note that IME_ACTION_NONE cannot be used as that makes it impossible to input newlines using the on-screen
         // keyboard on Android TV (see https://github.com/termux/termux-app/issues/221).
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN;
+        // Keyboards only offer pictures (their clipboard strip, GIFs) to editors that declare
+        // them; what is inserted goes to the client, as a paste does.
+        outAttrs.contentMimeTypes = new String[] {"image/*"};
         return new BaseInputConnection(this, true) {
+
+            @Override
+            public boolean commitContent(InputContentInfo inputContentInfo, int flags, Bundle opts) {
+                if (TERMINAL_VIEW_KEY_LOGGING_ENABLED)
+                    mClient.logInfo(LOG_TAG, "IME: commitContent(" + inputContentInfo.getDescription() + ", " + flags + ")");
+                String mime = null;
+                for (int i = 0; i < inputContentInfo.getDescription().getMimeTypeCount() && mime == null; i++) {
+                    String type = inputContentInfo.getDescription().getMimeType(i);
+                    if (type != null && type.startsWith("image/") && !type.equals("image/*")) mime = type;
+                }
+                if (mEmulator == null || mime == null) return false;
+                if ((flags & InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION) != 0) {
+                    try {
+                        inputContentInfo.requestPermission();
+                    } catch (Exception e) {
+                        mClient.logStackTraceWithMessage(LOG_TAG, "IME: commitContent permission refused", e);
+                        return false;
+                    }
+                }
+                stopTextSelectionMode();
+                boolean taken = mClient.onCommitContent(TerminalView.this, inputContentInfo.getContentUri(), mime,
+                    inputContentInfo::releasePermission);
+                if (!taken) inputContentInfo.releasePermission();
+                return taken;
+            }
 
             @Override
             public boolean finishComposingText() {
@@ -2416,6 +2465,8 @@ public final class TerminalView extends View {
             return false;
         if (mEmulator == null)
             return true;
+        if (handleTouchReports(event))
+            return true;
         final int action = event.getAction();
         if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL)
             mSmoothDragActive = false;
@@ -2466,19 +2517,97 @@ public final class TerminalView extends View {
         return true;
     }
 
-    private void doPaste() {
-        ClipboardManager clipboardManager = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
-        ClipData clipData = clipboardManager.getPrimaryClip();
-        if (clipData != null) {
-            ClipData.Item clipItem = clipData.getItemAt(0);
-            if (clipItem != null) {
-                CharSequence text = clipItem.coerceToText(getContext());
-                if (!TextUtils.isEmpty(text)) {
-                    snapToBottomForInput();
-                    mEmulator.paste(text.toString());
-                }
+    /**
+     * Touch reports (DECSET 5523): while the program asked for them, every finger on the text
+     * area goes to it as down, move, up and cancel reports at the pixel mode 1016 would report,
+     * and the terminal does nothing else with the gesture - no hold, no taps, no scrolling, no
+     * selection, no pinch zoom; the program recognises gestures itself. A real mouse is left to
+     * the mouse modes, and a finger that lands outside the text area is not reported at all.
+     *
+     * @return whether the event was this gesture's, and so is consumed.
+     */
+    private boolean handleTouchReports(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) {
+            mTouchReportsGesture = mRenderer != null && mEmulator.isTouchReportsMode()
+                && !event.isFromSource(InputDevice.SOURCE_MOUSE);
+            mTouchReportPointers = 0;
+            if (mTouchReportsGesture) {
+                if (isSelectingText()) stopTextSelectionMode();
+                // The program owns the whole gesture: a pane-wall page swipe or a parent's pinch
+                // must not take it over halfway and cancel it.
+                if (getParent() != null) getParent().requestDisallowInterceptTouchEvent(true);
             }
         }
+        if (!mTouchReportsGesture) return false;
+        long time = event.getEventTime();
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN: {
+                int index = event.getActionIndex();
+                int id = event.getPointerId(index);
+                float offsetX = textAreaOffsetX(event.getX(index));
+                float offsetY = textAreaOffsetY(event.getY(index));
+                if (id >= 0 && id < Integer.SIZE && offsetX >= 0 && offsetY >= 0
+                    && offsetX < mEmulator.mColumns * mRenderer.mFontWidth
+                    && offsetY < mEmulator.mRows * mRenderer.mFontLineSpacing) {
+                    mTouchReportPointers |= 1 << id;
+                    reportTouch(TerminalEmulator.TOUCH_DOWN, event, index);
+                }
+                break;
+            }
+            case MotionEvent.ACTION_MOVE:
+                for (int index = 0; index < event.getPointerCount(); index++) {
+                    if (isTouchReported(event.getPointerId(index)))
+                        reportTouch(TerminalEmulator.TOUCH_MOVE, event, index);
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP: {
+                int index = event.getActionIndex();
+                int id = event.getPointerId(index);
+                if (isTouchReported(id)) {
+                    reportTouch(TerminalEmulator.TOUCH_UP, event, index);
+                    mTouchReportPointers &= ~(1 << id);
+                }
+                break;
+            }
+            case MotionEvent.ACTION_CANCEL:
+                for (int id = 0; id < Integer.SIZE; id++) {
+                    if (!isTouchReported(id)) continue;
+                    mEmulator.sendTouchEvent(TerminalEmulator.TOUCH_CANCEL, id,
+                        mTouchReportLastX[id], mTouchReportLastY[id], time);
+                }
+                mTouchReportPointers = 0;
+                break;
+        }
+        return true;
+    }
+
+    private boolean isTouchReported(int pointerId) {
+        return pointerId >= 0 && pointerId < Integer.SIZE && (mTouchReportPointers & (1 << pointerId)) != 0;
+    }
+
+    /**
+     * Report pointer {@code index} of {@code event} where it is now; a move that stays on the
+     * pixel it was last reported at is no news and is not sent. Historical samples are dropped:
+     * the program gets the latest position of each event.
+     */
+    private void reportTouch(int kind, MotionEvent event, int index) {
+        int id = event.getPointerId(index);
+        MousePoint at = pointAt(event.getX(index), event.getY(index), mMousePointScratch);
+        if (kind == TerminalEmulator.TOUCH_MOVE && at.pixelX == mTouchReportLastX[id]
+            && at.pixelY == mTouchReportLastY[id]) return;
+        mTouchReportLastX[id] = at.pixelX;
+        mTouchReportLastY[id] = at.pixelY;
+        mEmulator.sendTouchEvent(kind, id, at.pixelX, at.pixelY, event.getEventTime());
+    }
+
+    /** A middle click or the accessibility action: the client pastes, as for every other paste. */
+    private void doPaste() {
+        if (mEmulator == null || mClient == null) return;
+        snapToBottomForInput();
+        mClient.onPasteRequest(this);
     }
 
     @Override
@@ -3370,8 +3499,9 @@ public final class TerminalView extends View {
             // rows, where the resize will put it: drawing starts that many rows up and is moved up
             // by as many lines, so mTopRow, hit-testing and every row below stay where they were.
             final int fillRows = currentTravelFillRows();
-            final float fillClipTop = fillRows > 0 ? travelFillClipTopPx(mTravelAnchorOffsetPx,
-                mTravelHeadroomChangePx, mTravelProgress, mRenderer.mFontLineSpacingAndAscent) : 0f;
+            final float fillClipTop = fillRows > 0 ? GridPixels.snap(travelFillClipTopPx(
+                mTravelAnchorOffsetPx, mTravelHeadroomChangePx, mTravelProgress,
+                mRenderer.mFontLineSpacingAndAscent)) : 0f;
             final int drawTopRow = mTopRow - fillRows;
             final int extraRows = fillRows + (scrollOffset != 0f ? 1 : 0);
             if (canvasTranslated) {
@@ -3655,8 +3785,9 @@ public final class TerminalView extends View {
      */
     public float getPaddingRowTop(int row) {
         if (mRenderer == null) return 0f;
-        float drawOffset = getVerticalContentOffset() - mScrollOffsetPixels;
-        return Math.round(drawOffset + mRenderer.getFontLineSpacingAndAscent() + row * mRenderer.getFontLineSpacing());
+        int drawOffset = GridPixels.snap(getVerticalContentOffset() - mScrollOffsetPixels);
+        return GridPixels.rowEdge(drawOffset + mRenderer.getFontLineSpacingAndAscent(),
+            mRenderer.getFontLineSpacing(), row);
     }
 
     /**
@@ -3907,11 +4038,14 @@ public final class TerminalView extends View {
      * How far down the grid is drawn this frame. A travelling grid is drawn from where it stood
      * when the travel began, displaced toward where the settle's resize will put it (see
      * mTravelActive); a smooth scroll shifts it by its pixel offset.
+     *
+     * <p>Always a whole number of pixels ({@link GridPixels#snap}): the grid is translated by this,
+     * and a fraction here would put every row's edge between two pixels.
      */
     private float currentDrawOffset() {
-        return (mTravelActive
+        return GridPixels.snap((mTravelActive
             ? mTravelAnchorOffsetPx + mTravelDisplacementPx : getVerticalContentOffset())
-            - mScrollOffsetPixels;
+            - mScrollOffsetPixels);
     }
 
     /**
