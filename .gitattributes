@@ -3,3 +3,5 @@
 *.gradle    text eol=lf
 *.mk        text eol=lf
 *.sh        text eol=lf
+scripts/nix/*.nix text eol=lf
+scripts/nix/*.py  text eol=lf

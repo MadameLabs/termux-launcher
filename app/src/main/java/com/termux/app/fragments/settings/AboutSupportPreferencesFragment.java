@@ -89,7 +89,7 @@ public final class AboutSupportPreferencesFragment extends MaterialPreferenceFra
     private void configureWhatsNew(@NonNull Context context) {
         click("whats_new", preference -> {
             new Thread(() -> {
-                AppEdition edition = AppEdition.of(context.getPackageName());
+                AppEdition edition = AppEdition.running(context);
                 String version = BuildConfig.VERSION_NAME;
                 WhatsNewNotes.Notes notes = WhatsNewNotes.select(version,
                     readAsset(context, "whatsnew/release-notes.md"),

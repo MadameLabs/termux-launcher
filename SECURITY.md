@@ -1,29 +1,31 @@
 # Security policy
 
-## Supported versions
-
-Only the latest release of each edition (Termux, Nix, VAJ) gets security fixes. Nightly builds
-(`X.Y.Z+dev.<sha>`) are test builds; a fix lands there first and ships in the next release.
+This is the Madame Labs fork of [PickleHik3/termux-launcher](https://github.com/PickleHik3/termux-launcher).
+It has no releases: only the current `main` branch is maintained, and builds are made from it
+locally.
 
 ## Reporting a vulnerability
 
-Report it privately through GitHub: open the repository's **Security** tab and choose
+Report it privately through GitHub: open this repository's **Security** tab and choose
 **Report a vulnerability**. Please do not open a public issue for it.
 
 Include:
-- the version and edition from Settings → About,
+- the commit you built (Settings → About shows the version),
 - the Android version and device model,
 - the steps to reproduce, and what an attacker gains.
 
 ## Scope
 
-In scope: this launcher, its `launcherctl` API and privileged lane, and the companion apps built
-from the PickleHik3 forks.
+In scope: what this fork adds or changes — the Groq speech engine (it sends dictation audio to
+Groq with the remote model's key), the terminal command input row, the `com.termux` + Nix build identity and
+`scripts/nix/com-termux-profile-compat.nix`.
 
-Out of scope, report them upstream instead:
+Report elsewhere:
+- Anything that also exists in upstream Termux Launcher (the launcher, `launcherctl`, the
+  privileged lane, the companion apps): [PickleHik3/termux-launcher](https://github.com/PickleHik3/termux-launcher/security).
 - Termux packages and the apt repository: [termux/termux-packages](https://github.com/termux/termux-packages).
 - Bugs that also exist in upstream Termux: [termux.dev/security](https://termux.dev/security).
 
-Known and intended: every published APK is signed with the repository's shared debug key
-(`testkey_untrusted.jks`), so that the companion apps can share the launcher's `sharedUserId`.
-Treat builds from this repository as unverified, and install them only from its GitHub releases.
+Known and intended: APKs built from this repository are signed with the shared debug key
+(`testkey_untrusted.jks`), the same key upstream publishes. Anyone can sign an APK with it, so
+treat these builds as unverified and install only what you built yourself.

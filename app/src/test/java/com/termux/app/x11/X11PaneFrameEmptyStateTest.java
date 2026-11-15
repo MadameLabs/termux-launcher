@@ -3,6 +3,7 @@ package com.termux.app.x11;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assume.assumeFalse;
 
 import android.app.Activity;
 import android.app.Application;
@@ -81,6 +82,8 @@ public class X11PaneFrameEmptyStateTest {
     @Test
     public void missingKeyboardDataOffersTheInstallAndHandsTheHostTheCommand() {
         Activity activity = Robolectric.buildActivity(Activity.class).setup().get();
+        // The install button is the pkg editions' path; a Nix build has no command to offer.
+        assumeFalse(com.termux.app.AppEdition.running(activity).usesNixPackages());
         X11PaneFrame page = page(activity);
         java.util.List<java.util.List<String>> asked = new java.util.ArrayList<>();
         page.setHost(new X11PaneFrame.Host() {
@@ -100,7 +103,7 @@ public class X11PaneFrameEmptyStateTest {
 
         assertEquals(1, asked.size());
         java.util.List<String> expected = KeyboardDataInstall.command(
-            com.termux.app.AppEdition.of(activity.getPackageName()));
+            com.termux.app.AppEdition.running(activity));
         assertNotNull(expected);
         assertEquals(expected, asked.get(0));
     }

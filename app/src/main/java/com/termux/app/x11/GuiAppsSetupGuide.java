@@ -80,7 +80,7 @@ public final class GuiAppsSetupGuide {
      * for, so it counts as set up.
      */
     public static boolean isSetUp(@NonNull Context context) {
-        AppEdition edition = AppEdition.of(context.getPackageName());
+        AppEdition edition = AppEdition.running(context);
         if (GuiAppsSetup.routesFor(edition).isEmpty()) return true;
         return finished(preferences(context), edition) && fcitx5Installed.getAsBoolean();
     }
