@@ -134,7 +134,28 @@ public final class StatusBarEdgeGeometry {
             return capsule ? COLUMN_EXPANDED_CAPSULE_DP : COLUMN_EXPANDED_DOCKED_DP;
         }
         if (compact) return capsule ? ROW_COMPACT_CAPSULE_DP : ROW_COMPACT_DOCKED_DP;
+        if (sChipsOnlySlot) return slotDp(capsule) + STATUS_ROW_DP
+            + (capsule ? ROW_FOOT_CAPSULE_DP : ROW_FOOT_DOCKED_DP);
         return capsule ? ROW_EXPANDED_CAPSULE_DP : ROW_EXPANDED_DOCKED_DP;
+    }
+
+    /** barra-de-orientacao (MadameLabs fork): the slot's height while it holds only the chips. */
+    public static final float CHIPS_SLOT_DP = 30f;
+    private static boolean sChipsOnlySlot;
+
+    /**
+     * MadameLabs fork: with the clock off and the orientation chips in its cell, the slot is only
+     * as tall as the chips, so the expanded bar stops keeping the clock's height. True if changed.
+     */
+    public static boolean setChipsOnlySlot(boolean chipsOnly) {
+        if (sChipsOnlySlot == chipsOnly) return false;
+        sChipsOnlySlot = chipsOnly;
+        return true;
+    }
+
+    private static float slotDp(boolean capsule) {
+        if (sChipsOnlySlot) return CHIPS_SLOT_DP;
+        return capsule ? SLOT_CAPSULE_DP : SLOT_DOCKED_DP;
     }
 
     public static int thicknessPx(@NonNull Edge edge, boolean capsule, boolean compact,
@@ -153,7 +174,7 @@ public final class StatusBarEdgeGeometry {
             thicknessPx(edge, capsule, compact, density),
             px(collapsed && capsule ? STATUS_ROW_COLLAPSED_CAPSULE_DP : STATUS_ROW_DP, density),
             px(collapsed ? 0f : capsule ? ROW_FOOT_CAPSULE_DP : ROW_FOOT_DOCKED_DP, density),
-            px(capsule ? SLOT_CAPSULE_DP : SLOT_DOCKED_DP, density));
+            px(slotDp(capsule), density));
     }
 
     private static int px(float dp, float density) {

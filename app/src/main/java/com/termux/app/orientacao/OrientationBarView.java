@@ -20,14 +20,13 @@ import java.util.List;
 
 /**
  * The orientation chips in the status bar's clock cell (MadameLabs fork): machine, folder and chat on the left,
- * the harness's 5 h and weekly spend on the right, as chips in the Arch-PC tmux bar's look
- * (Catppuccin Mocha, an icon on a coloured cap and the text on a grey body, both ends rounded).
+ * the harness's 5 h and weekly spend on the right. Dressed like the window pills beside them: a
+ * fully rounded body with a thin outline and a faint fill in the chip's Catppuccin Mocha colour,
+ * the icon in that colour (drawn by the bundled Nerd Font symbols face) and the text in white.
  */
 public class OrientationBarView extends LinearLayout {
 
-    static final int BASE = Color.parseColor("#11111b");
-    static final int SURFACE = Color.parseColor("#313244");
-    static final int TEXT = Color.parseColor("#cdd6f4");
+    static final int TEXT = Color.WHITE;
     static final int RED = Color.parseColor("#f38ba8");
     static final int MACHINE = Color.parseColor("#a6e3a1");
     static final int FOLDER = Color.parseColor("#f5e0dc");
@@ -89,8 +88,8 @@ public class OrientationBarView extends LinearLayout {
     public void setChipTypeface(@Nullable Typeface typeface) {
         if (typeface == null || typeface == mTypeface) return;
         mTypeface = typeface;
+        // The icons keep the symbols face: the terminal's own may carry no Nerd Font glyphs.
         for (Chip chip : new Chip[]{mMachine, mFolder, mChat, mFiveHour, mWeekly}) {
-            chip.icon.setTypeface(typeface);
             chip.text.setTypeface(typeface);
         }
     }
@@ -130,18 +129,24 @@ public class OrientationBarView extends LinearLayout {
         root.setGravity(Gravity.CENTER_VERTICAL);
         float radius = dp(HEIGHT_DP) / 2f;
 
+        GradientDrawable pill = rounded(Color.argb(38, Color.red(color), Color.green(color),
+            Color.blue(color)), new float[]{radius, radius, radius, radius, radius, radius, radius, radius});
+        pill.setStroke(Math.max(1, dp(1)), Color.argb(150, Color.red(color), Color.green(color),
+            Color.blue(color)));
+        root.setBackground(pill);
+
         TextView icon = label(context);
         icon.setText(glyph);
-        icon.setTextColor(BASE);
-        icon.setPadding(dp(6), 0, dp(4), 0);
-        icon.setBackground(rounded(color, new float[]{radius, radius, 0, 0, 0, 0, radius, radius}));
+        icon.setTextColor(color);
+        Typeface symbols = com.termux.shared.termux.font.NerdFontSpans.typeface(context);
+        if (symbols != null) icon.setTypeface(symbols);
+        icon.setPadding(dp(7), 0, dp(4), 0);
         root.addView(icon, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
         TextView text = label(context);
         text.setTextColor(TEXT);
-        text.setPadding(dp(5), 0, dp(7), 0);
+        text.setPadding(0, 0, dp(8), 0);
         text.setEllipsize(TextUtils.TruncateAt.END);
-        text.setBackground(rounded(SURFACE, new float[]{0, 0, radius, radius, radius, radius, 0, 0}));
         root.addView(text, new LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT));
 
         LayoutParams params = new LayoutParams(LayoutParams.WRAP_CONTENT, dp(HEIGHT_DP));

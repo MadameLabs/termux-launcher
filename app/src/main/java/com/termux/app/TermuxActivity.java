@@ -16702,8 +16702,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     View slot = findViewById(R.id.terminal_top_widget_area);
                     if (slot instanceof com.termux.app.statusbar.TopPaneWidgetSlot)
                         ((com.termux.app.statusbar.TopPaneWidgetSlot) slot).setOrientationAllowed(allowed);
+                    syncChipsOnlySlot();
                 }
             });
+    }
+
+    /**
+     * MadameLabs fork: with the clock off and the chips in its cell, the bar shrinks its slot to
+     * the chips' height (StatusBarEdgeGeometry#setChipsOnlySlot) and re-applies its geometry.
+     */
+    private void syncChipsOnlySlot() {
+        boolean chipsOnly = !isStatusClockShown()
+            && (mPreferences == null || !mPreferences.isOrientationChipsInRow());
+        if (!com.termux.app.statusbar.StatusBarEdgeGeometry.setChipsOnlySlot(chipsOnly)) return;
+        if (findViewById(R.id.terminal_window_bar_host) == null) return;
+        setTopStatusBarCollapsed(isStatusBarCompact(), false, 0f);
     }
 
     /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */
@@ -33717,6 +33730,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             ((com.termux.app.statusbar.TopPaneWidgetSlot) slotView).setClockShown(
                 isStatusClockShown());
         }
+        syncChipsOnlySlot(); // barra-de-orientacao
         com.termux.app.statusbar.StatusBarStackedClockView stackedClock =
             findViewById(R.id.terminal_status_column_clock);
         if (stackedClock != null && mPreferences != null) {
