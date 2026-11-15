@@ -479,9 +479,7 @@ public class TermuxActivityRootView extends LinearLayout implements ViewTreeObse
             // display cutout in. The horizontal cutout is handled below the root: the content root
             // pads itself away from it, and in landscape the dock rail sits in that very column, so
             // a root that also padded for it pushed both a whole cutout inward (the terminal started
-            // a second cutout width from the edge). The legacy top inset also retains the camera
-            // height on HyperOS in fullscreen. Use the visible status bar for the top, so hiding
-            // it gives that band back to the content. Keep bottom handling for the IME unchanged.
+            // a second cutout width from the edge). Keep the bars, drop the cutout.
             androidx.core.graphics.Insets sides = horizontalRootInsets(compat);
             // The same fold on top: with the status bar hidden (fullscreen) the legacy padding
             // fell back to the cutout and left an empty band the height of the camera's row.

@@ -21321,6 +21321,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * <p>Releasing means "whoever owns the slot now", not "nobody": the drawer's search may be open
      * behind a sheet the drawer itself never closed.
      */
+    private void setTerminalSheetInterceptorActive(boolean active) {
+        if (mInAppKeyboard == null)
+            return;
+        applyInAppKeyboardTypingClaim(isCommandPaletteOpen(), active, isAppDrawerOpen());
     }
 
     /** Seed rect for surfaces growing out of the space bar; false when the keyboard is hidden. */
