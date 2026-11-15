@@ -122,7 +122,12 @@ public class TerminalToolbarViewPager {
             }
             return false;
         });
+        // MadameLabs fork: the view whose focus the row holds, so it is handed back to that one.
+        final com.termux.view.TerminalView[] lentFrom = new com.termux.view.TerminalView[1];
         editText.setOnFocusChangeListener((view, hasFocus) -> {
+            if (lentFrom[0] != null) lentFrom[0].setFocusLent(false);
+            lentFrom[0] = hasFocus ? activity.getTerminalView() : null;
+            if (lentFrom[0] != null) lentFrom[0].setFocusLent(true);
             if (hasFocus) {
                 activity.beginTerminalToolbarExternalTextInput(editText);
             } else if (activity.hasWindowFocus()) {
