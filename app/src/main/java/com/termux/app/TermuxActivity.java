@@ -16759,16 +16759,20 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         dock.setVisibility(docked ? View.VISIBLE : View.GONE);
         com.termux.app.orientacao.OrientationBarView chips = findViewById(R.id.orientation_bar_dock);
-        if (chips != null) chips.setChatLast(true);
+        ViewGroup chatRow = findViewById(R.id.orientation_dock_chat);
+        if (chips != null && chatRow != null) chips.setChatRow(chatRow);
         applyStatusBarEdge(arrangement().layout());
         refreshTerminalWindowBar();
         mKeyboardGeometry.requestGeometrySync();
     }
 
-    /** The dock rows' height for this pass: both rows while the keys show and the toggle is on. */
+    /**
+     * The dock rows' height for this pass: the pills, the chips and the chat's own row, while the
+     * keys show and the toggle is on.
+     */
     private int orientationDockHeightPx(int toolbarHeightPx) {
         return toolbarHeightPx > 0 && pillsDocked()
-            ? 2 * Math.round(dpToPx(ORIENTATION_DOCK_ROW_DP)) : 0;
+            ? 3 * Math.round(dpToPx(ORIENTATION_DOCK_ROW_DP)) : 0;
     }
 
     /** MadameLabs fork: the dock rows' height, gone at 0; true when it changed. */
@@ -19235,6 +19239,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_view_pager, extraKeysInset);
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_command_row, extraKeysInset);
         moved |= updateViewHorizontalMargins(R.id.orientation_dock_scroll, extraKeysInset); // barra-de-orientacao: the chips alone
+        moved |= updateViewHorizontalMargins(R.id.orientation_dock_chat_scroll, extraKeysInset);
         moved |= updateViewPadding(R.id.apps_bar_viewpager, 0, appsTopPadding, 0, appsBottomPadding);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_underlay, surfaceInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_overlay, surfaceInset);

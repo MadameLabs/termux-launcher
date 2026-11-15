@@ -70,4 +70,21 @@ public class OrientationBarViewTest {
         assertNotEquals(OrientationBarView.RED, weekly.text.getCurrentTextColor());
         assertEquals(View.VISIBLE, fiveHour.root.getVisibility());
     }
+
+    /** In the keys panel the chat stands on a row of its own and the others stay together. */
+    @Test
+    public void chatRowTakesTheChatChipAlone() {
+        OrientationBarView bar = view();
+        android.widget.LinearLayout row =
+            new android.widget.LinearLayout(ApplicationProvider.getApplicationContext());
+        bar.setChatRow(row);
+        bar.setChatRow(row); // idempotent: the orientation tick calls it
+        bar.render(new OrientationLine("tlnix", "/data/x", "a conversa inteira", 42, 10));
+        assertEquals(1, row.getChildCount());
+        assertEquals("a conversa inteira",
+            ((TextView) ((android.view.ViewGroup) row.getChildAt(0)).getChildAt(1)).getText().toString());
+        for (int i = 0; i < bar.getChildCount(); i++)
+            assertNotEquals(row.getChildAt(0), bar.getChildAt(i));
+        assertEquals(4, bar.getChildCount()); // machine, folder, 5h, weekly; no spacer
+    }
 }

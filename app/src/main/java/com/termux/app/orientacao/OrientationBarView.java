@@ -97,6 +97,19 @@ public class OrientationBarView extends LinearLayout {
         mChat.text.setMaxWidth(Integer.MAX_VALUE);
     }
 
+    /**
+     * The keys panel's chat row (MadameLabs fork): the chat chip leaves this row for {@code row},
+     * a line of its own, and the others keep the keys panel's order here.
+     */
+    public void setChatRow(@NonNull ViewGroup row) {
+        setChatLast(true);
+        if (mChat.root.getParent() == row) return;
+        ViewGroup.LayoutParams params = mChat.root.getLayoutParams();
+        removeView(mChat.root);
+        removeView(mSpacer);
+        row.addView(mChat.root, params);
+    }
+
     /** Draws {@code line}; a null field hides its chip. */
     public void render(@NonNull OrientationLine line) {
         show(mMachine, line.machine, false);

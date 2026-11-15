@@ -914,6 +914,28 @@
                                 android:layout_height="match_parent" />
                         </HorizontalScrollView>
 
+                        <!-- The chat's name on a row of its own, whole, scrolling when long. -->
+                        <HorizontalScrollView
+                            android:id="@+id/orientation_dock_chat_scroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:fillViewport="true"
+                            android:scrollbars="none"
+                            android:overScrollMode="never"
+                            android:requiresFadingEdge="horizontal"
+                            android:fadingEdgeLength="24dp">
+
+                            <LinearLayout
+                                android:id="@+id/orientation_dock_chat"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="6dp"
+                                android:paddingEnd="6dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent" />
+                        </HorizontalScrollView>
+
                     </LinearLayout>
 
                     <androidx.viewpager.widget.ViewPager
