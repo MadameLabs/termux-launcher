@@ -1405,10 +1405,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void applyTextBackdropToPanes() {
         int backdrop = mHost.terminalTextSurface();
         double floor = terminalContrastFloor(mHost.preferences());
+        // MadameLabs fork: on glass thin enough to lean to pale ink, keep it pale (white at most).
+        boolean keepLightInk = android.graphics.Color.alpha(backdrop) != 0
+            && inkLeaning(backdrop) == com.termux.app.chrome.ChromeInk.Polarity.PALE_INK;
         for (com.termux.view.TerminalView view : mHost.paneViews()) {
             if (view == null) continue;
             view.setContrastBackdrop(backdrop);
             view.setContrastFloor(floor);
+            view.setKeepLightInk(keepLightInk);
         }
     }
 

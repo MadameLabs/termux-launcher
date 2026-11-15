@@ -1293,6 +1293,7 @@ public final class TerminalView extends View {
         mRenderer.setUrlUnderlineColor(mUrlUnderlineColor);
         mRenderer.setContrastBackdrop(mContrastBackdrop);
         mRenderer.setContrastFloor(mContrastFloor);
+        mRenderer.setKeepLightInk(mKeepLightInk);
         relayoutIfFirstRowMoved(replaced);
         // The new renderer has taken everything worth inheriting; the old one's per-row recordings
         // are the size of the screen and will never be replayed again.
@@ -1315,6 +1316,7 @@ public final class TerminalView extends View {
             r.mFallbackTypefaces, r.mSymbolExpansion, r);
         mRenderer.setContrastBackdrop(mContrastBackdrop);
         mRenderer.setContrastFloor(mContrastFloor);
+        mRenderer.setKeepLightInk(mKeepLightInk);
         relayoutIfFirstRowMoved(null);
         updateSize();
     }
@@ -1364,6 +1366,19 @@ public final class TerminalView extends View {
         if (mContrastFloor == text) return;
         mContrastFloor = text;
         if (mRenderer != null) mRenderer.setContrastFloor(text);
+        invalidate();
+    }
+
+    private boolean mKeepLightInk;
+
+    /**
+     * MadameLabs fork: pale text on thin glass only ever lightens to meet its floor, never greys
+     * toward black ({@link ContrastFloor#atLeast(int, int, double, boolean)}). Survives a rebuild.
+     */
+    public void setKeepLightInk(boolean keep) {
+        if (mKeepLightInk == keep) return;
+        mKeepLightInk = keep;
+        if (mRenderer != null) mRenderer.setKeepLightInk(keep);
         invalidate();
     }
 
@@ -1474,6 +1489,7 @@ public final class TerminalView extends View {
         mRenderer.setUrlUnderlineColor(mUrlUnderlineColor);
         mRenderer.setContrastBackdrop(mContrastBackdrop);
         mRenderer.setContrastFloor(mContrastFloor);
+        mRenderer.setKeepLightInk(mKeepLightInk);
         relayoutIfFirstRowMoved(replaced);
         replaced.release();
         updateSize();
