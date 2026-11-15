@@ -62,9 +62,10 @@ public final class CommandBoxPopup {
     @VisibleForTesting static final RectF DEFAULT_FRAC = new RectF(.04f, .08f, .96f, .48f);
     /** The smallest it can be resized to, in dp. */
     private static final int MIN_WIDTH_DP = 160;
-    private static final int MIN_HEIGHT_DP = 96;
+    private static final int MIN_HEIGHT_DP = 128;
     private static final int HEADER_DP = 28;
     private static final int CORNER_DP = 28;
+    private static final int TOOLBAR_DP = 34;
 
     private final Context mContext;
     private final Host mHost;
@@ -163,6 +164,14 @@ public final class CommandBoxPopup {
 
         FrameLayout body = new FrameLayout(mContext);
         EditText field = new EditText(mContext);
+        // The keys scroll sideways when the popup is narrower than they are.
+        android.widget.HorizontalScrollView keys = new android.widget.HorizontalScrollView(mContext);
+        keys.setFillViewport(true);
+        keys.setHorizontalScrollBarEnabled(false);
+        keys.addView(toolbar(field, onSurface), new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        root.addView(keys, new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(TOOLBAR_DP)));
         // Wraps instead of scrolling sideways, and the keyboard's Enter still says Send.
         field.setRawInputType(InputType.TYPE_CLASS_TEXT);
         field.setImeOptions(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_FULLSCREEN);
@@ -229,6 +238,145 @@ public final class CommandBoxPopup {
         RectF start = new RectF();
         header.setOnTouchListener((v, event) -> drag(event, down, start, false));
         return header;
+    }
+
+    // ------------------------------------------------------------------------------- toolbar
+
+    /**
+     * The editing keys under the header: cut, copy, paste, the clipboard's history, a line break
+     * and the four arrows, all acting on the field. Cut and copy take the selection, or the whole
+     * text when nothing is selected; the line break is a bare LF, which Claude Code and most line
+     * editors take as a new line rather than as Enter.
+     */
+    @NonNull
+    private View toolbar(@NonNull EditText field, int ink) {
+        LinearLayout bar = new LinearLayout(mContext);
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(dp(6), 0, dp(6), 0);
+        addKey(bar, ink, "✂", R.string.command_box_cut, v -> {
+            CharSequence taken = taken(field);
+            com.termux.app.terminal.ClipboardHistory.copy(mContext, taken.toString());
+            replaceTaken(field, "");
+        });
+        addKey(bar, ink, "⧉", R.string.command_box_copy, v ->
+            com.termux.app.terminal.ClipboardHistory.copy(mContext, taken(field).toString()));
+        addKey(bar, ink, "⎘", R.string.command_box_paste, v -> {
+            String clip = clipboardText();
+            if (clip != null) insert(field, clip);
+        });
+        addKey(bar, ink, "☰", R.string.command_box_clipboard_history,
+            v -> showHistory(v, field));
+        addKey(bar, ink, "↵", R.string.command_box_new_line, v -> insert(field, "\n"));
+        bar.addView(new View(mContext), new LinearLayout.LayoutParams(0, 1, 1f));
+        addKey(bar, ink, "←", R.string.command_box_left, v -> moveBy(field, -1));
+        addKey(bar, ink, "↑", R.string.command_box_up, v -> moveLine(field, -1));
+        addKey(bar, ink, "↓", R.string.command_box_down, v -> moveLine(field, 1));
+        addKey(bar, ink, "→", R.string.command_box_right, v -> moveBy(field, 1));
+        return bar;
+    }
+
+    private void addKey(@NonNull LinearLayout bar, int ink, @NonNull String glyph, int labelRes,
+                        @NonNull View.OnClickListener action) {
+        TextView key = new TextView(mContext);
+        key.setText(glyph);
+        key.setTextColor(ink);
+        key.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        key.setGravity(Gravity.CENTER);
+        key.setContentDescription(mContext.getString(labelRes));
+        TypedValue ripple = new TypedValue();
+        if (mContext.getTheme().resolveAttribute(
+                android.R.attr.selectableItemBackgroundBorderless, ripple, true))
+            key.setBackgroundResource(ripple.resourceId);
+        // A key keeps the field's focus, so the keyboard stays up and the cursor where it was.
+        key.setFocusable(false);
+        key.setOnClickListener(action);
+        bar.addView(key, new LinearLayout.LayoutParams(dp(34), ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    /** The selection, or the whole text when nothing is selected. */
+    @NonNull
+    private static CharSequence taken(@NonNull EditText field) {
+        int start = Math.min(field.getSelectionStart(), field.getSelectionEnd());
+        int end = Math.max(field.getSelectionStart(), field.getSelectionEnd());
+        if (start < 0 || start == end) return field.getText();
+        return field.getText().subSequence(start, end);
+    }
+
+    private static void replaceTaken(@NonNull EditText field, @NonNull String with) {
+        int start = Math.min(field.getSelectionStart(), field.getSelectionEnd());
+        int end = Math.max(field.getSelectionStart(), field.getSelectionEnd());
+        if (start < 0 || start == end) {
+            field.setText(with);
+            field.setSelection(field.length());
+        } else {
+            field.getText().replace(start, end, with);
+        }
+    }
+
+    /** {@code text} at the cursor, over the selection if there is one. */
+    @VisibleForTesting
+    static void insert(@NonNull EditText field, @NonNull String text) {
+        int start = Math.max(0, Math.min(field.getSelectionStart(), field.getSelectionEnd()));
+        int end = Math.max(0, Math.max(field.getSelectionStart(), field.getSelectionEnd()));
+        field.getText().replace(start, end, text);
+        field.setSelection(Math.min(field.length(), start + text.length()));
+    }
+
+    @VisibleForTesting
+    static void moveBy(@NonNull EditText field, int delta) {
+        int at = Math.max(0, Math.min(field.length(), field.getSelectionEnd() + delta));
+        field.setSelection(at);
+    }
+
+    /** The cursor a line up or down, at about the same column, as the layout wraps the text. */
+    private static void moveLine(@NonNull EditText field, int delta) {
+        android.text.Layout layout = field.getLayout();
+        if (layout == null) return;
+        int at = field.getSelectionEnd();
+        int line = layout.getLineForOffset(at) + delta;
+        if (line < 0) {
+            field.setSelection(0);
+            return;
+        }
+        if (line >= layout.getLineCount()) {
+            field.setSelection(field.length());
+            return;
+        }
+        field.setSelection(layout.getOffsetForHorizontal(line, layout.getPrimaryHorizontal(at)));
+    }
+
+    @Nullable
+    private String clipboardText() {
+        android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+            mContext.getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard == null || !clipboard.hasPrimaryClip()) return null;
+        android.content.ClipData clip = clipboard.getPrimaryClip();
+        if (clip == null || clip.getItemCount() == 0) return null;
+        CharSequence text = clip.getItemAt(0).coerceToText(mContext);
+        return text == null ? null : text.toString();
+    }
+
+    /** The launcher's clipboard history as a menu; a tap puts that text at the cursor. */
+    private void showHistory(@NonNull View anchor, @NonNull EditText field) {
+        java.util.List<com.termux.app.terminal.ClipboardHistory.Item> items =
+            com.termux.app.terminal.ClipboardHistory.get(mContext).items();
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(mContext, anchor);
+        if (items.isEmpty()) {
+            menu.getMenu().add(R.string.command_box_clipboard_empty).setEnabled(false);
+        }
+        for (int i = 0; i < items.size() && i < 20; i++) {
+            String text = items.get(i).text;
+            String label = text.replace('\n', ' ').trim();
+            if (label.length() > 48) label = label.substring(0, 47) + "…";
+            menu.getMenu().add(0, i, i, (items.get(i).pinned ? "📌 " : "") + label);
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() >= 0 && item.getItemId() < items.size())
+                insert(field, items.get(item.getItemId()).text);
+            return true;
+        });
+        menu.show();
     }
 
     @SuppressLint("ClickableViewAccessibility")

@@ -395,6 +395,7 @@ public final class SettingsTree {
                     case "terminal_margin_adjustment": case "terminal_engine":
                         return "TerminalClipboardPreferencesFragment";
                     case "status_clock_shown": case "orientation_chips_in_row": case "command_box_popup":
+                    case "status_indicator_corner_radius":
                     case "top_pane_clock_am_pm": case "status_widget_cpu": case "status_widget_ram":
                     case "status_widget_media": case "status_widget_weather":
                     case "status_widget_weather_fahrenheit": case "status_widget_weather_location":

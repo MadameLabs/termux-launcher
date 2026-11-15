@@ -68,6 +68,9 @@ public class OrientationBarView extends LinearLayout {
         mMachine = addChip(MACHINE, "\uDB80\uDF79"); // md-monitor, as tmux-ia.sh
         mFolder = addChip(FOLDER, "");           // fa-folder
         mChat = addChip(CHAT, "󰻞");         // md-chat
+        // MadameLabs fork: the chat chip is its text alone, no icon.
+        mChat.icon.setVisibility(GONE);
+        mChat.text.setPadding(dp(8), 0, dp(8), 0);
         mSpacer = new View(context);
         addView(mSpacer, new LayoutParams(0, 1, 1f));
         mFiveHour = addChip(FIVE_HOUR, "󱑏"); // md-clock 5
@@ -118,9 +121,13 @@ public class OrientationBarView extends LinearLayout {
     private void fitChatToRow(@NonNull ViewGroup row, int rowWidthPx) {
         if (rowWidthPx <= 0) return;
         LayoutParams lp = (LayoutParams) mChat.root.getLayoutParams();
-        mChat.icon.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
+        int icon = 0;
+        if (mChat.icon.getVisibility() != GONE) {
+            mChat.icon.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
+            icon = mChat.icon.getMeasuredWidth();
+        }
         int room = rowWidthPx - row.getPaddingLeft() - row.getPaddingRight()
-            - lp.leftMargin - lp.rightMargin - mChat.icon.getMeasuredWidth();
+            - lp.leftMargin - lp.rightMargin - icon;
         int cap = Math.max(0, room);
         if (cap == mChatMaxPx) return;
         mChatMaxPx = cap;
@@ -128,14 +135,17 @@ public class OrientationBarView extends LinearLayout {
         mChat.text.post(mChat.text::requestLayout);
     }
 
+    /** Whether the chat chip shows: the keys panel drops the chat's row while it does not. */
+    public boolean chatShown() {
+        return mChat.root.getVisibility() == VISIBLE;
+    }
+
     /** Draws {@code line}; a null field hides its chip. */
     public void render(@NonNull OrientationLine line) {
         show(mMachine, line.machine, false);
         show(mFolder, line.path, false);
         show(mChat, line.chat, false);
-        show(mFiveHour, line.fiveHour == null ? null
-            : line.fiveHourReset == null ? line.fiveHour + "%"
-            : line.fiveHour + "% " + line.fiveHourReset, line.fiveHourHot);
+        show(mFiveHour, line.fiveHour == null ? null : fiveHourText(line), line.fiveHourHot);
         show(mWeekly, line.weekly == null ? null : line.weekly + "%", line.weeklyHot); // the calendar icon names it
     }
 
@@ -205,8 +215,23 @@ public class OrientationBarView extends LinearLayout {
         return out;
     }
 
-    private void show(@NonNull Chip chip, @Nullable String text, boolean hot) {
-        if (text == null || text.isEmpty()) {
+    /** MadameLabs fork: the 5 h chip's percent, then when it renews in a smaller face. */
+    @NonNull
+    static CharSequence fiveHourText(@NonNull OrientationLine line) {
+        String percent = line.fiveHour + "%";
+        if (line.fiveHourReset == null) return percent;
+        android.text.SpannableStringBuilder out = new android.text.SpannableStringBuilder(percent)
+            .append(' ').append(line.fiveHourReset);
+        out.setSpan(new android.text.style.RelativeSizeSpan(RESET_SCALE), percent.length() + 1,
+            out.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return out;
+    }
+
+    /** How much smaller the 5 h chip's renewal time is drawn than its percent. */
+    static final float RESET_SCALE = .8f;
+
+    private void show(@NonNull Chip chip, @Nullable CharSequence text, boolean hot) {
+        if (text == null || text.length() == 0) {
             chip.root.setVisibility(GONE);
             return;
         }

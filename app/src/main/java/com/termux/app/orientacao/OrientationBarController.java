@@ -36,6 +36,8 @@ public final class OrientationBarController {
         boolean chipsInRow();
         /** Lets the clock's cell hold the chips, or not while they stand in the row. */
         void allowChipsInSlot(boolean allowed);
+        /** MadameLabs fork: whether the keys panel's chat row has a name to show. */
+        default void chatRowShown(boolean shown) {}
     }
 
     /** How often the bar is refreshed, like tmux's status-interval. */
@@ -113,6 +115,7 @@ public final class OrientationBarController {
         if (key.equals(mLastDrawn)) return;
         mLastDrawn = key;
         view.render(line);
+        if (inRow) mSource.chatRowShown(view.chatShown());
     }
 
     @Nullable

@@ -2610,6 +2610,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onResume();
         if (mOrientationBar != null) mOrientationBar.start(); // barra-de-orientacao
         syncCommandBoxPopupMode(); // MadameLabs fork: the toggle may have moved in Settings
+        syncChipRadius();
         mHomePress.onResume();
         Logger.logVerbose(LOG_TAG, "onResume");
         // Text left waiting in the pill holds the screen again, its idle release started over.
@@ -16699,6 +16700,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 @Override public boolean chipsInRow() {
                     return mPreferences != null && mPreferences.isOrientationChipsInRow();
                 }
+                @Override public void chatRowShown(boolean shown) {
+                    if (shown == mChatRowShown) return;
+                    mChatRowShown = shown;
+                    View row = findViewById(R.id.orientation_dock_chat_scroll);
+                    if (row != null) row.setVisibility(shown ? View.VISIBLE : View.GONE);
+                    mKeyboardGeometry.requestGeometrySync();
+                }
                 @Override public void allowChipsInSlot(boolean allowed) {
                     View slot = findViewById(R.id.terminal_top_widget_area);
                     if (slot instanceof com.termux.app.statusbar.TopPaneWidgetSlot)
@@ -16721,6 +16729,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     // barra-de-orientacao (MadameLabs fork): "Chips and pills in the keys panel".
+
+    /** MadameLabs fork: whether the chat's own row shows; gone while there is no name. */
+    private boolean mChatRowShown = true;
 
     /** Rows the keys panel gains above the keys while the toggle is on: the chips and the pills. */
     private static final float ORIENTATION_DOCK_ROW_DP = 26f;
@@ -16785,7 +16796,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      */
     private int orientationDockHeightPx(int toolbarHeightPx) {
         return toolbarHeightPx > 0 && pillsDocked()
-            ? 3 * Math.round(dpToPx(ORIENTATION_DOCK_ROW_DP)) : 0;
+            ? (mChatRowShown ? 3 : 2) * Math.round(dpToPx(ORIENTATION_DOCK_ROW_DP)) : 0;
     }
 
     /** MadameLabs fork: the dock rows' height, gone at 0; true when it changed. */
@@ -16868,6 +16879,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Nullable private com.termux.app.terminal.io.CommandBoxPopup mCommandBoxPopup;
     private boolean mCommandBoxPopupApplied;
+
+    /** MadameLabs fork: the Chip radius last applied, so a change in Settings redresses the bar. */
+    private int mAppliedChipRadius = Integer.MIN_VALUE;
+
+    private void syncChipRadius() {
+        int radius = mPreferences == null ? -1 : mPreferences.getStatusIndicatorCornerRadius();
+        if (radius == mAppliedChipRadius) return;
+        boolean first = mAppliedChipRadius == Integer.MIN_VALUE;
+        mAppliedChipRadius = radius;
+        if (!first) refreshTerminalWindowBar();
+    }
 
     private boolean commandBoxPopupOn() {
         return mPreferences != null && mPreferences.isCommandBoxPopup();

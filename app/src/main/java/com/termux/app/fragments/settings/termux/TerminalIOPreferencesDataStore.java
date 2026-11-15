@@ -171,6 +171,12 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             mPreferences.setTopPaneClockAlignment(value);
         } else if ("status_bar_cutout_mode".equals(key)) {
             mPreferences.setStatusBarCutoutMode(value);
+        } else if ("status_indicator_corner_radius".equals(key)) { // MadameLabs fork
+            try {
+                mPreferences.setStatusIndicatorCornerRadius(Integer.parseInt(value));
+            } catch (NumberFormatException e) {
+                mPreferences.setStatusIndicatorCornerRadius(-1);
+            }
         }
     }
 
@@ -185,6 +191,9 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
         }
         if ("status_bar_cutout_mode".equals(key)) {
             return mPreferences.getStatusBarCutoutMode();
+        }
+        if ("status_indicator_corner_radius".equals(key)) { // MadameLabs fork
+            return Integer.toString(mPreferences.getStatusIndicatorCornerRadius());
         }
         return defValue;
     }
