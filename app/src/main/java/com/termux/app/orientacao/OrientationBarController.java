@@ -127,6 +127,9 @@ public final class OrientationBarController {
         // The foreground process's own folder first: a `cd` inside a subshell or an agent never
         // reaches the shell's prompt, so the shell's last OSC 7 would be stale.
         String cwd = mSource.foregroundCwd(pid);
+        android.util.Log.d("ORIENT-DBG", "read: pid=" + pid + " cwd=" + cwd + " osc7="
+            + emulator.getReportedWorkingDirectory() + " remote=" + emulator.getRemoteUserHost()
+            + ":" + emulator.getRemotePath()); // TEMP
         return new OrientationInput(emulator.getRemoteUserHost(), emulator.getRemotePath(),
             cwd != null ? cwd : emulator.getReportedWorkingDirectory(), mSource.foregroundCommand(pid),
             chatName(emulator.getUserVar(VAR_CHAT), session.getTitle()),

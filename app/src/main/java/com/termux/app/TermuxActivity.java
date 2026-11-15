@@ -16681,7 +16681,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     requestSessionBrowserForegroundRefresh();
                 }
                 @Nullable @Override public String foregroundCwd(int shellPid) {
-                    if (mWindowForegroundResolver == null) return null;
+                    if (mWindowForegroundResolver == null) {
+                        android.util.Log.d("ORIENT-DBG", "cwd: no resolver, shell=" + shellPid); // TEMP
+                        return null;
+                    }
                     com.termux.app.statusbar.WindowForegroundResolver.ForegroundInfo info =
                         mWindowForegroundResolver.get(shellPid);
                     // The terminal's own foreground group first: the resolver's answer can be the
@@ -16690,8 +16693,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     if (pid == shellPid && info != null && info.foregroundPid > 0)
                         pid = info.foregroundPid;
                     try {
-                        return new java.io.File("/proc/" + pid + "/cwd").getCanonicalPath();
+                        String cwd = new java.io.File("/proc/" + pid + "/cwd").getCanonicalPath();
+                        android.util.Log.d("ORIENT-DBG", "cwd: shell=" + shellPid + " fg=" + pid
+                            + " info=" + (info == null ? null : info.foregroundPid) + " -> " + cwd); // TEMP
+                        return cwd;
                     } catch (java.io.IOException | SecurityException e) {
+                        android.util.Log.d("ORIENT-DBG", "cwd: shell=" + shellPid + " fg=" + pid + " " + e); // TEMP
                         return null;
                     }
                 }
@@ -16737,6 +16744,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             int tpgid = Integer.parseInt(fields[5]); // state ppid pgrp session tty_nr tpgid
             return tpgid > 0 ? tpgid : pid;
         } catch (Exception e) {
+            android.util.Log.d("ORIENT-DBG", "tpgid of " + pid + ": " + e); // TEMP
             return pid;
         }
     }
