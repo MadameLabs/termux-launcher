@@ -94,6 +94,42 @@ public class OrientationBarView extends LinearLayout {
         }
     }
 
+    /** The cap on the chat's text, Integer.MAX_VALUE while it fits. */
+    private int mChatMaxPx = Integer.MAX_VALUE;
+
+    /**
+     * The chat chip gives way, not the limits: when the chips would run past the width they are
+     * given, the chat's text is held to what the others leave and ends in "…". The character
+     * estimate of {@link #maxChars} only sizes the line; this is what keeps the weekly chip on it.
+     */
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
+            || mChat.root.getVisibility() != VISIBLE) return;
+        int width = MeasureSpec.getSize(widthMeasureSpec);
+        int used = getPaddingLeft() + getPaddingRight();
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child.getVisibility() == GONE || child == mChat.root) continue;
+            LayoutParams lp = (LayoutParams) child.getLayoutParams();
+            if (lp.weight > 0) continue; // the spacer takes only what is left
+            used += child.getMeasuredWidth() + lp.leftMargin + lp.rightMargin;
+        }
+        LayoutParams chatLp = (LayoutParams) mChat.root.getLayoutParams();
+        int textRoom = width - used - chatLp.leftMargin - chatLp.rightMargin
+            - mChat.icon.getMeasuredWidth();
+        // The text's own width, padding included, so the cap is lifted again when it fits.
+        int natural = (int) Math.ceil(mChat.text.getPaint().measureText(
+            mChat.text.getText().toString())) + mChat.text.getPaddingLeft()
+            + mChat.text.getPaddingRight();
+        int cap = natural <= textRoom ? Integer.MAX_VALUE : Math.max(0, textRoom);
+        if (cap == mChatMaxPx) return;
+        mChatMaxPx = cap;
+        mChat.text.setMaxWidth(cap);
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
     /** About how many characters fit across, for {@link OrientationModel#fit}. */
     public int maxChars(int widthPx) {
         float charPx = mMachine.text.getPaint().measureText("m");

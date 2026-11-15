@@ -1151,7 +1151,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 TerminalContrastLevel level =
                     com.termux.app.chrome.LegibilityLevel.terminalContrast(mHost.preferences());
                 int ground = mHost.terminalTextGround();
-                props = SchemeContrast.apply(loaded, ground, level);
+                // MadameLabs fork: a fixed scheme is worn exactly as the file says; nothing re-tones
+                // it for the wallpaper (on thin glass that turned the default palette olive).
+                props = loaded;
                 mLastSchemeSignature = schemeSignature(level, ground);
                 // With or without a custom theme: rewrite the material-colors files from the scheme
                 // so shells do not keep the old wallpaper palette.
@@ -1444,6 +1446,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public static double terminalContrastFloor(
             @Nullable com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences preferences) {
         if (preferences == null) return com.termux.view.ContrastFloor.TEXT;
+        // MadameLabs fork: with a fixed scheme (wallpaper colours off) no floor moves its colours;
+        // 1:1 is met by every colour on every ground.
+        if (!preferences.isTerminalDynamicColorsEnabled()) return 1d;
         return preferences.getTerminalContrastLevel().bodyTarget;
     }
 
