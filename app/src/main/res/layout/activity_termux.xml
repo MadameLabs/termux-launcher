@@ -891,6 +891,12 @@
                         android:layout_width="match_parent"
                         android:layout_height="0dp">
 
+                        <FrameLayout
+                            android:id="@+id/orientation_dock_pills"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+
                         <HorizontalScrollView
                             android:id="@+id/orientation_dock_scroll"
                             android:layout_width="match_parent"
@@ -908,11 +914,6 @@
                                 android:layout_height="match_parent" />
                         </HorizontalScrollView>
 
-                        <FrameLayout
-                            android:id="@+id/orientation_dock_pills"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1" />
                     </LinearLayout>
 
                     <androidx.viewpager.widget.ViewPager

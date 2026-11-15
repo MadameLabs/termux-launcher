@@ -16758,7 +16758,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             else mPillsHomeParent.addView(strip, index);
         }
         dock.setVisibility(docked ? View.VISIBLE : View.GONE);
-        android.util.Log.d("DOCK-DBG", "sync: docked=" + docked + " stripParent=" + strip.getParent()); // TEMP
         com.termux.app.orientacao.OrientationBarView chips = findViewById(R.id.orientation_bar_dock);
         if (chips != null) chips.setChatLast(true);
         applyStatusBarEdge(arrangement().layout());
@@ -18894,26 +18893,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 flushBottomInsetPx);
         }
         boolean accessoryHeightChanged = updateAccessoryStackContainerHeight(accessoryStackContainer, combinedHeight);
-        android.util.Log.d("DOCK-DBG", "pass: keys=" + measuredToolbarHeightPx + " toolbar=" + toolbarHeightPx
-            + " cmd=" + commandRowPx + " dock=" + dockRowsPx + " stack=" + stack.stackHeightPx
-            + " squeeze=" + stack.squeezePx + " combined=" + combinedHeight
-            + " kb=" + state.keyboardHeight + " extraKeys=" + state.extraKeysRowEnabled
-            + " toolbarShown=" + state.toolbarShown); // TEMP
-        accessoryStackContainer.post(() -> { // TEMP
-            StringBuilder b = new StringBuilder("views:");
-            for (int id : new int[]{R.id.accessory_stack_container, R.id.accessory_surface_host,
-                    R.id.terminal_toolbar_host, R.id.orientation_dock,
-                    R.id.terminal_toolbar_view_pager, R.id.terminal_toolbar_command_row}) {
-                View v = findViewById(id);
-                if (v == null) { b.append(" null"); continue; }
-                int[] at = new int[2];
-                v.getLocationOnScreen(at);
-                b.append(' ').append(getResources().getResourceEntryName(id)).append('=')
-                    .append(at[1]).append('+').append(v.getHeight())
-                    .append(v.getVisibility() == View.VISIBLE ? "" : "(hidden)");
-            }
-            android.util.Log.d("DOCK-DBG", b.toString());
-        });
         // What the container's layout listener holds the laid-out keyboard to.
         mKeyboardGeometry.noteReservedHeightPx(state.keyboardHeight);
         boolean accessoryMarginChanged = updateAccessoryStackContainerBottomMargin(
@@ -19255,7 +19234,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_row, contentInset);
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_view_pager, extraKeysInset);
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_command_row, extraKeysInset);
-        moved |= updateViewHorizontalMargins(R.id.orientation_dock, extraKeysInset); // barra-de-orientacao
+        moved |= updateViewHorizontalMargins(R.id.orientation_dock_scroll, extraKeysInset); // barra-de-orientacao: the chips alone
         moved |= updateViewPadding(R.id.apps_bar_viewpager, 0, appsTopPadding, 0, appsBottomPadding);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_underlay, surfaceInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_overlay, surfaceInset);
