@@ -14,10 +14,19 @@ public final class OrientationLine {
     @Nullable public final Integer fiveHour;
     @Nullable public final Integer weekly;
     public final boolean fiveHourHot;
+    /** MadameLabs fork: when the 5 h limit renews, {@code HH:MM}, or null. */
+    @Nullable public final String fiveHourReset;
     public final boolean weeklyHot;
 
     public OrientationLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
                            @Nullable Integer fiveHour, @Nullable Integer weekly) {
+        this(machine, path, chat, fiveHour, weekly, null);
+    }
+
+    public OrientationLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
+                           @Nullable Integer fiveHour, @Nullable Integer weekly,
+                           @Nullable String fiveHourReset) {
+        this.fiveHourReset = fiveHour == null ? null : fiveHourReset;
         this.machine = machine;
         this.path = path;
         this.chat = chat;
@@ -29,6 +38,6 @@ public final class OrientationLine {
 
     @NonNull
     OrientationLine with(@Nullable String newPath, @Nullable String newChat) {
-        return new OrientationLine(machine, newPath, newChat, fiveHour, weekly);
+        return new OrientationLine(machine, newPath, newChat, fiveHour, weekly, fiveHourReset);
     }
 }

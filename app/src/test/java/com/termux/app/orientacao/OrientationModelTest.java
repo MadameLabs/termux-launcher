@@ -95,6 +95,19 @@ public class OrientationModelTest {
             line.chat.substring(0, OrientationModel.CHAT_MAX - 1));
     }
 
+    /** The 5 h chip carries when the limit renews, HH:MM as the statusline sends it. */
+    @Test
+    public void fiveHourResetIsKeptOnlyAsATime() {
+        assertEquals("14:30", OrientationModel.resetTime(" 14:30 "));
+        assertEquals("9:05", OrientationModel.resetTime("9:05"));
+        assertEquals(null, OrientationModel.resetTime("1731690000"));
+        assertEquals(null, OrientationModel.resetTime(null));
+        OrientationLine line = OrientationModel.resolve(new OrientationInput(null, null, "/x",
+            SHELL, "t", true, "42", "10", "14:30"));
+        assertEquals("14:30", line.fiveHourReset);
+        assertEquals("14:30", line.with("/y", "c").fiveHourReset);
+    }
+
     /** The keys panel's chat row passes no cap: the view fits the name to its width. */
     @Test
     public void chatKeptWholeWithoutACap() {

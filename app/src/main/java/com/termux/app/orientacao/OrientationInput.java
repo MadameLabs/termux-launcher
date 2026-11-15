@@ -36,5 +36,25 @@ public final class OrientationInput {
         this.agentPresent = agentPresent;
         this.fiveHour = fiveHour;
         this.weekly = weekly;
+        this.fiveHourReset = null;
+    }
+
+    /** MadameLabs fork: when the 5 h limit renews, as {@code HH:MM} ({@code ml_5h_reset}), raw. */
+    @Nullable public final String fiveHourReset;
+
+    public OrientationInput(@Nullable String remoteUserHost, @Nullable String remotePath,
+                            @Nullable String localPath, @Nullable List<String> foregroundCommand,
+                            @Nullable String title, boolean agentPresent,
+                            @Nullable String fiveHour, @Nullable String weekly,
+                            @Nullable String fiveHourReset) {
+        this.remoteUserHost = remoteUserHost;
+        this.remotePath = remotePath;
+        this.localPath = localPath;
+        this.foregroundCommand = foregroundCommand == null ? Collections.emptyList() : foregroundCommand;
+        this.title = title;
+        this.agentPresent = agentPresent;
+        this.fiveHour = fiveHour;
+        this.weekly = weekly;
+        this.fiveHourReset = fiveHourReset;
     }
 }

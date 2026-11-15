@@ -53,7 +53,7 @@ public final class OrientationModel {
         String chat = in.agentPresent ? cut(in.title, chatMax) : null;
         Integer fiveHour = in.agentPresent ? percent(in.fiveHour) : null;
         Integer weekly = in.agentPresent ? percent(in.weekly) : null;
-        return new OrientationLine(machine, path, chat, fiveHour, weekly);
+        return new OrientationLine(machine, path, chat, fiveHour, weekly, resetTime(in.fiveHourReset));
     }
 
     /**
@@ -133,11 +133,20 @@ public final class OrientationModel {
     private static int limitsLength(@NonNull OrientationLine line) {
         int n = 0;
         if (line.fiveHour != null) n += String.valueOf(line.fiveHour).length() + 1;
+        if (line.fiveHourReset != null) n += line.fiveHourReset.length() + 3;
         if (line.weekly != null) n += String.valueOf(line.weekly).length() + 1; // "NN%"
         return n;
     }
 
     private static int len(@Nullable String s) {
         return s == null ? 0 : s.length();
+    }
+
+    /** MadameLabs fork: {@code HH:MM} as the statusline sends it, or null for anything else. */
+    @Nullable
+    static String resetTime(@Nullable String raw) {
+        if (raw == null) return null;
+        String value = raw.trim();
+        return value.matches("\\d{1,2}:\\d{2}") ? value : null;
     }
 }
