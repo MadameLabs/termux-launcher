@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The orientation bar under the extra keys (MadameLabs fork): machine, folder and chat on the left,
+ * The orientation chips in the status bar's clock cell (MadameLabs fork): machine, folder and chat on the left,
  * the harness's 5 h and weekly spend on the right, as chips in the Arch-PC tmux bar's look
  * (Catppuccin Mocha, an icon on a coloured cap and the text on a grey body, both ends rounded).
  */
@@ -65,7 +65,7 @@ public class OrientationBarView extends LinearLayout {
         setGravity(Gravity.CENTER_VERTICAL);
         int pad = dp(6);
         setPadding(pad, 0, pad, 0);
-        mMachine = addChip(MACHINE, "󰋀");   // md-monitor (tmux-ia.sh)
+        mMachine = addChip(MACHINE, "\uDB80\uDF79"); // md-monitor, as tmux-ia.sh
         mFolder = addChip(FOLDER, "");           // fa-folder
         mChat = addChip(CHAT, "󰻞");         // md-chat
         View spacer = new View(context);
@@ -83,9 +83,16 @@ public class OrientationBarView extends LinearLayout {
         show(mWeekly, line.weekly == null ? null : "sem " + line.weekly + "%", line.weeklyHot);
     }
 
-    /** The bar's height in pixels, for the accessory stack's sum. */
-    public int heightPx() {
-        return dp(HEIGHT_DP);
+    @Nullable private Typeface mTypeface;
+
+    /** Draws every chip in {@code typeface}, the terminal's, so its Nerd Font glyphs show. */
+    public void setChipTypeface(@Nullable Typeface typeface) {
+        if (typeface == null || typeface == mTypeface) return;
+        mTypeface = typeface;
+        for (Chip chip : new Chip[]{mMachine, mFolder, mChat, mFiveHour, mWeekly}) {
+            chip.icon.setTypeface(typeface);
+            chip.text.setTypeface(typeface);
+        }
     }
 
     /** About how many characters fit across, for {@link OrientationModel#fit}. */

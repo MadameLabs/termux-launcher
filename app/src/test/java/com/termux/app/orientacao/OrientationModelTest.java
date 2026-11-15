@@ -27,7 +27,7 @@ public class OrientationModelTest {
         OrientationLine line = OrientationModel.resolve(
             input(null, null, "/data/data/com.termux/files/home/dev", SHELL, null, false, null, null));
         assertEquals("tlnix", line.machine);
-        assertEquals("/data/data/com.termux/files/home/dev", line.path);
+        assertEquals("dev", line.path);
         assertNull(line.chat);
     }
 
@@ -37,7 +37,7 @@ public class OrientationModelTest {
             input("Arthur@Arch-PC", "/home/arthur/dev", "/data/x", Arrays.asList("ssh", "arch"),
                 null, false, null, null));
         assertEquals("arthur@arch-pc", line.machine);
-        assertEquals("/home/arthur/dev", line.path);
+        assertEquals("dev", line.path);
     }
 
     @Test
@@ -56,7 +56,7 @@ public class OrientationModelTest {
     public void leftSshReturnsToLocal() {
         OrientationLine line = OrientationModel.resolve(input(null, null, "/data/x", SHELL, null, false, null, null));
         assertEquals("tlnix", line.machine);
-        assertEquals("/data/x", line.path);
+        assertEquals("x", line.path);
     }
 
     @Test
@@ -95,6 +95,16 @@ public class OrientationModelTest {
     }
 
     @Test
+    public void onlyTheLastFolder() {
+        assertEquals("home", OrientationModel.lastFolder("/data/data/com.termux/files/home/"));
+        assertEquals("/", OrientationModel.lastFolder("/"));
+        assertNull(OrientationModel.lastFolder(null));
+        OrientationLine line = OrientationModel.resolve(input(null, null,
+            "/data/data/com.termux/files/home/repos/termux-launcher", SHELL, null, false, null, null));
+        assertEquals("termux-launcher", line.path);
+    }
+
+    @Test
     public void fitNeverCutsMachine() {
         OrientationLine full = OrientationModel.resolve(input("arthur@arch-pc", "/home/arthur/repos/termux-launcher",
             "/x", SHELL, "barra de orientacao", true, "42", "10"));
@@ -103,7 +113,7 @@ public class OrientationModelTest {
         assertEquals(full.chat, roomy.chat);
         assertEquals(full.path, roomy.path);
 
-        OrientationLine tight = OrientationModel.fit(full, 65);
+        OrientationLine tight = OrientationModel.fit(full, 50);
         assertEquals("arthur@arch-pc", tight.machine);
         assertTrue("the chat shrinks first", tight.chat != null && tight.chat.length() < full.chat.length());
         assertEquals(full.path, tight.path);

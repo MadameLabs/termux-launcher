@@ -202,6 +202,14 @@
                         android:contentDescription="@string/termux_top_pane_clock_content_description"
                         android:importantForAccessibility="yes" />
 
+                    <!-- barra-de-orientacao (MadameLabs fork): the orientation chips stand in the
+                         clock's cell while the clock is off (TopPaneWidgetSlot). -->
+                    <com.termux.app.orientacao.OrientationBarView
+                        android:id="@+id/orientation_bar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone" />
+
                     <com.termux.app.statusbar.PinnedNotificationsView
                         android:id="@+id/terminal_pinned_notifications"
                         android:layout_width="wrap_content"
@@ -854,7 +862,7 @@
                         android:visibility="gone" />
                 </FrameLayout>
 
-                <!-- barra-de-orientacao: a LinearLayout so the orientation bar stands under the keys. -->
+                <!-- MadameLabs fork: a LinearLayout so the command row stands under the keys. -->
                 <LinearLayout
                     android:id="@+id/terminal_toolbar_host"
                     android:orientation="vertical"
@@ -870,11 +878,14 @@
                         android:layout_height="37.5dp"
                         android:background="@android:color/transparent"/>
 
-                    <com.termux.app.orientacao.OrientationBarView
-                        android:id="@+id/orientation_bar"
+                    <!-- MadameLabs fork: the persistent command row under the key pages, where a
+                         system keyboard such as Gboard types (TerminalToolbarViewPager). -->
+                    <include
+                        android:id="@+id/terminal_toolbar_command_row"
+                        layout="@layout/view_terminal_toolbar_text_input"
                         android:visibility="gone"
                         android:layout_width="match_parent"
-                        android:layout_height="20dp" />
+                        android:layout_height="37.5dp" />
                 </LinearLayout>
             </com.termux.app.place.EdgeStackView>
 

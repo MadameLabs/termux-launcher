@@ -44,7 +44,8 @@ jobs:
           GRADLE_OPTS: >-
             -Dorg.gradle.internal.http.connectionTimeout=120000
             -Dorg.gradle.internal.http.socketTimeout=120000
-          GRADLE_MAX_ATTEMPTS: "5"
+          # MadameLabs fork: a failing test costs one retry (~9 min each), not four.
+          GRADLE_MAX_ATTEMPTS: "2"
           GRADLE_RETRY_SLEEP_SECONDS: "20"
           GRADLE_REFRESH_FROM_ATTEMPT: "2"
         run: |

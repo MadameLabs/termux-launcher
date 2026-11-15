@@ -77,6 +77,9 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
     private final Rect mMediaBounds = new Rect();
 
     @Nullable private TerminalClockWidget mClock;
+    /** barra-de-orientacao (MadameLabs fork): the chips that take the clock's cell while it is off. */
+    @Nullable private View mOrientation;
+    private final Rect mOrientationBounds = new Rect();
     @Nullable private PinnedNotificationsView mNotifications;
     @Nullable private MediaWidgetView mMedia;
     @Nullable private PinnedNotificationIconCache mIcons;
@@ -145,6 +148,8 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         super.onFinishInflate();
         mClock = findViewById(R.id.terminal_clock_widget);
         if (mClock != null && !mClockShown) mClock.setVisibility(GONE);
+        mOrientation = findViewById(R.id.orientation_bar); // barra-de-orientacao
+        if (mOrientation != null) mOrientation.setVisibility(mClockShown ? GONE : VISIBLE);
         mNotifications = findViewById(R.id.terminal_pinned_notifications);
         mMedia = findViewById(R.id.terminal_media_widget);
         mIcons = new PinnedNotificationIconCache(getContext());
@@ -237,6 +242,7 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         if (mClockShown == shown) return;
         mClockShown = shown;
         if (mClock != null) mClock.setVisibility(shown ? VISIBLE : GONE);
+        if (mOrientation != null) mOrientation.setVisibility(shown ? GONE : VISIBLE); // barra-de-orientacao
         requestLayout();
         invalidate();
     }
@@ -405,15 +411,18 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
             int cap = Math.max(Math.round(available * .55f), available - sideMin - gap);
             cap = Math.max(0, cap);
             mClock.setFitBudget(cap, heightBudget, mClockShared);
-            int clockWidth = !mClockShown ? 0 : Math.min(cap,
-                (int) Math.ceil(mClock.fitWidthPx(cap, heightBudget, mClockShared)));
-            row = TopPaneSlotRow.shared(width, contentStart, gutter, mClockShown ? gap : 0,
-                clockWidth, mClockAlignment);
+            boolean orientation = orientationShown(); // barra-de-orientacao: the chips' run
+            int clockWidth = mClockShown ? Math.min(cap,
+                (int) Math.ceil(mClock.fitWidthPx(cap, heightBudget, mClockShared)))
+                : orientation ? Math.min(cap, orientationWidth(cap, height)) : 0;
+            row = TopPaneSlotRow.shared(width, contentStart, gutter,
+                mClockShown || orientation ? gap : 0, clockWidth, mClockAlignment);
         }
         mClock.measure(MeasureSpec.makeMeasureSpec(row.clockWidth(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(clockHeight, MeasureSpec.EXACTLY));
         mClockBounds.set(row.clockStart, (height - clockHeight) / 2,
             row.clockEnd, (height - clockHeight) / 2 + clockHeight);
+        measureOrientation(row.clockStart, row.clockEnd, height); // barra-de-orientacao
 
         mNotificationBounds.setEmpty();
         mMediaBounds.setEmpty();
@@ -459,6 +468,29 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         }
     }
 
+    // barra-de-orientacao (MadameLabs fork): the chips stand where the clock would, centred.
+
+    private boolean orientationShown() {
+        return !mClockShown && mOrientation != null && mOrientation.getVisibility() != GONE;
+    }
+
+    /** The chips' own width, at most {@code cap}. */
+    private int orientationWidth(int cap, int height) {
+        mOrientation.measure(MeasureSpec.makeMeasureSpec(Math.max(0, cap), MeasureSpec.AT_MOST),
+            MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+        return mOrientation.getMeasuredWidth();
+    }
+
+    private void measureOrientation(int start, int end, int height) {
+        mOrientationBounds.setEmpty();
+        if (!orientationShown() || end <= start) return;
+        mOrientation.measure(MeasureSpec.makeMeasureSpec(end - start, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+        int h = mOrientation.getMeasuredHeight();
+        int top = (height - h) / 2;
+        mOrientationBounds.set(start, top, end, top + h);
+    }
+
     private void measureExact(@NonNull View view, @NonNull Rect bounds) {
         view.measure(MeasureSpec.makeMeasureSpec(bounds.width(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(bounds.height(), MeasureSpec.EXACTLY));
@@ -477,6 +509,10 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
                 float size = bandHeight > 0f ? Math.min(bandHeight, dp(36f)) : dp(28f);
                 mHomeAnchorListener.onHomeAnchor(centerY, size);
             }
+        }
+        if (mOrientation != null && !mOrientationBounds.isEmpty()) { // barra-de-orientacao
+            mOrientation.layout(mOrientationBounds.left, mOrientationBounds.top,
+                mOrientationBounds.right, mOrientationBounds.bottom);
         }
         if (mNotifications != null && !mNotificationBounds.isEmpty()) {
             mNotifications.layout(mNotificationBounds.left, mNotificationBounds.top,

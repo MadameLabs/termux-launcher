@@ -28,6 +28,10 @@ public final class OrientationBarController {
         boolean agentPresent(int shellPid);
         /** Asks the foreground resolver for fresh answers; they arrive on a later tick. */
         void requestForegroundRefresh();
+        /** The working directory of the pane's foreground process, or null if unknown. */
+        @Nullable String foregroundCwd(int shellPid);
+        /** The terminal's typeface, which carries the Nerd Font glyphs the chips draw. */
+        @Nullable android.graphics.Typeface terminalTypeface();
     }
 
     /** How often the bar is refreshed, like tmux's status-interval. */
@@ -67,16 +71,17 @@ public final class OrientationBarController {
         mHandler.removeCallbacks(mTick);
     }
 
-    /** The bar's height, for the accessory stack. */
-    public int heightPx() {
-        return mView.heightPx();
-    }
-
     /** Redraws now, for a focus change or a resolved foreground. */
     public void onRefresh() {
+        mView.setChipTypeface(mSource.terminalTypeface());
+        // The chips wrap their text, so they are fitted to the run the slot can give them (just
+        // over half of it, as the clock gets), not to their own last width.
+        android.view.ViewParent parent = mView.getParent();
+        int room = parent instanceof android.view.View
+            ? Math.round(((android.view.View) parent).getWidth() * .55f) : mView.getWidth();
         OrientationLine line = OrientationModel.fit(OrientationModel.resolve(read()),
-            mView.maxChars(mView.getWidth()));
-        String key = mView.getWidth() + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'
+            mView.maxChars(room));
+        String key = room + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'
             + line.fiveHour + '\u0000' + line.weekly;
         if (key.equals(mLastDrawn)) return;
         mLastDrawn = key;
@@ -91,8 +96,12 @@ public final class OrientationBarController {
             return new OrientationInput(null, null, null, null, null, false, null, null);
         }
         int pid = session.getPid();
+        // The foreground process's own folder first: a `cd` inside a subshell or an agent never
+        // reaches the shell's prompt, so the shell's last OSC 7 would be stale.
+        String cwd = mSource.foregroundCwd(pid);
         return new OrientationInput(emulator.getRemoteUserHost(), emulator.getRemotePath(),
-            emulator.getReportedWorkingDirectory(), mSource.foregroundCommand(pid), session.getTitle(),
+            cwd != null ? cwd : emulator.getReportedWorkingDirectory(), mSource.foregroundCommand(pid),
+            session.getTitle(),
             mSource.agentPresent(pid), emulator.getUserVar(VAR_FIVE_HOUR),
             emulator.getUserVar(VAR_WEEKLY));
     }

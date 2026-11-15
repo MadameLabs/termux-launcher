@@ -40,6 +40,7 @@ public final class OrientationModel {
             machine = LOCAL_MACHINE;
             path = in.localPath;
         }
+        path = lastFolder(path);
         String chat = in.agentPresent ? cut(in.title, CHAT_MAX) : null;
         Integer fiveHour = in.agentPresent ? percent(in.fiveHour) : null;
         Integer weekly = in.agentPresent ? percent(in.weekly) : null;
@@ -79,6 +80,17 @@ public final class OrientationModel {
             return arg.isEmpty() ? null : arg;
         }
         return null;
+    }
+
+    /** Only the last folder of a path, as the Arthur asked: "/home/arthur/dev" reads "dev". */
+    @Nullable
+    static String lastFolder(@Nullable String path) {
+        if (path == null) return null;
+        String trimmed = path;
+        while (trimmed.length() > 1 && trimmed.endsWith("/")) trimmed = trimmed.substring(0, trimmed.length() - 1);
+        if (trimmed.isEmpty()) return null;
+        if (trimmed.equals("/")) return "/";
+        return trimmed.substring(trimmed.lastIndexOf('/') + 1);
     }
 
     @Nullable

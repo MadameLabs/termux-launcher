@@ -16647,12 +16647,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         String savedTextInput = null;
         if (savedInstanceState != null)
             savedTextInput = savedInstanceState.getString(ARG_TERMINAL_TOOLBAR_TEXT_INPUT);
+        TerminalToolbarViewPager.bindCommandRow(this, savedTextInput); // MadameLabs fork
         terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this, savedTextInput));
         terminalToolbarViewPager.addOnPageChangeListener(new TerminalToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
         mChrome.requestSync(ChromeRenderer.SCOPE_ACCESSORY_RENDER);
     }
 
-    // barra-de-orientacao (MadameLabs fork): the bar under the extra keys and what it reads.
+    // barra-de-orientacao (MadameLabs fork): the chips in the status bar's clock cell and what
+    // they read.
 
     @Nullable private com.termux.app.orientacao.OrientationBarController mOrientationBar;
 
@@ -16677,17 +16679,38 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 @Override public void requestForegroundRefresh() {
                     requestSessionBrowserForegroundRefresh();
                 }
+                @Nullable @Override public String foregroundCwd(int shellPid) {
+                    if (mWindowForegroundResolver == null) return null;
+                    com.termux.app.statusbar.WindowForegroundResolver.ForegroundInfo info =
+                        mWindowForegroundResolver.get(shellPid);
+                    int pid = info == null || info.foregroundPid <= 0 ? shellPid : info.foregroundPid;
+                    try {
+                        return new java.io.File("/proc/" + pid + "/cwd").getCanonicalPath();
+                    } catch (java.io.IOException | SecurityException e) {
+                        return null;
+                    }
+                }
+                @Nullable @Override public android.graphics.Typeface terminalTypeface() {
+                    TerminalView view = getTerminalView();
+                    return view == null ? null : view.getTerminalTypeface();
+                }
             });
     }
 
-    /** Shows the bar with the extra keys and hides it with them; true when that changed. */
-    private boolean applyOrientationBarHeight(boolean shown) {
-        View view = findViewById(R.id.orientation_bar);
-        if (view == null) return false;
-        int visibility = shown ? View.VISIBLE : View.GONE;
-        if (view.getVisibility() == visibility) return false;
-        view.setVisibility(visibility);
-        return true;
+    /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */
+    private boolean applyCommandRowHeight(int heightPx) {
+        View row = findViewById(R.id.terminal_toolbar_command_row);
+        if (row == null) return false;
+        int visibility = heightPx > 0 ? View.VISIBLE : View.GONE;
+        boolean changed = row.getVisibility() != visibility;
+        row.setVisibility(visibility);
+        ViewGroup.LayoutParams params = row.getLayoutParams();
+        if (heightPx > 0 && params.height != heightPx) {
+            params.height = heightPx;
+            row.setLayoutParams(params);
+            changed = true;
+        }
+        return changed;
     }
 
     /**
@@ -17630,7 +17653,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void rebuildTerminalToolbarPages() {
         ViewPager pager = getTerminalToolbarViewPager();
         if (pager == null || pager.getAdapter() == null) return;
-        int page = Math.min(pager.getCurrentItem(), getExtraKeysPageCount());
+        int page = Math.max(0, Math.min(pager.getCurrentItem(), getExtraKeysPageCount() - 1));
         pager.getAdapter().notifyDataSetChanged();
         pager.setCurrentItem(page, false);
     }
@@ -18631,8 +18654,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         applyPlaceSystemImeOwner();
         int toolbarHeightPx = state.extraKeysRowEnabled ? measuredToolbarHeightPx : 0;
         boolean toolbarHeightChanged = mDockRows.setExtraKeysHeight(toolbarHeightPx);
-        toolbarHeightChanged |= applyOrientationBarHeight(toolbarHeightPx > 0); // barra-de-orientacao
-        if (toolbarHeightPx > 0 && mOrientationBar != null) toolbarHeightPx += mOrientationBar.heightPx();
+        // MadameLabs fork: the command row stands under the key pages and shows with them.
+        int commandRowPx = toolbarHeightPx > 0 ? AccessoryStackLayoutPolicy.computeTerminalToolbarHeightPx(
+            Math.round(mTerminalToolbarDefaultHeight), 1,
+            mProperties == null ? 1f : mProperties.getTerminalToolbarHeightScaleFactor()) : 0;
+        toolbarHeightChanged |= applyCommandRowHeight(commandRowPx);
+        toolbarHeightPx += commandRowPx;
 
         // The whole bottom stack from one snapshot (Stack layout): the squeeze is worked out there
         // and flows into Dock geometry's snapshot, so this pass applies one dock.
@@ -19052,6 +19079,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         moved |= updateViewHorizontalMargins(R.id.apps_bar_indicator_band, contentInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_row, contentInset);
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_view_pager, extraKeysInset);
+        moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_command_row, extraKeysInset);
         moved |= updateViewPadding(R.id.apps_bar_viewpager, 0, appsTopPadding, 0, appsBottomPadding);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_underlay, surfaceInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_overlay, surfaceInset);
@@ -23637,13 +23665,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mTerminalToolbarDefaultHeight;
     }
 
-    /** Any key page is showing; the text input is the one page after them. */
+    /** MadameLabs fork: the terminal has typing unless the command row holds the focus. */
     public boolean isTerminalViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() < getExtraKeysPageCount();
+        return !isTerminalToolbarTextInputViewSelected();
     }
 
     public boolean isTerminalToolbarTextInputViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() == getExtraKeysPageCount();
+        View input = findViewById(R.id.terminal_toolbar_text_input);
+        return input != null && input.hasFocus();
     }
 
     void termuxSessionListNotifyUpdated() {
