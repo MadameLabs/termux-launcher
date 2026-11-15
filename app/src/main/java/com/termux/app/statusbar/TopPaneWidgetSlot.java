@@ -82,6 +82,8 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
     /** Off while the chips stand in the status row instead (Orientation chips in the pills row). */
     private boolean mOrientationAllowed = true;
     private final Rect mOrientationBounds = new Rect();
+    /** The run the chips may take, from the last measure: what the controller fits the line to. */
+    private int mOrientationRoomPx;
     @Nullable private PinnedNotificationsView mNotifications;
     @Nullable private MediaWidgetView mMedia;
     @Nullable private PinnedNotificationIconCache mIcons;
@@ -420,6 +422,10 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
             row = TopPaneSlotRow.shared(width, contentStart, gutter,
                 mClockShown || orientation ? gap : 0, clockWidth, mClockAlignment);
         }
+        // barra-de-orientacao: alone the chips have the whole row; shared, the clock's cap.
+        mOrientationRoomPx = mMode == TopPaneSlotMode.CLOCK_ONLY ? row.clockWidth()
+            : Math.max(Math.round(available * .55f), available - Math.round(dp(SIDE_MIN_DP))
+                - gap);
         mClock.measure(MeasureSpec.makeMeasureSpec(row.clockWidth(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(clockHeight, MeasureSpec.EXACTLY));
         mClockBounds.set(row.clockStart, (height - clockHeight) / 2,
@@ -483,6 +489,11 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
     private void applyOrientationVisibility() {
         if (mOrientation != null)
             mOrientation.setVisibility(!mClockShown && mOrientationAllowed ? VISIBLE : GONE);
+    }
+
+    /** barra-de-orientacao: the width the chips may take, 0 before the first measure. */
+    public int orientationRoomPx() {
+        return mOrientationRoomPx;
     }
 
     private boolean orientationShown() {

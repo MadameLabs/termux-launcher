@@ -96,6 +96,12 @@ public final class OrientationBarController {
         if (inRow && parent != null) parent = parent.getParent();
         int room = parent instanceof android.view.View
             ? Math.round(((android.view.View) parent).getWidth() * .55f) : view.getWidth();
+        // In the clock's cell the slot says what the chips really get: the whole row when nothing
+        // stands beside them, which the 55% left mostly empty while the chat was cut.
+        if (!inRow && parent instanceof com.termux.app.statusbar.TopPaneWidgetSlot) {
+            int slotRoom = ((com.termux.app.statusbar.TopPaneWidgetSlot) parent).orientationRoomPx();
+            if (slotRoom > 0) room = slotRoom;
+        }
         OrientationLine line = OrientationModel.fit(OrientationModel.resolve(read()),
             view.maxChars(room));
         String key = inRow + "\u0000" + room + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'

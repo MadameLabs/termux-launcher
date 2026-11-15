@@ -16,7 +16,7 @@ public final class OrientationModel {
     /** This device, whose hostname is always "localhost" under the TLNix. */
     public static final String LOCAL_MACHINE = "tlnix";
     /** A chat name longer than this is cut, as tmux-ia.sh does on the Arch-PC. */
-    public static final int CHAT_MAX = 28;
+    public static final int CHAT_MAX = 40;
     /** A limit above this percent draws red. */
     public static final int HOT_ABOVE = 80;
 
