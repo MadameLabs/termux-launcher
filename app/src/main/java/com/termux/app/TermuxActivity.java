@@ -2608,6 +2608,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onResume() {
         super.onResume();
+        if (mOrientationBar != null) mOrientationBar.start(); // barra-de-orientacao
         mHomePress.onResume();
         Logger.logVerbose(LOG_TAG, "onResume");
         // Text left waiting in the pill holds the screen again, its idle release started over.
@@ -2980,6 +2981,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     protected void onPause() {
+        if (mOrientationBar != null) mOrientationBar.stop(); // barra-de-orientacao
         mReturnHold.onPaused();
         // A landing still waiting for its post lands before the screen goes.
         flushLandedFrameSettle();
@@ -16634,6 +16636,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setTerminalToolbarView(Bundle savedInstanceState) {
+        setUpOrientationBar(); // barra-de-orientacao
         rebuildExtraKeysPageClients();
         final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
         ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
@@ -16647,6 +16650,44 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this, savedTextInput));
         terminalToolbarViewPager.addOnPageChangeListener(new TerminalToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
         mChrome.requestSync(ChromeRenderer.SCOPE_ACCESSORY_RENDER);
+    }
+
+    // barra-de-orientacao (MadameLabs fork): the bar under the extra keys and what it reads.
+
+    @Nullable private com.termux.app.orientacao.OrientationBarController mOrientationBar;
+
+    private void setUpOrientationBar() {
+        if (mOrientationBar != null) return;
+        com.termux.app.orientacao.OrientationBarView view = findViewById(R.id.orientation_bar);
+        if (view == null) return;
+        mOrientationBar = new com.termux.app.orientacao.OrientationBarController(view,
+            new com.termux.app.orientacao.OrientationBarController.Source() {
+                @Nullable @Override public TerminalSession focusedSession() {
+                    return getCurrentSession();
+                }
+                @Nullable @Override public java.util.List<String> foregroundCommand(int shellPid) {
+                    if (mWindowForegroundResolver == null) return null;
+                    com.termux.app.statusbar.WindowForegroundResolver.ForegroundInfo info =
+                        mWindowForegroundResolver.get(shellPid);
+                    return info == null ? null : info.command;
+                }
+                @Override public boolean agentPresent(int shellPid) {
+                    return mAgentStatuses.get(shellPid) != null;
+                }
+                @Override public void requestForegroundRefresh() {
+                    requestSessionBrowserForegroundRefresh();
+                }
+            });
+    }
+
+    /** Shows the bar with the extra keys and hides it with them; true when that changed. */
+    private boolean applyOrientationBarHeight(boolean shown) {
+        View view = findViewById(R.id.orientation_bar);
+        if (view == null) return false;
+        int visibility = shown ? View.VISIBLE : View.GONE;
+        if (view.getVisibility() == visibility) return false;
+        view.setVisibility(visibility);
+        return true;
     }
 
     /**
@@ -18590,6 +18631,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         applyPlaceSystemImeOwner();
         int toolbarHeightPx = state.extraKeysRowEnabled ? measuredToolbarHeightPx : 0;
         boolean toolbarHeightChanged = mDockRows.setExtraKeysHeight(toolbarHeightPx);
+        toolbarHeightChanged |= applyOrientationBarHeight(toolbarHeightPx > 0); // barra-de-orientacao
+        if (toolbarHeightPx > 0 && mOrientationBar != null) toolbarHeightPx += mOrientationBar.heightPx();
 
         // The whole bottom stack from one snapshot (Stack layout): the squeeze is worked out there
         // and flows into Dock geometry's snapshot, so this pass applies one dock.
@@ -24043,6 +24086,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void onWindowForegroundResolved() {
         refreshTerminalWindowBar();
+        if (mOrientationBar != null) mOrientationBar.onRefresh(); // barra-de-orientacao
         refreshSessionsDrawer();
         syncBackgroundProcessStack();
     }

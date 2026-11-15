@@ -854,8 +854,10 @@
                         android:visibility="gone" />
                 </FrameLayout>
 
-                <FrameLayout
+                <!-- barra-de-orientacao: a LinearLayout so the orientation bar stands under the keys. -->
+                <LinearLayout
                     android:id="@+id/terminal_toolbar_host"
+                    android:orientation="vertical"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:clipChildren="false"
@@ -867,7 +869,12 @@
                         android:layout_width="match_parent"
                         android:layout_height="37.5dp"
                         android:background="@android:color/transparent"/>
-                </FrameLayout>
+
+                    <com.termux.app.orientacao.OrientationBarView
+                        android:id="@+id/orientation_bar"
+                        android:layout_width="match_parent"
+                        android:layout_height="20dp" />
+                </LinearLayout>
             </com.termux.app.place.EdgeStackView>
 
             <com.termux.app.LauncherAzGestureFxView
