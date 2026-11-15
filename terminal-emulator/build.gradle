@@ -98,7 +98,9 @@ if ((project.findProperty('ghostty') ?: 'false').toString() == 'true') {
         inputs.files(ghosttyScript, file('ghostty/ghostty_jni.c'), file('ghostty/ghostty_png.c'), file('ghostty/ghostty_png.h'))
         outputs.dir(ghosttyJniLibs)
         environment 'NDK_VERSION', ndkVersionName
-        commandLine 'bash', ghosttyScript.absolutePath, ghosttyJniLibs.absolutePath, 'arm64-v8a', 'x86_64'
+        // MadameLabs fork: -PghosttyBash names Git Bash on Windows, where a bare 'bash' finds WSL's.
+        commandLine(project.findProperty('ghosttyBash') ?: 'bash', ghosttyScript.absolutePath,
+            ghosttyJniLibs.absolutePath, 'arm64-v8a', 'x86_64')
     }
     android.sourceSets.main.jniLibs.srcDirs += ghosttyJniLibs
     tasks.named('preBuild') { dependsOn buildGhostty }
@@ -107,7 +109,8 @@ if ((project.findProperty('ghostty') ?: 'false').toString() == 'true') {
     def buildGhosttyHost = tasks.register('buildGhosttyHost', Exec) {
         inputs.files(ghosttyScript, file('ghostty/ghostty_jni.c'), file('ghostty/ghostty_png.c'), file('ghostty/ghostty_png.h'))
         outputs.dir(ghosttyHostLib)
-        commandLine 'bash', ghosttyScript.absolutePath, ghosttyHostLib.absolutePath, 'host'
+        commandLine(project.findProperty('ghosttyBash') ?: 'bash', ghosttyScript.absolutePath,
+            ghosttyHostLib.absolutePath, 'host')
     }
     tasks.withType(Test).configureEach {
         dependsOn buildGhosttyHost

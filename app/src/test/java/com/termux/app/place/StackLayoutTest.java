@@ -89,8 +89,8 @@ public class StackLayoutTest {
             r.dockContentHeightPx);
         assertEquals("the stack is the rows plus the keyboard", r.dockContentHeightPx + KEYBOARD,
             r.stackHeightPx);
-        assertEquals("the margin is the shared edge gap and the IME's lift",
-            r.stackEdgeGapPx + LIFT, r.bottomMarginPx);
+        // MadameLabs fork: adjustResize already lifts the content; the margin adds no IME lift.
+        assertEquals("the margin is the shared edge gap", r.stackEdgeGapPx, r.bottomMarginPx);
         assertTrue(r.stackShown);
     }
 
@@ -468,7 +468,7 @@ public class StackLayoutTest {
             run(workspace).stackEdgeGapPx > 0);
         StackLayout.Result lifted = run(home(peek, false, LIFT));
         assertEquals("lifted over the system keyboard", gap, lifted.stackEdgeGapPx);
-        assertEquals(gap + LIFT, lifted.bottomMarginPx);
+        assertEquals("no IME lift in the margin (MadameLabs fork)", gap, lifted.bottomMarginPx);
         assertEquals("the Search field under the row", gap,
             run(home(homeIn(DockStyle.PEEK_GLASS, true, true), false, 0)).stackEdgeGapPx);
         StackLayout.Input away = home(peek, false, 0);
