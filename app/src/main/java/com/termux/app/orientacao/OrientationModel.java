@@ -133,7 +133,7 @@ public final class OrientationModel {
     private static int limitsLength(@NonNull OrientationLine line) {
         int n = 0;
         if (line.fiveHour != null) n += String.valueOf(line.fiveHour).length() + 1;
-        if (line.fiveHourReset != null) n += line.fiveHourReset.length() + 3;
+        if (line.fiveHourReset != null) n += line.fiveHourReset.length() + 1;
         if (line.weekly != null) n += String.valueOf(line.weekly).length() + 1; // "NN%"
         return n;
     }

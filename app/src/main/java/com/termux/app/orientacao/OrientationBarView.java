@@ -135,7 +135,7 @@ public class OrientationBarView extends LinearLayout {
         show(mChat, line.chat, false);
         show(mFiveHour, line.fiveHour == null ? null
             : line.fiveHourReset == null ? line.fiveHour + "%"
-            : line.fiveHour + "% · " + line.fiveHourReset, line.fiveHourHot);
+            : line.fiveHour + "% " + line.fiveHourReset, line.fiveHourHot);
         show(mWeekly, line.weekly == null ? null : line.weekly + "%", line.weeklyHot); // the calendar icon names it
     }
 
