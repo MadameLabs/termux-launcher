@@ -16681,26 +16681,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     requestSessionBrowserForegroundRefresh();
                 }
                 @Nullable @Override public String foregroundCwd(int shellPid) {
-                    if (mWindowForegroundResolver == null) {
-                        android.util.Log.d("ORIENT-DBG", "cwd: no resolver, shell=" + shellPid); // TEMP
-                        return null;
-                    }
-                    com.termux.app.statusbar.WindowForegroundResolver.ForegroundInfo info =
-                        mWindowForegroundResolver.get(shellPid);
-                    // The terminal's own foreground group first: the resolver's answer can be the
-                    // session's proot, which stands in home whatever folder the shell is in.
+                    // MadameLabs fork. The terminal's foreground group (tpgid) is the program in
+                    // front. Under TLNix's proot every process's kernel cwd stays where proot
+                    // started (home) — proot keeps the real one virtually — so the folder comes
+                    // from the program's PWD, which it inherited from the shell that ran it. A
+                    // shell in front, at its prompt, answers with OSC 7 instead (null here).
                     int pid = terminalForegroundPid(shellPid);
-                    if (pid == shellPid && info != null && info.foregroundPid > 0)
-                        pid = info.foregroundPid;
-                    try {
-                        String cwd = new java.io.File("/proc/" + pid + "/cwd").getCanonicalPath();
-                        android.util.Log.d("ORIENT-DBG", "cwd: shell=" + shellPid + " fg=" + pid
-                            + " info=" + (info == null ? null : info.foregroundPid) + " -> " + cwd); // TEMP
-                        return cwd;
-                    } catch (java.io.IOException | SecurityException e) {
-                        android.util.Log.d("ORIENT-DBG", "cwd: shell=" + shellPid + " fg=" + pid + " " + e); // TEMP
-                        return null;
-                    }
+                    if (isShellProcess(pid)) return null;
+                    return environPwd(pid);
                 }
                 @Nullable @Override public android.graphics.Typeface terminalTypeface() {
                     TerminalView view = getTerminalView();
@@ -16744,9 +16732,35 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             int tpgid = Integer.parseInt(fields[5]); // state ppid pgrp session tty_nr tpgid
             return tpgid > 0 ? tpgid : pid;
         } catch (Exception e) {
-            android.util.Log.d("ORIENT-DBG", "tpgid of " + pid + ": " + e); // TEMP
             return pid;
         }
+    }
+
+    /** MadameLabs fork: whether {@code pid} is a shell, by its {@code /proc/<pid>/comm}. */
+    static boolean isShellProcess(int pid) {
+        try {
+            String comm = new String(java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("/proc/" + pid + "/comm"))).trim();
+            return comm.equals("zsh") || comm.equals("bash") || comm.equals("sh")
+                || comm.equals("fish") || comm.equals("dash") || comm.equals("proot-static")
+                || comm.equals("proot");
+        } catch (Exception e) {
+            return true; // unknown: let the shell's own OSC 7 answer
+        }
+    }
+
+    /** MadameLabs fork: the PWD in {@code pid}'s environment, or null. */
+    @Nullable
+    static String environPwd(int pid) {
+        try {
+            byte[] env = java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("/proc/" + pid + "/environ"));
+            for (String entry : new String(env).split("\0")) {
+                if (entry.startsWith("PWD=") && entry.length() > 4) return entry.substring(4);
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */
