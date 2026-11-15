@@ -103,7 +103,8 @@ public final class OrientationBarController {
             int slotRoom = ((com.termux.app.statusbar.TopPaneWidgetSlot) parent).orientationRoomPx();
             if (slotRoom > 0) room = slotRoom;
         }
-        OrientationLine line = OrientationModel.fit(OrientationModel.resolve(read()),
+        OrientationLine line = OrientationModel.fit(OrientationModel.resolve(read(),
+                inRow ? Integer.MAX_VALUE : OrientationModel.CHAT_MAX),
             view.maxChars(room));
         String key = inRow + "\u0000" + room + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'
             + line.fiveHour + '\u0000' + line.weekly;

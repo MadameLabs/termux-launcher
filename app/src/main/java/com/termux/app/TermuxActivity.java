@@ -16661,6 +16661,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setUpOrientationBar() {
         if (mOrientationBar != null) return;
+        bindSessionsIndicatorToPills();
         com.termux.app.orientacao.OrientationBarView view = findViewById(R.id.orientation_bar);
         if (view == null) return;
         mOrientationBar = new com.termux.app.orientacao.OrientationBarController(view,
@@ -16707,6 +16708,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     syncCommandBoxPopupMode();
                 }
             });
+    }
+
+    /** MadameLabs fork: the sessions indicator wears the window pills' resting colours. */
+    private void bindSessionsIndicatorToPills() {
+        com.termux.app.terminal.TerminalWindowBar windowBar = findViewById(R.id.terminal_window_bar);
+        com.termux.app.statusbar.SessionsIndicatorView sessions =
+            findViewById(R.id.terminal_sessions_indicator);
+        if (windowBar != null && sessions != null)
+            windowBar.setPaletteListener(() -> sessions.setPillColors(windowBar.restingFillColor(),
+                windowBar.restingLabelColor(), windowBar.selectedStrokeColor()));
     }
 
     // barra-de-orientacao (MadameLabs fork): "Chips and pills in the keys panel".

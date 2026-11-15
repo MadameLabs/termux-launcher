@@ -27,6 +27,15 @@ public final class OrientationModel {
 
     @NonNull
     public static OrientationLine resolve(@NonNull OrientationInput in) {
+        return resolve(in, CHAT_MAX);
+    }
+
+    /**
+     * As {@link #resolve(OrientationInput)}, the chat cut at {@code chatMax} characters: the keys
+     * panel's chat row (MadameLabs fork) passes no cap and fits the name to its width instead.
+     */
+    @NonNull
+    public static OrientationLine resolve(@NonNull OrientationInput in, int chatMax) {
         String machine;
         String path;
         String sshTarget = sshDestination(in.foregroundCommand);
@@ -41,7 +50,7 @@ public final class OrientationModel {
             path = in.localPath;
         }
         path = lastFolder(path);
-        String chat = in.agentPresent ? cut(in.title, CHAT_MAX) : null;
+        String chat = in.agentPresent ? cut(in.title, chatMax) : null;
         Integer fiveHour = in.agentPresent ? percent(in.fiveHour) : null;
         Integer weekly = in.agentPresent ? percent(in.weekly) : null;
         return new OrientationLine(machine, path, chat, fiveHour, weekly);

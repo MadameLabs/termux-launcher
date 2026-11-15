@@ -108,6 +108,24 @@ public class OrientationBarView extends LinearLayout {
         removeView(mChat.root);
         removeView(mSpacer);
         row.addView(mChat.root, params);
+        // The name runs to the row's end and only then ends in "…": its text is held to what the
+        // row's own width leaves after the chip's icon and ends.
+        View frame = row.getParent() instanceof View ? (View) row.getParent() : row;
+        frame.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> fitChatToRow(row, r - l));
+    }
+
+    /** Holds the chat's text to {@code rowWidthPx}, less the row's padding and the chip's ends. */
+    private void fitChatToRow(@NonNull ViewGroup row, int rowWidthPx) {
+        if (rowWidthPx <= 0) return;
+        LayoutParams lp = (LayoutParams) mChat.root.getLayoutParams();
+        mChat.icon.measure(MeasureSpec.UNSPECIFIED, MeasureSpec.UNSPECIFIED);
+        int room = rowWidthPx - row.getPaddingLeft() - row.getPaddingRight()
+            - lp.leftMargin - lp.rightMargin - mChat.icon.getMeasuredWidth();
+        int cap = Math.max(0, room);
+        if (cap == mChatMaxPx) return;
+        mChatMaxPx = cap;
+        mChat.text.setMaxWidth(cap);
+        mChat.text.post(mChat.text::requestLayout);
     }
 
     /** Draws {@code line}; a null field hides its chip. */

@@ -102,6 +102,17 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
         applyColors();
     }
 
+    /** The window pills' {fill, label, rim}, or null to resolve its own. */
+    @Nullable private int[] mPillColors;
+
+    /** MadameLabs fork: wear the window pills' resting colours (fill, label) and accent rim. */
+    public void setPillColors(@ColorInt int fill, @ColorInt int label, @ColorInt int rim) {
+        int[] next = {fill, label, rim};
+        if (java.util.Arrays.equals(next, mPillColors)) return;
+        mPillColors = next;
+        applyColors();
+    }
+
     /** Match the session container to the selected status-bar surface geometry. */
     public void setSurfaceStyle(boolean capsule, float statusBarRadiusPx) {
         float radius = Math.max(0f, statusBarRadiusPx);
@@ -228,22 +239,13 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
         int container = resolved.container;
         int stroke = resolved.stroke;
         int label = resolved.label;
-        // barra-de-orientacao: with a measured band the chip wears the window pills' resting wash
-        // (WindowChipInk), so it reads as one of them rather than a dark card beside them; the
-        // rim keeps the place's accent, toned like the current pill's outline.
-        if (mInk != null && mBand != null) {
-            int surfaceBase = MaterialColors.getColor(context,
-                com.termux.shared.R.attr.termuxColorSurfaceBase,
-                ContextCompat.getColor(context, R.color.termux_surface_base));
-            boolean pale =
-                mInk.polarity() == com.termux.app.chrome.ChromeInk.Polarity.PALE_INK;
-            com.termux.app.terminal.WindowChipInk.Palette pills =
-                com.termux.app.terminal.WindowChipInk.resolve(mBand.surface, pale,
-                    com.termux.app.terminal.WindowChipInk.neutralSeed(onSurface, surfaceBase, pale),
-                    accent);
-            container = pills.restingFill;
-            stroke = pills.selectedStroke;
-            label = pills.restingLabel;
+        // barra-de-orientacao: the window pills' resting colours, handed over by the bar beside
+        // it (TerminalWindowBar#setPaletteListener), so it reads as one of them rather than a
+        // dark card; the rim keeps the place's accent, as the current pill's outline does.
+        if (mPillColors != null) {
+            container = mPillColors[0];
+            label = mPillColors[1];
+            stroke = mPillColors[2];
         }
 
         mLabel.setTextColor(label);

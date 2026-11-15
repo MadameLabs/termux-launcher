@@ -95,6 +95,15 @@ public class OrientationModelTest {
             line.chat.substring(0, OrientationModel.CHAT_MAX - 1));
     }
 
+    /** The keys panel's chat row passes no cap: the view fits the name to its width. */
+    @Test
+    public void chatKeptWholeWithoutACap() {
+        String title = "uma conversa com nome bem comprido demais, comprido mesmo";
+        OrientationLine line = OrientationModel.resolve(
+            input(null, null, "/x", SHELL, title, true, null, null), Integer.MAX_VALUE);
+        assertEquals(title, line.chat);
+    }
+
     @Test
     public void onlyTheLastFolder() {
         assertEquals("home", OrientationModel.lastFolder("/data/data/com.termux/files/home/"));
