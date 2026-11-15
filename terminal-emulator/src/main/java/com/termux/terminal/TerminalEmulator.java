@@ -1633,6 +1633,9 @@ public final class TerminalEmulator {
                 case GhosttyNative.EVENT_KITTY_NOTIFICATION:
                     if (first != null) mKittyNotifications.handle(first, mKittyNotificationHandler);
                     break;
+                case GhosttyNative.EVENT_USER_VAR: // barra-de-orientacao
+                    if (first != null) setUserVar(first);
+                    break;
                 default:
                     break;
             }

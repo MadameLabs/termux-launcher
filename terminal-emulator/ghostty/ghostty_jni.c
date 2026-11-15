@@ -69,7 +69,8 @@ typedef struct {
 } LinkBuf;
 
 // Events handed to Java during a write (GhosttyNative.EVENT_*), in the order they happened.
-enum { EVENT_PROMPT = 1, EVENT_PROGRESS = 2, EVENT_NOTIFICATION = 3, EVENT_KITTY_NOTIFICATION = 4 };
+enum { EVENT_PROMPT = 1, EVENT_PROGRESS = 2, EVENT_NOTIFICATION = 3, EVENT_KITTY_NOTIFICATION = 4,
+       EVENT_USER_VAR = 5 /* barra-de-orientacao */ };
 // EVENT_PROMPT's second value when the shell reported no exit code.
 #define NO_EXIT_CODE INT32_MIN
 
@@ -573,7 +574,8 @@ static void osc_append(Core* c, const uint8_t* p, size_t n) {
         c->osc_head[c->osc_head_len++] = *p++;
         n--;
         if (c->osc_head_len == 3 && memcmp(c->osc_head, "99;", 3) != 0 && memcmp(c->osc_head, "66;", 3) != 0
-            && memcmp(c->osc_head, "9;4", 3) != 0) {
+            && memcmp(c->osc_head, "9;4", 3) != 0
+            && memcmp(c->osc_head, "133", 3) != 0 /* barra-de-orientacao: 1337;SetUserVar */) {
             c->osc_skip = true;
             return;
         }
@@ -614,6 +616,14 @@ static void osc_end(Core* c, GhosttyTerminalStringEnd end) {
     }
     if (memcmp(c->osc_head, "9;4", 3) == 0)
         send_progress(c, c->osc_body_len == 2 && memcmp(c->osc_body, ";1", 2) == 0);
+    else if (memcmp(c->osc_head, "133", 3) == 0) {
+        // barra-de-orientacao (MadameLabs fork): OSC 1337 SetUserVar, which libghostty-vt drops;
+        // OSC 133 shares the head and is left to the library.
+        static const char kSetUserVar[] = "7;SetUserVar=";
+        const size_t prefix = sizeof(kSetUserVar) - 1;
+        if (c->osc_body_len > prefix && memcmp(c->osc_body, kSetUserVar, prefix) == 0)
+            send_event(c, EVENT_USER_VAR, 0, 0, c->osc_body + prefix, c->osc_body_len - prefix, NULL, 0);
+    }
     else if (memcmp(c->osc_head, "99;", 3) == 0)
         send_event(c, EVENT_KITTY_NOTIFICATION, 0, 0, c->osc_body != NULL ? c->osc_body : (const uint8_t*) "",
                    c->osc_body_len, NULL, 0);
