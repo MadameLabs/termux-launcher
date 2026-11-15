@@ -16663,7 +16663,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         com.termux.app.orientacao.OrientationBarView view = findViewById(R.id.orientation_bar);
         if (view == null) return;
         mOrientationBar = new com.termux.app.orientacao.OrientationBarController(view,
-            findViewById(R.id.orientation_bar_row),
+            findViewById(R.id.orientation_bar_dock),
             new com.termux.app.orientacao.OrientationBarController.Source() {
                 @Nullable @Override public TerminalSession focusedSession() {
                     return getCurrentSession();
@@ -16702,8 +16702,92 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     if (slot instanceof com.termux.app.statusbar.TopPaneWidgetSlot)
                         ((com.termux.app.statusbar.TopPaneWidgetSlot) slot).setOrientationAllowed(allowed);
                     syncChipsOnlySlot();
+                    syncPillsDock();
                 }
             });
+    }
+
+    // barra-de-orientacao (MadameLabs fork): "Chips and pills in the keys panel".
+
+    /** Rows the keys panel gains above the keys while the toggle is on: the chips and the pills. */
+    private static final float ORIENTATION_DOCK_ROW_DP = 26f;
+
+    /** Where the place strip (sessions indicator and window pills) stood in the status row. */
+    @Nullable private ViewGroup mPillsHomeParent;
+    private int mPillsHomeIndex = -1;
+    @Nullable private ViewGroup.LayoutParams mPillsHomeParams;
+    private boolean mPillsDocked;
+
+    /** Whether the pills and chips stand in the keys panel and the status bar is put away. */
+    private boolean pillsDocked() {
+        return mPreferences != null && mPreferences.isOrientationChipsInRow();
+    }
+
+    /**
+     * Moves the place strip into the keys panel or back to the status row, as the toggle says,
+     * and puts the status bar away or brings it back. One strip, moved rather than rebuilt, so
+     * everything bound to it by id (the pills, their reveal, the sessions indicator) follows.
+     * Cheap and idempotent: the orientation tick calls it.
+     */
+    private void syncPillsDock() {
+        boolean docked = pillsDocked();
+        View strip = findViewById(R.id.terminal_status_place_content);
+        ViewGroup dockSlot = findViewById(R.id.orientation_dock_pills);
+        View dock = findViewById(R.id.orientation_dock);
+        if (strip == null || dockSlot == null || dock == null) return;
+        if (docked == mPillsDocked && (strip.getParent() == dockSlot) == docked) return;
+        mPillsDocked = docked;
+        ViewGroup current = (ViewGroup) strip.getParent();
+        if (docked) {
+            if (current != dockSlot) {
+                if (current != null) {
+                    mPillsHomeParent = current;
+                    mPillsHomeIndex = current.indexOfChild(strip);
+                    mPillsHomeParams = strip.getLayoutParams();
+                    current.removeView(strip);
+                }
+                strip.setTranslationX(0f);
+                strip.setTranslationY(0f);
+                dockSlot.addView(strip, new android.widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            }
+        } else if (current == dockSlot && mPillsHomeParent != null) {
+            dockSlot.removeView(strip);
+            int index = Math.min(Math.max(0, mPillsHomeIndex), mPillsHomeParent.getChildCount());
+            if (mPillsHomeParams != null) mPillsHomeParent.addView(strip, index, mPillsHomeParams);
+            else mPillsHomeParent.addView(strip, index);
+        }
+        dock.setVisibility(docked ? View.VISIBLE : View.GONE);
+        com.termux.app.orientacao.OrientationBarView chips = findViewById(R.id.orientation_bar_dock);
+        if (chips != null) chips.setChatLast(true);
+        applyStatusBarEdge(arrangement().layout());
+        refreshTerminalWindowBar();
+        mKeyboardGeometry.requestGeometrySync();
+    }
+
+    /** The dock rows' height for this pass: both rows while the keys show and the toggle is on. */
+    private int orientationDockHeightPx(int toolbarHeightPx) {
+        return toolbarHeightPx > 0 && pillsDocked()
+            ? 2 * Math.round(dpToPx(ORIENTATION_DOCK_ROW_DP)) : 0;
+    }
+
+    /** MadameLabs fork: the dock rows' height, gone at 0; true when it changed. */
+    private boolean applyOrientationDockHeight(int heightPx) {
+        View dock = findViewById(R.id.orientation_dock);
+        if (dock == null) return false;
+        ViewGroup.LayoutParams params = dock.getLayoutParams();
+        boolean changed = false;
+        int visibility = heightPx > 0 ? View.VISIBLE : View.GONE;
+        if (dock.getVisibility() != visibility) {
+            dock.setVisibility(visibility);
+            changed = true;
+        }
+        if (heightPx > 0 && params.height != heightPx) {
+            params.height = heightPx;
+            dock.setLayoutParams(params);
+            changed = true;
+        }
+        return changed;
     }
 
     /**
@@ -18529,7 +18613,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View host = findViewById(R.id.terminal_window_bar_host);
         if (!(host instanceof ViewGroup)) return;
         // Put away in the Layout editor: the bar and its fold go, and the content takes the band.
-        if (layout.slot(Element.STATUS).hidden) {
+        // MadameLabs fork: also while the pills and chips stand in the keys panel.
+        if (layout.slot(Element.STATUS).hidden || pillsDocked()) {
             if (mDockRows.statusBarShown()) {
                 cancelTopStatusBarAnimator();
                 finishStatusBarTerminalResize(endTopStatusBarDrag(), true);
@@ -18725,7 +18810,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             Math.round(mTerminalToolbarDefaultHeight), 1,
             mProperties == null ? 1f : mProperties.getTerminalToolbarHeightScaleFactor()) : 0;
         toolbarHeightChanged |= applyCommandRowHeight(commandRowPx);
-        toolbarHeightPx += commandRowPx;
+        // barra-de-orientacao: the chips and pills rows above the keys, when docked there.
+        int dockRowsPx = orientationDockHeightPx(toolbarHeightPx);
+        toolbarHeightChanged |= applyOrientationDockHeight(dockRowsPx);
+        toolbarHeightPx += commandRowPx + dockRowsPx;
 
         // The whole bottom stack from one snapshot (Stack layout): the squeeze is worked out there
         // and flows into Dock geometry's snapshot, so this pass applies one dock.
@@ -33734,7 +33822,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // is shown.
         applyWallStripClockFace(mWallStripRow);
         boolean visible = isSplitPanesEnabled()
-            && !arrangement().layout().slot(Element.STATUS).hidden;
+            && !arrangement().layout().slot(Element.STATUS).hidden
+            && !pillsDocked(); // barra-de-orientacao: the bar is put away while docked
         host.setVisibility(visible ? View.VISIBLE : View.GONE);
         // The Assistant page wears the status bar alone: no window chips (ADR 0022 section 2).
         int chips = com.termux.app.wall.PaneWallPolicy.showsWindowChips(mLastWallPage)
@@ -33744,8 +33833,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (!visible) {
             // With the bar put away the Wall strip's tiles still read
             // the same windows, on Home as on a window.
-            if (isWidgetsPageShowing() ? homeWallStrip()
-                : wallStripOn(mLastWallPage))
+            if (pillsDocked() || (isWidgetsPageShowing() ? homeWallStrip()
+                : wallStripOn(mLastWallPage)))
                 syncWindowBarItems(bar);
             applyTerminalSurfaceAppearance();
             // Idempotence: the widgets live inside the GONE host here, so nothing is shown either

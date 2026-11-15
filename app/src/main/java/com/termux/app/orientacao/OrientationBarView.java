@@ -9,6 +9,7 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -67,10 +68,33 @@ public class OrientationBarView extends LinearLayout {
         mMachine = addChip(MACHINE, "\uDB80\uDF79"); // md-monitor, as tmux-ia.sh
         mFolder = addChip(FOLDER, "");           // fa-folder
         mChat = addChip(CHAT, "󰻞");         // md-chat
-        View spacer = new View(context);
-        addView(spacer, new LayoutParams(0, 1, 1f));
+        mSpacer = new View(context);
+        addView(mSpacer, new LayoutParams(0, 1, 1f));
         mFiveHour = addChip(FIVE_HOUR, "󱑏"); // md-clock 5
         mWeekly = addChip(WEEKLY, "󰨳");     // md-calendar-week
+    }
+
+    private final View mSpacer;
+    private boolean mChatLast;
+
+    /**
+     * The keys panel's order (MadameLabs fork): machine, folder and the limits on the left, the
+     * chat alone on the right and whole, the row scrolling sideways when it does not fit. Off,
+     * the clock cell's order: machine, folder and chat, then the limits on the right.
+     */
+    public void setChatLast(boolean chatLast) {
+        if (mChatLast == chatLast) return;
+        mChatLast = chatLast;
+        View[] order = chatLast
+            ? new View[]{mMachine.root, mFolder.root, mFiveHour.root, mWeekly.root, mSpacer, mChat.root}
+            : new View[]{mMachine.root, mFolder.root, mChat.root, mSpacer, mFiveHour.root, mWeekly.root};
+        for (View child : order) {
+            ViewGroup.LayoutParams params = child.getLayoutParams();
+            removeView(child);
+            addView(child, params);
+        }
+        mChatMaxPx = Integer.MAX_VALUE;
+        mChat.text.setMaxWidth(Integer.MAX_VALUE);
     }
 
     /** Draws {@code line}; a null field hides its chip. */
@@ -105,6 +129,7 @@ public class OrientationBarView extends LinearLayout {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+        if (mChatLast) return; // the row scrolls instead
         if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED
             || mChat.root.getVisibility() != VISIBLE) return;
         int width = MeasureSpec.getSize(widthMeasureSpec);

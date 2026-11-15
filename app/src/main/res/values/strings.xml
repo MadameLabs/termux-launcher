@@ -142,8 +142,8 @@
     <string name="settings_clock_alignment_right">Right</string>
     <string name="settings_status_clock_shown_title">Show clock</string>
     <string name="settings_status_clock_shown_summary">The clock in the status bar. Off frees its room.</string>
-    <string name="settings_orientation_chips_in_row_title">Orientation chips in the pills row</string>
-    <string name="settings_orientation_chips_in_row_summary">On: beside the window pills, so a folded bar still shows them. Off: in the clock\'s place while the clock is off.</string>
+    <string name="settings_orientation_chips_in_row_title">Chips and pills in the keys panel</string>
+    <string name="settings_orientation_chips_in_row_summary">On: the window pills and the orientation chips stand above the extra keys, and the status bar is put away. Off: the chips take the clock\'s place while the clock is off.</string>
     <string name="settings_use_12_hour_title">12-hour time</string>
     <string name="settings_use_12_hour_summary">Show AM and PM.</string>
     <string name="settings_cpu_usage_title">CPU usage</string>

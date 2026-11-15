@@ -93,8 +93,9 @@ public final class OrientationBarController {
         // not to their own last width: just over half of the slot (as the clock gets), or of the
         // status row, whose window pills keep the rest.
         android.view.ViewParent parent = view.getParent();
-        if (inRow && parent != null) parent = parent.getParent();
-        int room = parent instanceof android.view.View
+        // In the keys panel the row scrolls sideways, so nothing is cut to fit it.
+        int room = inRow ? Integer.MAX_VALUE / 4
+            : parent instanceof android.view.View
             ? Math.round(((android.view.View) parent).getWidth() * .55f) : view.getWidth();
         // In the clock's cell the slot says what the chips really get: the whole row when nothing
         // stands beside them, which the 55% left mostly empty while the chat was cut.
