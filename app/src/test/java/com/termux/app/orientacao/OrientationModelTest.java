@@ -86,12 +86,13 @@ public class OrientationModelTest {
     }
 
     @Test
-    public void chatCutAt28() {
-        String title = "uma conversa com nome bem comprido demais";
+    public void chatCutAtChatMax() {
+        String title = "uma conversa com nome bem comprido demais, comprido mesmo";
         OrientationLine line = OrientationModel.resolve(input(null, null, "/x", SHELL, title, true, null, null));
-        assertEquals(28, line.chat.length());
+        assertEquals(OrientationModel.CHAT_MAX, line.chat.length());
         assertTrue(line.chat.endsWith("…"));
-        assertEquals(title.substring(0, 27), line.chat.substring(0, 27));
+        assertEquals(title.substring(0, OrientationModel.CHAT_MAX - 1),
+            line.chat.substring(0, OrientationModel.CHAT_MAX - 1));
     }
 
     @Test
