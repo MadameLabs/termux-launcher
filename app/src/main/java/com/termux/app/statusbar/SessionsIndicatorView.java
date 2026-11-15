@@ -225,8 +225,28 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
             ? StatusBarInk.chipOn(mInk, mBand, panel, CONTAINER_ALPHA, onSurface, accent)
             : StatusBarInk.chip(mBandSurface != null ? mBandSurface : panel, panel,
                 CONTAINER_ALPHA, onSurface, accent);
+        int container = resolved.container;
+        int stroke = resolved.stroke;
+        int label = resolved.label;
+        // barra-de-orientacao: with a measured band the chip wears the window pills' resting wash
+        // (WindowChipInk), so it reads as one of them rather than a dark card beside them; the
+        // rim keeps the place's accent, toned like the current pill's outline.
+        if (mInk != null && mBand != null) {
+            int surfaceBase = MaterialColors.getColor(context,
+                com.termux.shared.R.attr.termuxColorSurfaceBase,
+                ContextCompat.getColor(context, R.color.termux_surface_base));
+            boolean pale =
+                mInk.polarity() == com.termux.app.chrome.ChromeInk.Polarity.PALE_INK;
+            com.termux.app.terminal.WindowChipInk.Palette pills =
+                com.termux.app.terminal.WindowChipInk.resolve(mBand.surface, pale,
+                    com.termux.app.terminal.WindowChipInk.neutralSeed(onSurface, surfaceBase, pale),
+                    accent);
+            container = pills.restingFill;
+            stroke = pills.selectedStroke;
+            label = pills.restingLabel;
+        }
 
-        mLabel.setTextColor(resolved.label);
+        mLabel.setTextColor(label);
         if (mDeck != null) {
             com.termux.app.terminal.DeckChipDrawable button =
                 new com.termux.app.terminal.DeckChipDrawable(getResources().getDisplayMetrics().density);
@@ -240,11 +260,11 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
         // The caller resolves the shape (the chip-radius knob, or the bar's own shape while that
         // knob is untouched), so the indicator and the window pills beside it always agree.
         chip.setCornerRadius(mStatusBarRadiusPx);
-        chip.setColor(resolved.container);
-        chip.setStroke(dp(1), resolved.stroke);
+        chip.setColor(container);
+        chip.setStroke(dp(1), stroke);
         setBackground(chip);
 
-        mLabel.setTextColor(resolved.label);
+        mLabel.setTextColor(label);
     }
 
     /** Alpha-weighted visual center of the rendered label, relative to its text origin. */
