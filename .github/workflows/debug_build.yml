@@ -54,6 +54,8 @@ jobs:
         shell: bash {0}
         env:
           PACKAGE_VARIANT: ${{ matrix.package_variant }}
+          # MadameLabs fork: the APK installs over com.termux on the POCO F7 (see AGENTS.md).
+          TERMUX_APP_PACKAGE_NAME: com.termux
           GRADLE_OPTS: >-
             -Dorg.gradle.internal.http.connectionTimeout=120000
             -Dorg.gradle.internal.http.socketTimeout=120000
