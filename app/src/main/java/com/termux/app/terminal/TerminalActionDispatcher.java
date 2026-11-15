@@ -75,6 +75,7 @@ public final class TerminalActionDispatcher {
     public static final String TOOL_WORKSPACE_PICKER = "workspace.picker";
     public static final String TOOL_WORKSPACE_SAVE_PROMPT = "workspace.save_prompt";
     public static final String TOOL_TERMINAL_TOGGLE_SCRATCHPAD = "terminal.toggle_scratchpad";
+    public static final String TOOL_TERMINAL_TOGGLE_COMMAND_BOX = "terminal.toggle_command_box";
     public static final String TOOL_EXTRA_KEYS_EDIT = "extrakeys.edit";
     public static final String TOOL_PANE_SPLIT_VERTICAL = "pane.split_vertical";
     public static final String TOOL_PANE_SPLIT_HORIZONTAL = "pane.split_horizontal";
@@ -392,6 +393,7 @@ public final class TerminalActionDispatcher {
             case TOOL_KEYBOARD_CLIPBOARD:
             case TOOL_KEYBOARD_TOGGLE_ENABLED:
             case TOOL_VOICE_DICTATE:
+            case TOOL_TERMINAL_TOGGLE_COMMAND_BOX:
             case TOOL_MINIMAL_TOGGLE:
             case TOOL_TERMINAL_TOGGLE_TOOLBAR:
             case TOOL_TERMINAL_FONT_SIZE_INCREASE:
@@ -1606,6 +1608,8 @@ public final class TerminalActionDispatcher {
                 case TOOL_VOICE_DICTATE:
                     // Start or stop; the text waits in the dictation panel, never typed on its own.
                     return ok().put("listening", host.toggleVoiceDictation());
+                case TOOL_TERMINAL_TOGGLE_COMMAND_BOX:
+                    return ok().put("shown", host.toggleCommandBoxPopup());
                 case TOOL_KEYBOARD_SHOW:
                 case TOOL_KEYBOARD_HIDE: {
                     // Deliberately not background-safe: both put a keyboard on screen or take one

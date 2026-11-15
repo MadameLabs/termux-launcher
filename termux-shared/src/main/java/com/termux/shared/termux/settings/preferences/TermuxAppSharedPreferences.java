@@ -1099,6 +1099,17 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
             TERMUX_APP.KEY_ORIENTATION_CHIPS_IN_ROW, value, false);
     }
 
+    /** MadameLabs fork: the command box as a floating popup, the row under the keys put away. */
+    public boolean isCommandBoxPopup() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_COMMAND_BOX_POPUP, TERMUX_APP.DEFAULT_COMMAND_BOX_POPUP);
+    }
+
+    public void setCommandBoxPopup(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_COMMAND_BOX_POPUP, value, false);
+    }
+
     /** Whose box the status row's camera gap follows: auto, custom or off; unknown reads as auto. */
     @NonNull
     public String getStatusBarCutoutMode() {

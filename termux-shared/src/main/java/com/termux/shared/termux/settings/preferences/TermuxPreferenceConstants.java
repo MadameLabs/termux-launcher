@@ -716,6 +716,13 @@ public final class TermuxPreferenceConstants {
         public static final boolean DEFAULT_ORIENTATION_CHIPS_IN_ROW = false;
 
         /**
+         * MadameLabs fork: the command box as a floating popup (CommandBoxPopup) rather than the
+         * persistent row under the keys, which is then put away.
+         */
+        public static final String KEY_COMMAND_BOX_POPUP = "command_box_popup";
+        public static final boolean DEFAULT_COMMAND_BOX_POPUP = false;
+
+        /**
          * Whose box the status row leaves its camera gap for when it shares the camera's band
          * (#163): {@link #STATUS_BAR_CUTOUT_AUTO} follows Android's display cutout,
          * {@link #STATUS_BAR_CUTOUT_CUSTOM} Android's shape nudged by the values below, {@link #STATUS_BAR_CUTOUT_OFF}

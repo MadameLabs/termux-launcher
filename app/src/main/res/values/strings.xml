@@ -144,6 +144,8 @@
     <string name="settings_status_clock_shown_summary">The clock in the status bar. Off frees its room.</string>
     <string name="settings_orientation_chips_in_row_title">Chips and pills in the keys panel</string>
     <string name="settings_orientation_chips_in_row_summary">On: the window pills and the orientation chips stand above the extra keys, and the status bar is put away. Off: the chips take the clock\'s place while the clock is off.</string>
+    <string name="settings_command_box_popup_title">Command box as a popup</string>
+    <string name="settings_command_box_popup_summary">On: the command box opens as a floating popup you can move and resize, from the Toggle command box key, and the row under the keys is put away.</string>
     <string name="settings_use_12_hour_title">12-hour time</string>
     <string name="settings_use_12_hour_summary">Show AM and PM.</string>
     <string name="settings_cpu_usage_title">CPU usage</string>
@@ -2401,6 +2403,7 @@
     <string name="tool_pane_next_layout">Next pane layout</string>
     <string name="tool_pane_toggle_float">Float / dock pane</string>
     <string name="tool_terminal_toggle_scratchpad">Toggle scratchpad</string>
+    <string name="tool_terminal_toggle_command_box">Toggle command box</string>
     <string name="tool_extra_keys_edit">Edit key row</string>
     <string name="tool_desc_extra_keys_edit">Open the editor for the terminal extra-keys row.</string>
     <string name="tool_workspace_picker">Load workspace</string>
@@ -2490,6 +2493,7 @@
     <string name="tool_desc_pane_next_layout">Cycle this window to the next automatic pane layout and keep it applied as panes are added or closed.</string>
     <string name="tool_desc_pane_toggle_float">Detach the focused pane into a movable floating window above the tiled panes, or dock a floating pane back into the layout.</string>
     <string name="tool_desc_terminal_toggle_scratchpad">Show or hide a dedicated floating terminal; its shell keeps running while hidden.</string>
+    <string name="tool_desc_terminal_toggle_command_box">Show or hide the command box popup; Enter sends what it holds to the focused session.</string>
     <string name="tool_desc_workspace_picker">Pick a saved workspace and load it into the current layout or in place of it.</string>
     <string name="tool_desc_workspace_save_prompt">Prompt for a name and save the current sessions, windows, and panes.</string>
     <string name="workspace_delete_description">Delete %1$s</string>

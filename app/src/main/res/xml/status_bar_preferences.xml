@@ -15,6 +15,11 @@
             app:summary="@string/settings_orientation_chips_in_row_summary"
             app:defaultValue="false" />
         <SwitchPreferenceCompat
+            app:key="command_box_popup"
+            app:title="@string/settings_command_box_popup_title"
+            app:summary="@string/settings_command_box_popup_summary"
+            app:defaultValue="false" />
+        <SwitchPreferenceCompat
             app:key="top_pane_clock_am_pm"
             app:title="@string/settings_use_12_hour_title"
             app:summary="@string/settings_use_12_hour_summary"

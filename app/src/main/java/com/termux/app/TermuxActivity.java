@@ -2609,6 +2609,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onResume() {
         super.onResume();
         if (mOrientationBar != null) mOrientationBar.start(); // barra-de-orientacao
+        syncCommandBoxPopupMode(); // MadameLabs fork: the toggle may have moved in Settings
         mHomePress.onResume();
         Logger.logVerbose(LOG_TAG, "onResume");
         // Text left waiting in the pill holds the screen again, its idle release started over.
@@ -16703,6 +16704,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                         ((com.termux.app.statusbar.TopPaneWidgetSlot) slot).setOrientationAllowed(allowed);
                     syncChipsOnlySlot();
                     syncPillsDock();
+                    syncCommandBoxPopupMode();
                 }
             });
     }
@@ -16849,6 +16851,72 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    // MadameLabs fork: the command box as a popup (CommandBoxPopup), "Command box as a popup".
+
+    @Nullable private com.termux.app.terminal.io.CommandBoxPopup mCommandBoxPopup;
+    private boolean mCommandBoxPopupApplied;
+
+    private boolean commandBoxPopupOn() {
+        return mPreferences != null && mPreferences.isCommandBoxPopup();
+    }
+
+    /** Re-runs the geometry when the toggle moved since the last pass, so the row comes or goes. */
+    private void syncCommandBoxPopupMode() {
+        boolean on = commandBoxPopupOn();
+        if (on == mCommandBoxPopupApplied) return;
+        mCommandBoxPopupApplied = on;
+        if (!on && mCommandBoxPopup != null) mCommandBoxPopup.hide();
+        mKeyboardGeometry.requestGeometrySync();
+    }
+
+    /** Shows or hides the command box popup over the window; answers whether it shows now. */
+    boolean toggleCommandBoxPopup() {
+        View content = findViewById(android.R.id.content);
+        if (!(content instanceof android.widget.FrameLayout)) return false;
+        if (mCommandBoxPopup == null) {
+            mCommandBoxPopup = new com.termux.app.terminal.io.CommandBoxPopup(this,
+                new com.termux.app.terminal.io.CommandBoxPopup.Host() {
+                    private TerminalView mLentFrom;
+
+                    @Override public boolean send(@NonNull String text) {
+                        TerminalSession session = getCurrentSession();
+                        if (session == null) return false;
+                        if (!session.isRunning()) {
+                            getTermuxTerminalSessionClient().removeFinishedSession(session);
+                            return true;
+                        }
+                        session.write(text.isEmpty() ? "\r" : text);
+                        return true;
+                    }
+                    @Override public void beginInput(@NonNull android.widget.EditText field) {
+                        beginTerminalToolbarExternalTextInput(field);
+                    }
+                    @Override public void endInput() {
+                        endTerminalToolbarExternalTextInput();
+                        TerminalView terminal = getTerminalView();
+                        if (terminal != null) terminal.requestFocus();
+                    }
+                    @Override public float terminalTextSizePx() {
+                        TerminalView terminal = getTerminalView();
+                        float size = terminal == null ? 0f : terminal.getTerminalTextSizePixels();
+                        return size > 0f ? size : dpToPx(14);
+                    }
+                    @Nullable @Override public android.graphics.Typeface terminalTypeface() {
+                        TerminalView terminal = getTerminalView();
+                        return terminal == null ? null : terminal.getTerminalTypeface();
+                    }
+                    @Override public void lendTerminalFocus(boolean lent) {
+                        // As the command row does: the terminal keeps saying it is focused, so a
+                        // TUI that dims on a focus-out (DECSET 1004) does not grey its text.
+                        if (mLentFrom != null) mLentFrom.setFocusLent(false);
+                        mLentFrom = lent ? getTerminalView() : null;
+                        if (mLentFrom != null) mLentFrom.setFocusLent(true);
+                    }
+                });
+        }
+        return mCommandBoxPopup.toggle((android.widget.FrameLayout) content);
     }
 
     /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */
@@ -18810,7 +18878,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         int toolbarHeightPx = state.extraKeysRowEnabled ? measuredToolbarHeightPx : 0;
         boolean toolbarHeightChanged = mDockRows.setExtraKeysHeight(toolbarHeightPx);
         // MadameLabs fork: the command row stands under the key pages and shows with them.
-        int commandRowPx = toolbarHeightPx > 0 ? AccessoryStackLayoutPolicy.computeTerminalToolbarHeightPx(
+        int commandRowPx = toolbarHeightPx > 0 && !commandBoxPopupOn() ? AccessoryStackLayoutPolicy.computeTerminalToolbarHeightPx(
             Math.round(mTerminalToolbarDefaultHeight), 1,
             mProperties == null ? 1f : mProperties.getTerminalToolbarHeightScaleFactor()) : 0;
         toolbarHeightChanged |= applyCommandRowHeight(commandRowPx);
@@ -37695,6 +37763,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         @Override public boolean toggleVoiceDictation() {
             return TermuxActivity.this.toggleVoiceDictation();
+        }
+
+        @Override public boolean toggleCommandBoxPopup() {
+            return TermuxActivity.this.toggleCommandBoxPopup();
         }
 
         @Override public boolean toggleKeyboardClipboard() {
