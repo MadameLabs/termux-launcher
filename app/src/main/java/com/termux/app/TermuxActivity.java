@@ -16758,6 +16758,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             else mPillsHomeParent.addView(strip, index);
         }
         dock.setVisibility(docked ? View.VISIBLE : View.GONE);
+        android.util.Log.d("DOCK-DBG", "sync: docked=" + docked + " stripParent=" + strip.getParent()); // TEMP
         com.termux.app.orientacao.OrientationBarView chips = findViewById(R.id.orientation_bar_dock);
         if (chips != null) chips.setChatLast(true);
         applyStatusBarEdge(arrangement().layout());
@@ -18893,6 +18894,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 flushBottomInsetPx);
         }
         boolean accessoryHeightChanged = updateAccessoryStackContainerHeight(accessoryStackContainer, combinedHeight);
+        android.util.Log.d("DOCK-DBG", "pass: keys=" + measuredToolbarHeightPx + " toolbar=" + toolbarHeightPx
+            + " cmd=" + commandRowPx + " dock=" + dockRowsPx + " stack=" + stack.stackHeightPx
+            + " squeeze=" + stack.squeezePx + " combined=" + combinedHeight
+            + " kb=" + state.keyboardHeight + " extraKeys=" + state.extraKeysRowEnabled
+            + " toolbarShown=" + state.toolbarShown); // TEMP
         // What the container's layout listener holds the laid-out keyboard to.
         mKeyboardGeometry.noteReservedHeightPx(state.keyboardHeight);
         boolean accessoryMarginChanged = updateAccessoryStackContainerBottomMargin(
