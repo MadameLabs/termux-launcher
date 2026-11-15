@@ -101,7 +101,8 @@ for ABI in "$@"; do
             -o "$DEST/libtermux-ghostty.so" "$HERE/ghostty_jni.c" "$PNG_OBJ" "$PREFIX/lib/libghostty-vt.a" \
             -lm -Wl,--gc-sections -Wl,--exclude-libs,ALL -Wl,--no-undefined
     else
-        TOOLS="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+        # MadameLabs fork: the host's prebuilt (linux-x86_64, or windows-x86_64 under Git Bash).
+        TOOLS=$(ls -d "$ANDROID_NDK_HOME"/toolchains/llvm/prebuilt/*/bin | head -1)
         "$TOOLS/clang" --target="$CLANG_TARGET" -c -fPIC -Os -w -std=c11 \
             -I"$PREFIX/include" -I"$WUFFS_C" -o "$PNG_OBJ" "$HERE/ghostty_png.c"
         "$TOOLS/clang" --target="$CLANG_TARGET" -shared -fPIC -Os -Wall -Wextra -Werror -std=c11 \
