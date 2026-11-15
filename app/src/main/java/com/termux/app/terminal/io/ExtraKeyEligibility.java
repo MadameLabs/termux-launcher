@@ -200,8 +200,8 @@ public final class ExtraKeyEligibility {
         tools.put(LauncherToolRegistry.TOOL_WORKSPACE_PICKER, Band.MULTIPLEX);
         tools.put(LauncherToolRegistry.TOOL_WORKSPACE_SAVE_PROMPT, Band.MULTIPLEX);
         tools.put(LauncherToolRegistry.TOOL_TERMINAL_TOGGLE_SCRATCHPAD, Band.MULTIPLEX);
-        // MadameLabs fork: the command box types into the terminal, as the row under the keys does.
-        tools.put(LauncherToolRegistry.TOOL_TERMINAL_TOGGLE_COMMAND_BOX, Band.TERMINAL_INPUT);
+        // MadameLabs fork: the command box popup, drawn in front of the terminal it types into.
+        tools.put(LauncherToolRegistry.TOOL_TERMINAL_TOGGLE_COMMAND_BOX, Band.TERMINAL_TOOL);
 
         // ---------------------------------------------------------------- the terminal's own
         tools.put(LauncherToolRegistry.TOOL_TERMINAL_STATE, Band.TERMINAL_TOOL);

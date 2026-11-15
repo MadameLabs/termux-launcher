@@ -71,8 +71,9 @@ public class LauncherToolRegistryTest {
         // voice.dictate, the Dictate key that starts a dictation on any place, and by window.move
         // with its palette pair window.move_left and window.move_right, which reorder the row, and
         // by pane.consume and pane.expel, Niri's column moves on the row, and by minimal.toggle,
-        // the palette's door to minimal mode, and by wall.assistant, the Assistant key.
-        assertEquals(91, registry.getUiTools().size());
+        // the palette's door to minimal mode, and by wall.assistant, the Assistant key, and by
+        // terminal.toggle_command_box, the command box popup (MadameLabs fork).
+        assertEquals(92, registry.getUiTools().size());
     }
 
     @Test
