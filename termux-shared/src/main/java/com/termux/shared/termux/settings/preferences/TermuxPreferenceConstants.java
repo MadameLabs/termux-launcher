@@ -708,6 +708,14 @@ public final class TermuxPreferenceConstants {
         public static final boolean DEFAULT_STATUS_CLOCK_SHOWN = true;
 
         /**
+         * MadameLabs fork: where the orientation chips stand — off, in the clock's cell of the
+         * widget slot while the clock is off; on, in the status row beside the window pills,
+         * where a folded bar still shows them.
+         */
+        public static final String KEY_ORIENTATION_CHIPS_IN_ROW = "orientation_chips_in_row";
+        public static final boolean DEFAULT_ORIENTATION_CHIPS_IN_ROW = false;
+
+        /**
          * Whose box the status row leaves its camera gap for when it shares the camera's band
          * (#163): {@link #STATUS_BAR_CUTOUT_AUTO} follows Android's display cutout,
          * {@link #STATUS_BAR_CUTOUT_CUSTOM} Android's shape nudged by the values below, {@link #STATUS_BAR_CUTOUT_OFF}

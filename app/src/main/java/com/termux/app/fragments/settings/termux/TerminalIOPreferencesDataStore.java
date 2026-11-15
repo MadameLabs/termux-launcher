@@ -60,6 +60,9 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             case "status_clock_shown": // barra-de-orientacao (MadameLabs fork)
                 mPreferences.setStatusClockShown(value);
                 break;
+            case "orientation_chips_in_row": // barra-de-orientacao (MadameLabs fork)
+                mPreferences.setOrientationChipsInRow(value);
+                break;
             case "top_pane_clock_am_pm":
                 mPreferences.setTopPaneClockAmPmEnabled(value);
                 break;
@@ -121,6 +124,8 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
                 return mPreferences.isClipboardCleanupEnabled();
             case "status_clock_shown": // barra-de-orientacao (MadameLabs fork)
                 return mPreferences.isStatusClockShown();
+            case "orientation_chips_in_row": // barra-de-orientacao (MadameLabs fork)
+                return mPreferences.isOrientationChipsInRow();
             case "top_pane_clock_am_pm":
                 return mPreferences.isTopPaneClockAmPmEnabled();
             case "show_key_hints":

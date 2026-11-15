@@ -37,4 +37,17 @@ public class TerminalIOPreferencesDataStoreStatusClockTest {
         store.putBoolean("status_clock_shown", true);
         assertTrue(TermuxAppSharedPreferences.build(context).isStatusClockShown());
     }
+
+    /** MadameLabs fork: the orientation chips' place toggles through the same store. */
+    @Test
+    public void chipsInRowRoundTripsThroughTheDataStore() {
+        Context context = RuntimeEnvironment.getApplication();
+        TerminalIOPreferencesDataStore store = TerminalIOPreferencesDataStore.getInstance(context);
+
+        assertFalse("the clock's cell by default", store.getBoolean("orientation_chips_in_row", true));
+        store.putBoolean("orientation_chips_in_row", true);
+        assertTrue(TermuxAppSharedPreferences.build(context).isOrientationChipsInRow());
+        store.putBoolean("orientation_chips_in_row", false);
+        assertFalse(TermuxAppSharedPreferences.build(context).isOrientationChipsInRow());
+    }
 }

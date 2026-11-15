@@ -16663,6 +16663,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         com.termux.app.orientacao.OrientationBarView view = findViewById(R.id.orientation_bar);
         if (view == null) return;
         mOrientationBar = new com.termux.app.orientacao.OrientationBarController(view,
+            findViewById(R.id.orientation_bar_row),
             new com.termux.app.orientacao.OrientationBarController.Source() {
                 @Nullable @Override public TerminalSession focusedSession() {
                     return getCurrentSession();
@@ -16693,6 +16694,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 @Nullable @Override public android.graphics.Typeface terminalTypeface() {
                     TerminalView view = getTerminalView();
                     return view == null ? null : view.getTerminalTypeface();
+                }
+                @Override public boolean chipsInRow() {
+                    return mPreferences != null && mPreferences.isOrientationChipsInRow();
+                }
+                @Override public void allowChipsInSlot(boolean allowed) {
+                    View slot = findViewById(R.id.terminal_top_widget_area);
+                    if (slot instanceof com.termux.app.statusbar.TopPaneWidgetSlot)
+                        ((com.termux.app.statusbar.TopPaneWidgetSlot) slot).setOrientationAllowed(allowed);
                 }
             });
     }

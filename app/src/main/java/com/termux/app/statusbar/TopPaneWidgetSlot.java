@@ -79,6 +79,8 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
     @Nullable private TerminalClockWidget mClock;
     /** barra-de-orientacao (MadameLabs fork): the chips that take the clock's cell while it is off. */
     @Nullable private View mOrientation;
+    /** Off while the chips stand in the status row instead (Orientation chips in the pills row). */
+    private boolean mOrientationAllowed = true;
     private final Rect mOrientationBounds = new Rect();
     @Nullable private PinnedNotificationsView mNotifications;
     @Nullable private MediaWidgetView mMedia;
@@ -149,7 +151,7 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         mClock = findViewById(R.id.terminal_clock_widget);
         if (mClock != null && !mClockShown) mClock.setVisibility(GONE);
         mOrientation = findViewById(R.id.orientation_bar); // barra-de-orientacao
-        if (mOrientation != null) mOrientation.setVisibility(mClockShown ? GONE : VISIBLE);
+        applyOrientationVisibility();
         mNotifications = findViewById(R.id.terminal_pinned_notifications);
         mMedia = findViewById(R.id.terminal_media_widget);
         mIcons = new PinnedNotificationIconCache(getContext());
@@ -242,7 +244,7 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         if (mClockShown == shown) return;
         mClockShown = shown;
         if (mClock != null) mClock.setVisibility(shown ? VISIBLE : GONE);
-        if (mOrientation != null) mOrientation.setVisibility(shown ? GONE : VISIBLE); // barra-de-orientacao
+        applyOrientationVisibility(); // barra-de-orientacao
         requestLayout();
         invalidate();
     }
@@ -469,6 +471,19 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
     }
 
     // barra-de-orientacao (MadameLabs fork): the chips stand where the clock would, centred.
+
+    /** Whether the chips may take the clock's cell; false while they stand in the status row. */
+    public void setOrientationAllowed(boolean allowed) {
+        if (mOrientationAllowed == allowed) return;
+        mOrientationAllowed = allowed;
+        applyOrientationVisibility();
+        requestLayout();
+    }
+
+    private void applyOrientationVisibility() {
+        if (mOrientation != null)
+            mOrientation.setVisibility(!mClockShown && mOrientationAllowed ? VISIBLE : GONE);
+    }
 
     private boolean orientationShown() {
         return !mClockShown && mOrientation != null && mOrientation.getVisibility() != GONE;

@@ -312,6 +312,15 @@
                         android:clipChildren="false"
                         android:clipToPadding="false">
 
+                        <!-- barra-de-orientacao (MadameLabs fork): the orientation chips in the
+                             row, before the readings, when "Orientation chips in the pills row" is
+                             on; a folded bar still shows them. -->
+                        <com.termux.app.orientacao.OrientationBarView
+                            android:id="@+id/orientation_bar_row"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:visibility="gone" />
+
                         <!-- No working indicator here: the window pill's own rim carries it, so
                              the state is shown once, at the window it belongs to. -->
                         <com.termux.app.statusbar.StatusBarWidgetView

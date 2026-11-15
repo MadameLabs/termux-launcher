@@ -1088,6 +1088,17 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_STATUS_CLOCK_SHOWN, value, false);
     }
 
+    /** MadameLabs fork: the orientation chips in the status row rather than the clock's cell. */
+    public boolean isOrientationChipsInRow() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_ORIENTATION_CHIPS_IN_ROW, TERMUX_APP.DEFAULT_ORIENTATION_CHIPS_IN_ROW);
+    }
+
+    public void setOrientationChipsInRow(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_ORIENTATION_CHIPS_IN_ROW, value, false);
+    }
+
     /** Whose box the status row's camera gap follows: auto, custom or off; unknown reads as auto. */
     @NonNull
     public String getStatusBarCutoutMode() {

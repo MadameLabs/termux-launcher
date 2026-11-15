@@ -32,6 +32,10 @@ public final class OrientationBarController {
         @Nullable String foregroundCwd(int shellPid);
         /** The terminal's typeface, which carries the Nerd Font glyphs the chips draw. */
         @Nullable android.graphics.Typeface terminalTypeface();
+        /** Whether the chips stand in the status row (on) or in the clock's cell (off). */
+        boolean chipsInRow();
+        /** Lets the clock's cell hold the chips, or not while they stand in the row. */
+        void allowChipsInSlot(boolean allowed);
     }
 
     /** How often the bar is refreshed, like tmux's status-interval. */
@@ -40,7 +44,10 @@ public final class OrientationBarController {
     public static final String VAR_FIVE_HOUR = "ml_5h";
     public static final String VAR_WEEKLY = "ml_semana";
 
+    /** The chips in the clock's cell of the widget slot. */
     @NonNull private final OrientationBarView mView;
+    /** The chips in the status row, beside the window pills; null without that row. */
+    @Nullable private final OrientationBarView mRowView;
     @NonNull private final Source mSource;
     @NonNull private final Handler mHandler = new Handler(Looper.getMainLooper());
     @Nullable private String mLastDrawn;
@@ -55,8 +62,10 @@ public final class OrientationBarController {
         }
     };
 
-    public OrientationBarController(@NonNull OrientationBarView view, @NonNull Source source) {
+    public OrientationBarController(@NonNull OrientationBarView view,
+                                    @Nullable OrientationBarView rowView, @NonNull Source source) {
         mView = view;
+        mRowView = rowView;
         mSource = source;
     }
 
@@ -73,19 +82,25 @@ public final class OrientationBarController {
 
     /** Redraws now, for a focus change or a resolved foreground. */
     public void onRefresh() {
-        mView.setChipTypeface(mSource.terminalTypeface());
-        // The chips wrap their text, so they are fitted to the run the slot can give them (just
-        // over half of it, as the clock gets), not to their own last width.
-        android.view.ViewParent parent = mView.getParent();
+        boolean inRow = mRowView != null && mSource.chipsInRow();
+        mSource.allowChipsInSlot(!inRow);
+        if (mRowView != null) mRowView.setVisibility(inRow ? android.view.View.VISIBLE : android.view.View.GONE);
+        OrientationBarView view = inRow ? mRowView : mView;
+        view.setChipTypeface(mSource.terminalTypeface());
+        // The chips wrap their text, so they are fitted to the run their place can give them,
+        // not to their own last width: just over half of the slot (as the clock gets), or of the
+        // status row, whose window pills keep the rest.
+        android.view.ViewParent parent = view.getParent();
+        if (inRow && parent != null) parent = parent.getParent();
         int room = parent instanceof android.view.View
-            ? Math.round(((android.view.View) parent).getWidth() * .55f) : mView.getWidth();
+            ? Math.round(((android.view.View) parent).getWidth() * .55f) : view.getWidth();
         OrientationLine line = OrientationModel.fit(OrientationModel.resolve(read()),
-            mView.maxChars(room));
-        String key = room + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'
+            view.maxChars(room));
+        String key = inRow + "\u0000" + room + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'
             + line.fiveHour + '\u0000' + line.weekly;
         if (key.equals(mLastDrawn)) return;
         mLastDrawn = key;
-        mView.render(line);
+        view.render(line);
     }
 
     @NonNull
