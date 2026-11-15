@@ -79,7 +79,7 @@ public class OrientationBarView extends LinearLayout {
         show(mFolder, line.path, false);
         show(mChat, line.chat, false);
         show(mFiveHour, line.fiveHour == null ? null : line.fiveHour + "%", line.fiveHourHot);
-        show(mWeekly, line.weekly == null ? null : "sem " + line.weekly + "%", line.weeklyHot);
+        show(mWeekly, line.weekly == null ? null : line.weekly + "%", line.weeklyHot); // the calendar icon names it
     }
 
     @Nullable private Typeface mTypeface;

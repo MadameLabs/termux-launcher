@@ -54,7 +54,7 @@ public class OrientationBarViewTest {
         List<String> texts = texts(bar);
         assertEquals(4, texts.size());
         assertTrue(texts.contains("42%"));
-        assertTrue(texts.contains("sem 10%"));
+        assertTrue(texts.contains("10%"));
     }
 
     @Test
@@ -64,7 +64,7 @@ public class OrientationBarViewTest {
         OrientationBarView.Chip fiveHour = null, weekly = null;
         for (OrientationBarView.Chip chip : bar.visibleChips()) {
             if ("81%".contentEquals(chip.text.getText())) fiveHour = chip;
-            if ("sem 10%".contentEquals(chip.text.getText())) weekly = chip;
+            if ("10%".contentEquals(chip.text.getText())) weekly = chip;
         }
         assertEquals(OrientationBarView.RED, fiveHour.text.getCurrentTextColor());
         assertNotEquals(OrientationBarView.RED, weekly.text.getCurrentTextColor());
