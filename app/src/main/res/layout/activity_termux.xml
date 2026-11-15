@@ -872,6 +872,7 @@
 
                     <com.termux.app.orientacao.OrientationBarView
                         android:id="@+id/orientation_bar"
+                        android:visibility="gone"
                         android:layout_width="match_parent"
                         android:layout_height="20dp" />
                 </LinearLayout>
