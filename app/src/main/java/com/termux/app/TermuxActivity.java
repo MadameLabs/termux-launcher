@@ -16684,7 +16684,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     if (mWindowForegroundResolver == null) return null;
                     com.termux.app.statusbar.WindowForegroundResolver.ForegroundInfo info =
                         mWindowForegroundResolver.get(shellPid);
-                    int pid = info == null || info.foregroundPid <= 0 ? shellPid : info.foregroundPid;
+                    // The terminal's own foreground group first: the resolver's answer can be the
+                    // session's proot, which stands in home whatever folder the shell is in.
+                    int pid = terminalForegroundPid(shellPid);
+                    if (pid == shellPid && info != null && info.foregroundPid > 0)
+                        pid = info.foregroundPid;
                     try {
                         return new java.io.File("/proc/" + pid + "/cwd").getCanonicalPath();
                     } catch (java.io.IOException | SecurityException e) {
@@ -16717,6 +16721,24 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (!com.termux.app.statusbar.StatusBarEdgeGeometry.setChipsOnlySlot(chipsOnly)) return;
         if (findViewById(R.id.terminal_window_bar_host) == null) return;
         setTopStatusBarCollapsed(isStatusBarCompact(), false, 0f);
+    }
+
+    /**
+     * MadameLabs fork: the leader of the terminal's foreground process group, from the tpgid field
+     * of {@code /proc/<pid>/stat}, or {@code pid} itself when it cannot be read. On TLNix the
+     * session's own process is proot, standing in home, so its cwd is never the shell's folder.
+     */
+    static int terminalForegroundPid(int pid) {
+        try {
+            String stat = new String(java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("/proc/" + pid + "/stat")));
+            // comm may hold spaces and parentheses: the fields start after the last ')'.
+            String[] fields = stat.substring(stat.lastIndexOf(')') + 2).split(" ");
+            int tpgid = Integer.parseInt(fields[5]); // state ppid pgrp session tty_nr tpgid
+            return tpgid > 0 ? tpgid : pid;
+        } catch (Exception e) {
+            return pid;
+        }
     }
 
     /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */

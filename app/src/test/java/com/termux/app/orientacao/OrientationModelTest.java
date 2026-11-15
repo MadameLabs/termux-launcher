@@ -124,4 +124,11 @@ public class OrientationModelTest {
         assertTrue(tiny.path == null || tiny.path.startsWith("…/"));
         assertEquals(Integer.valueOf(42), tiny.fiveHour);
     }
+
+    @Test
+    public void chatPrefersTheStatuslineNameOverTheTitle() {
+        assertEquals("barra", OrientationBarController.chatName("barra", "claude"));
+        assertEquals("claude", OrientationBarController.chatName(null, "claude"));
+        assertEquals("claude", OrientationBarController.chatName("  ", "claude"));
+    }
 }

@@ -43,6 +43,8 @@ public final class OrientationBarController {
 
     public static final String VAR_FIVE_HOUR = "ml_5h";
     public static final String VAR_WEEKLY = "ml_semana";
+    /** The conversation's name, from the statusline script; the terminal title is the fallback. */
+    public static final String VAR_CHAT = "ml_chat";
 
     /** The chips in the clock's cell of the widget slot. */
     @NonNull private final OrientationBarView mView;
@@ -103,6 +105,11 @@ public final class OrientationBarController {
         view.render(line);
     }
 
+    @Nullable
+    static String chatName(@Nullable String var, @Nullable String title) {
+        return var != null && !var.trim().isEmpty() ? var : title;
+    }
+
     @NonNull
     private OrientationInput read() {
         TerminalSession session = mSource.focusedSession();
@@ -116,7 +123,7 @@ public final class OrientationBarController {
         String cwd = mSource.foregroundCwd(pid);
         return new OrientationInput(emulator.getRemoteUserHost(), emulator.getRemotePath(),
             cwd != null ? cwd : emulator.getReportedWorkingDirectory(), mSource.foregroundCommand(pid),
-            session.getTitle(),
+            chatName(emulator.getUserVar(VAR_CHAT), session.getTitle()),
             mSource.agentPresent(pid), emulator.getUserVar(VAR_FIVE_HOUR),
             emulator.getUserVar(VAR_WEEKLY));
     }
