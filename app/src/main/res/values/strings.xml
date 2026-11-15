@@ -140,6 +140,8 @@
     <string name="settings_clock_alignment_left">Left</string>
     <string name="settings_clock_alignment_center">Center</string>
     <string name="settings_clock_alignment_right">Right</string>
+    <string name="settings_status_clock_shown_title">Show clock</string>
+    <string name="settings_status_clock_shown_summary">The clock in the status bar. Off frees its room.</string>
     <string name="settings_use_12_hour_title">12-hour time</string>
     <string name="settings_use_12_hour_summary">Show AM and PM.</string>
     <string name="settings_cpu_usage_title">CPU usage</string>

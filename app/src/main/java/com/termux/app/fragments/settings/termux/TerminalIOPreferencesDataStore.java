@@ -57,6 +57,9 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             case "terminal_clipboard_cleanup":
                 mPreferences.setClipboardCleanupEnabled(value);
                 break;
+            case "status_clock_shown": // barra-de-orientacao (MadameLabs fork)
+                mPreferences.setStatusClockShown(value);
+                break;
             case "top_pane_clock_am_pm":
                 mPreferences.setTopPaneClockAmPmEnabled(value);
                 break;
@@ -116,6 +119,8 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
                 return mPreferences.isOsc52ClipboardReadEnabled();
             case "terminal_clipboard_cleanup":
                 return mPreferences.isClipboardCleanupEnabled();
+            case "status_clock_shown": // barra-de-orientacao (MadameLabs fork)
+                return mPreferences.isStatusClockShown();
             case "top_pane_clock_am_pm":
                 return mPreferences.isTopPaneClockAmPmEnabled();
             case "show_key_hints":

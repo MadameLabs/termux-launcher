@@ -153,7 +153,8 @@ public final class SettingsRowIcons {
         key(R.drawable.ic_ms_swipe_down_alt, "app_launcher_home_gesture_two_finger_down");
         key(R.drawable.ic_ms_gesture, "home_gestures_helper");
         key(R.drawable.ic_ms_widgets, "app_launcher_widget_pane_enabled", "widgets_on_glass");
-        key(R.drawable.ic_ms_schedule, "app_launcher_builtin_widget_style", "top_pane_clock_am_pm");
+        key(R.drawable.ic_ms_schedule, "app_launcher_builtin_widget_style", "top_pane_clock_am_pm",
+            "status_clock_shown");
         key(R.drawable.ic_ms_more_horiz, "app_launcher_home_page_indicator");
         key(R.drawable.ic_ms_view_carousel, "home_edit_pages");
         key(R.drawable.ic_ms_panorama, "wallpaper_parallax");
