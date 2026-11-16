@@ -234,7 +234,10 @@ public final class StackLayout {
             edgeGapPx = ChromePolicy.bottomEdgeGapPx(
                 DockPlacement.floats(half.floating, peekCardStands), dock.capsuleBottomGapPx);
             lifted = toolbarShown || keyboardShown;
-            marginPx = (lifted ? imeLiftPx : 0) + edgeGapPx;
+            // MadameLabs fork: no IME lift in the margin. adjustResize already places the content
+            // above the system IME; adding its height lifts the stack a second time (Gboard in
+            // full screen on HyperOS/Poco F7, d7291e30b). The lift still says the IME is up.
+            marginPx = edgeGapPx;
             bandsUnderKeyboard = toolbarShown
                 && !EdgeStackPolicy.underKeyboard(arrangement).isEmpty();
             airPx = UnderKeyboardBand.airPx(dock, edgeGapPx, bandsUnderKeyboard);
