@@ -1,6 +1,9 @@
 package com.termux.terminal;
 
 import android.graphics.Bitmap;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -1219,6 +1222,7 @@ public final class TerminalEmulator {
     private void setReportedWorkingDirectory(String uri) {
         if (uri == null || uri.isEmpty()) {
             mReportedWorkingDirectory = null;
+            setRemoteContext(null, null); // context bar
             return;
         }
         if (!uri.regionMatches(true, 0, "file://", 0, 7)) {
@@ -1232,14 +1236,74 @@ public final class TerminalEmulator {
             return;
         }
         String host = hostAndPath.substring(0, pathStart);
-        if (!(host.isEmpty() || host.equalsIgnoreCase("localhost"))) {
-            // A remote shell's directory does not exist on this device.
-            Logger.logWarn(mClient, LOG_TAG, "Ignoring OSC 7 for another host");
+        // context bar: "user@host" names the same machine as "host".
+        String bareHost = host.substring(host.lastIndexOf('@') + 1);
+        if (!(bareHost.isEmpty() || bareHost.equalsIgnoreCase("localhost"))) {
+            // A remote shell's directory does not exist on this device, but the context bar
+            // shows where that shell is.
+            String remotePath = percentDecode(hostAndPath.substring(pathStart));
+            if (remotePath != null && !remotePath.isEmpty()) setRemoteContext(host, remotePath);
             return;
         }
+        setRemoteContext(null, null); // context bar
         String path = percentDecode(hostAndPath.substring(pathStart));
         if (path != null && !path.isEmpty())
             mReportedWorkingDirectory = path;
+    }
+
+    // context bar (MadameLabs fork): what the context bar reads from this pane.
+
+    @Nullable private String mRemoteUserHost;
+    @Nullable private String mRemotePath;
+    private final Map<String, String> mUserVars = new LinkedHashMap<>();
+    private long mContextStamp;
+
+    /** {@code user@host} (or {@code host}) of the last OSC 7 from another machine; null once a local one came. */
+    @Nullable
+    public String getRemoteUserHost() {
+        return mRemoteUserHost;
+    }
+
+    /** The path of that remote OSC 7, percent-decoded; null when the last report was local. */
+    @Nullable
+    public String getRemotePath() {
+        return mRemotePath;
+    }
+
+    /** The last value set for {@code name} with {@code OSC 1337 ; SetUserVar}, decoded; null if never. */
+    @Nullable
+    public String getUserVar(@NonNull String name) {
+        return mUserVars.get(name);
+    }
+
+    /** Grows on every change to the remote host, its path or a user variable. */
+    public long getContextStamp() {
+        return mContextStamp;
+    }
+
+    private void setRemoteContext(@Nullable String userHost, @Nullable String path) {
+        if (Objects.equals(userHost, mRemoteUserHost) && Objects.equals(path, mRemotePath)) return;
+        mRemoteUserHost = userHost;
+        mRemotePath = path;
+        mContextStamp++;
+    }
+
+    /** {@code name=base64}, iTerm's SetUserVar; anything malformed is dropped. */
+    private void setUserVar(@NonNull String nameAndValue) {
+        int eq = nameAndValue.indexOf('=');
+        if (eq <= 0) return;
+        String name = nameAndValue.substring(0, eq);
+        String value;
+        try {
+            value = new String(Base64.getDecoder().decode(nameAndValue.substring(eq + 1)),
+                StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            Logger.logWarn(mClient, LOG_TAG, "Ignoring SetUserVar with a malformed value");
+            return;
+        }
+        if (value.equals(mUserVars.get(name))) return;
+        mUserVars.put(name, value);
+        mContextStamp++;
     }
 
     /**
@@ -1568,6 +1632,9 @@ public final class TerminalEmulator {
                     break;
                 case GhosttyNative.EVENT_KITTY_NOTIFICATION:
                     if (first != null) mKittyNotifications.handle(first, mKittyNotificationHandler);
+                    break;
+                case GhosttyNative.EVENT_USER_VAR: // context bar
+                    if (first != null) setUserVar(first);
                     break;
                 default:
                     break;
@@ -4593,6 +4660,9 @@ public final class TerminalEmulator {
                         }
                         mCursorCol = col;
                     }
+                } else if (controlCommandPrefix.startsWith("SetUserVar=")) {
+                    // context bar
+                    setUserVar(mOSCOrDeviceControlArgs.substring(5 + "SetUserVar=".length()));
                 } else if (controlCommandPrefix.startsWith("ReportCellSize")) {
                     mSession.write(String.format(Locale.US, "\0331337;ReportCellSize=%d;%d\007", mCellHeightPixels, mCellWidthPixels));
                     if (!controlCommandPrefix.startsWith("MultipartFile=") &&

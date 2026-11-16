@@ -113,6 +113,9 @@ final class GhosttyNative {
     /** OSC 99: {@code first} is everything after {@code 99;}. */
     static final int EVENT_KITTY_NOTIFICATION = 4;
 
+    /** context bar (MadameLabs fork): OSC 1337 SetUserVar; {@code first} is {@code name=base64}. */
+    static final int EVENT_USER_VAR = 5;
+
     /** OSC 133 steps in {@link #EVENT_PROMPT}. */
     static final int SEMANTIC_PROMPT_START = 1;
     static final int SEMANTIC_INPUT_START = 2;
