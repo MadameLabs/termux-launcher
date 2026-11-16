@@ -944,6 +944,16 @@ public final class TerminalRenderer {
         return mContrastFloor;
     }
 
+    private boolean mKeepLightInk;
+
+    /** MadameLabs fork: see {@link ContrastFloor#atLeast(int, int, double, boolean)}. On change only. */
+    public void setKeepLightInk(boolean keep) {
+        if (mKeepLightInk == keep) return;
+        mKeepLightInk = keep;
+        mContrastMemo.setKeepLightInk(keep);
+        mRowCache.invalidate();
+    }
+
     /**
      * The colour faint ink on a cell whose resolved background is {@code backColor} stands on: the
      * cell's own where the program chose one, else the backdrop the floor is measured against.

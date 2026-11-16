@@ -1123,11 +1123,11 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 // The glass floors follow the Debugging switch, read before the build.
                 MaterialTerminalColorScheme.setGlassFloors(mHost.preferences().isGlassEvenOutEnabled());
                 props = MaterialTerminalColorScheme.create(mContext, level, ground, leaning,
-                    band != null);
+                    inkDecided(band, ground));
                 mTerminalInkPolarity = MaterialTerminalColorScheme.polarityOf(props);
                 MaterialTerminalColorScheme.rememberGround(mContext, ground, mTerminalInkPolarity);
                 mLastMaterialTerminalPaletteSignature = MaterialTerminalColorScheme.signature(
-                    mContext, level, ground, leaning, band != null);
+                    mContext, level, ground, leaning, inkDecided(band, ground));
                 mLastSchemeSignature = Long.MIN_VALUE;
                 // The active roles are built here, on the main thread, from the activity's theme, so
                 // the files describe the same palette the terminal just took. The dark and light
@@ -1151,7 +1151,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
                 TerminalContrastLevel level =
                     com.termux.app.chrome.LegibilityLevel.terminalContrast(mHost.preferences());
                 int ground = mHost.terminalTextGround();
-                props = SchemeContrast.apply(loaded, ground, level);
+                // MadameLabs fork: a fixed scheme is worn exactly as the file says; nothing re-tones
+                // it for the wallpaper (on thin glass that turned the default palette olive).
+                props = loaded;
                 mLastSchemeSignature = schemeSignature(level, ground);
                 // With or without a custom theme: rewrite the material-colors files from the scheme
                 // so shells do not keep the old wallpaper palette.
@@ -1363,7 +1365,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         com.termux.app.chrome.ChromeInk.Polarity band = mHost.terminalBandPolarity();
         int signature = MaterialTerminalColorScheme.signature(mContext,
             com.termux.app.chrome.LegibilityLevel.terminalContrast(mHost.preferences()),
-            ground, decidedInk(band, ground), band != null);
+            ground, decidedInk(band, ground), inkDecided(band, ground));
         if (signature == mLastMaterialTerminalPaletteSignature) return;
         applyTerminalColors();
     }
@@ -1381,7 +1383,27 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     @Nullable
     private com.termux.app.chrome.ChromeInk.Polarity decidedInk(
             @Nullable com.termux.app.chrome.ChromeInk.Polarity band, int ground) {
+        // MadameLabs fork: on glass thinner than the pale-ink line the ink is pale, whatever the
+        // band measured. Over a bright wallpaper the band chose dark ink and the whole palette went
+        // olive and grey below ~35%; the person wants white text on clear glass.
+        if (paleOnThinGlass(ground)) return com.termux.app.chrome.ChromeInk.Polarity.PALE_INK;
         return band != null ? band : inkLeaning(ground);
+    }
+
+    /** Whether the ink is settled before the palette weighs the ground: a band verdict or thin glass. */
+    private boolean inkDecided(@Nullable com.termux.app.chrome.ChromeInk.Polarity band, int ground) {
+        return band != null || paleOnThinGlass(ground);
+    }
+
+    /** MadameLabs fork: translucent pane below {@link TerminalSurfacePolicy#PALE_INK_BELOW_OPACITY}. */
+    private boolean paleOnThinGlass(int ground) {
+        return android.graphics.Color.alpha(ground) != 0
+            && terminalOpacity() < TerminalSurfacePolicy.PALE_INK_BELOW_OPACITY;
+    }
+
+    private int terminalOpacity() {
+        return mHost.preferences() != null
+            ? mHost.preferences().getTerminalBackgroundOpacity() : 100;
     }
 
     /**
@@ -1405,10 +1427,14 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     private void applyTextBackdropToPanes() {
         int backdrop = mHost.terminalTextSurface();
         double floor = terminalContrastFloor(mHost.preferences());
+        // MadameLabs fork: on glass thin enough to lean to pale ink, keep it pale (white at most).
+        boolean keepLightInk = android.graphics.Color.alpha(backdrop) != 0
+            && inkLeaning(backdrop) == com.termux.app.chrome.ChromeInk.Polarity.PALE_INK;
         for (com.termux.view.TerminalView view : mHost.paneViews()) {
             if (view == null) continue;
             view.setContrastBackdrop(backdrop);
             view.setContrastFloor(floor);
+            view.setKeepLightInk(keepLightInk);
         }
     }
 
@@ -1420,6 +1446,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public static double terminalContrastFloor(
             @Nullable com.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences preferences) {
         if (preferences == null) return com.termux.view.ContrastFloor.TEXT;
+        // MadameLabs fork: with a fixed scheme (wallpaper colours off) no floor moves its colours;
+        // 1:1 is met by every colour on every ground.
+        if (!preferences.isTerminalDynamicColorsEnabled()) return 1d;
         return preferences.getTerminalContrastLevel().bodyTarget;
     }
 

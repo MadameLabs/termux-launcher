@@ -279,4 +279,18 @@ public class ContrastFloorTest {
     private static String hex(int color) {
         return String.format("#%08X", color);
     }
+
+    @Test
+    public void keptLightInkGoesWhiteRatherThanGreyOnABrightGround() {
+        // MadameLabs fork: white on a warm, bright wallpaper cannot reach 4.5:1; the plain rule
+        // mixes it toward black (grey), the kept-light-ink rule leaves it white.
+        int ground = 0xFFE8A040;
+        int text = 0xFFE6E6E6;
+        assertTrue(ContrastFloor.luminance(ContrastFloor.atLeast(text, ground, ContrastFloor.TEXT))
+            < ContrastFloor.luminance(text));
+        assertEquals(0xFFFFFFFF, ContrastFloor.atLeast(text, ground, ContrastFloor.TEXT, true));
+        // Dark ink is untouched by the option.
+        assertEquals(ContrastFloor.atLeast(0xFF404040, 0xFFF5F0E6, ContrastFloor.TEXT),
+            ContrastFloor.atLeast(0xFF404040, 0xFFF5F0E6, ContrastFloor.TEXT, true));
+    }
 }

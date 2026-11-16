@@ -116,6 +116,16 @@ public final class ContrastFloor {
      * being judged as opaque.
      */
     public static int atLeast(int color, int backdrop, double floor) {
+        return atLeast(color, backdrop, floor, false);
+    }
+
+    /**
+     * {@link #atLeast(int, int, double)}, but with {@code keepLightInk} text lighter than its
+     * backdrop only ever goes toward white (MadameLabs fork): where white cannot reach the floor
+     * it is white, never a mix toward black. On thin glass over a bright wallpaper that mix is the
+     * grey the pale ink turned into.
+     */
+    public static int atLeast(int color, int backdrop, double floor, boolean keepLightInk) {
         final double ground = luminance(backdrop);
         final double own = luminance(color);
         if (ratio(own, ground) >= floor) return color;
@@ -125,6 +135,8 @@ public final class ContrastFloor {
         final int extreme;
         if (awayBest >= floor) {
             extreme = away;
+        } else if (keepLightInk && away == WHITE) {
+            return (color & 0xFF000000) | (WHITE & 0xFFFFFF);
         } else {
             final double towardBest = ratio(luminance(toward), ground);
             if (towardBest < floor) {
@@ -172,6 +184,14 @@ public final class ContrastFloor {
         private boolean mHasBackdrop;
         private double mTextFloor = TEXT;
         private double mDimFloor = DIM_TEXT;
+        private boolean mKeepLightInk;
+
+        /** See {@link ContrastFloor#atLeast(int, int, double, boolean)}; a change forgets every answer. */
+        public void setKeepLightInk(boolean keep) {
+            if (keep == mKeepLightInk) return;
+            mKeepLightInk = keep;
+            Arrays.fill(mKeys, 0L);
+        }
 
         /**
          * The floor normal text is held to, {@link #TEXT} until told otherwise; faint text gets
@@ -213,8 +233,9 @@ public final class ContrastFloor {
             if (dim) hash ^= 0x5BD1E995;
             final int slot = (hash ^ (hash >>> 15)) & (SLOTS - 1);
             if (mKeys[slot] == key) return mValues[slot];
-            final int answer = dim ? atLeast(ContrastFloor.dim(color, mBackdrop), mBackdrop, mDimFloor)
-                : atLeast(color, mBackdrop, mTextFloor);
+            final int answer = dim
+                ? atLeast(ContrastFloor.dim(color, mBackdrop), mBackdrop, mDimFloor, mKeepLightInk)
+                : atLeast(color, mBackdrop, mTextFloor, mKeepLightInk);
             mKeys[slot] = key;
             mValues[slot] = answer;
             return answer;

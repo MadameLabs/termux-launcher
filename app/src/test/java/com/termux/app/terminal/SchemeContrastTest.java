@@ -157,8 +157,8 @@ public class SchemeContrastTest {
         // Only the level moved: the refresh rebuilds at once.
         prefs.setTerminalContrastLevel(TerminalContrastLevel.SOFTER.value);
         client.refreshMaterialTerminalColorsIfNeeded();
-        assertNotEquals(0xff123456, foreground());
-        assertTrue(ratio(foreground(), Color.BLACK) < 21d);
+        // MadameLabs fork: rebuilt, but a fixed scheme is worn as loaded at every level.
+        assertEquals(0xffffffff, foreground());
 
         // And back, as Discard and Undo do.
         prefs.setTerminalContrastLevel(TerminalContrastLevel.DEFAULT.value);
@@ -167,15 +167,16 @@ public class SchemeContrastTest {
     }
 
     @Test
-    public void theRendererFloorFollowsTheLevelWithWallpaperColoursOff() throws Exception {
+    public void theRendererFloorIsOffWithWallpaperColoursOff() throws Exception {
         FakeTerminalHost host = new FakeTerminalHost(FakeTerminalHost.testContext(),
             FakeTerminalHost.testProperties());
         TermuxAppSharedPreferences prefs = host.preferences();
         prefs.setTerminalDynamicColorsEnabled(false);
         prefs.setTerminalContrastLevel(TerminalContrastLevel.SOFTER.value);
-        assertEquals(3.0d, TermuxTerminalSessionActivityClient.terminalContrastFloor(prefs), 0d);
+        // MadameLabs fork: a fixed scheme keeps its colours, so no floor at any level.
+        assertEquals(1.0d, TermuxTerminalSessionActivityClient.terminalContrastFloor(prefs), 0d);
         prefs.setTerminalContrastLevel(TerminalContrastLevel.HARDER.value);
-        assertEquals(7.0d, TermuxTerminalSessionActivityClient.terminalContrastFloor(prefs), 0d);
+        assertEquals(1.0d, TermuxTerminalSessionActivityClient.terminalContrastFloor(prefs), 0d);
     }
 
     private static int foreground() {
