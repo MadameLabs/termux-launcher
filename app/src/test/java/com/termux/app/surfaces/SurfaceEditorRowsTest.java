@@ -48,7 +48,8 @@ public class SurfaceEditorRowsTest {
         for (SurfaceSlot slot : SurfaceSlot.values()) {
             SurfaceEditorRows.Page page = SurfaceEditorRows.page(slot);
             // Widgets and Sheets have no card until the editor wave.
-            if (slot == SurfaceSlot.WIDGETS || slot == SurfaceSlot.SHEETS) continue;
+            if (slot == SurfaceSlot.WIDGETS || slot == SurfaceSlot.SHEETS
+                || slot == SurfaceSlot.COMMAND_BOX) continue; // MadameLabs fork: a plain glass card too
             assertSame(slot, page.slot);
             assertTrue("two surfaces share a name", seen.add(page.labelRes));
             assertEquals(page.labelRes, SurfaceEditorRows.slotLabel(slot));

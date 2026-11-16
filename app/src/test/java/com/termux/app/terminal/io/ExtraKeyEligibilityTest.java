@@ -278,12 +278,13 @@ public class ExtraKeyEligibilityTest {
         }
         // window.move and its left/right pair are multiplexing, beside window.select, and so are
         // pane.consume and pane.expel.
-        assertEquals(102, declared);
+        // terminal.toggle_command_box (MadameLabs fork) is a terminal tool.
+        assertEquals(103, declared);
         assertEquals(Integer.valueOf(0), counts.get(Band.TERMINAL_INPUT));
         assertEquals(Integer.valueOf(32), counts.get(Band.LAUNCHER));
         assertEquals(Integer.valueOf(4), counts.get(Band.SESSION_OVERLAY));
         assertEquals(Integer.valueOf(46), counts.get(Band.MULTIPLEX));
-        assertEquals(Integer.valueOf(20), counts.get(Band.TERMINAL_TOOL));
+        assertEquals(Integer.valueOf(21), counts.get(Band.TERMINAL_TOOL));
     }
 
     // -------------------------------------------------------------------------------- helpers

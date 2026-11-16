@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MadameLabs fork: Settings › Terminal › Command box. -->
+<resources>
+    <string name="settings_command_box_title">Command box</string>
+    <string name="settings_command_box_summary">The popup, its glass and its text</string>
+    <string name="settings_command_box_open_header">Opening</string>
+    <string name="settings_command_box_glass_header">Glass</string>
+    <string name="settings_command_box_glass_title">Glass in Appearance</string>
+    <string name="settings_command_box_glass_summary">Its own card: frost, opacity, tint, colour, corners, depth, edge, grain and rim.</string>
+    <string name="settings_command_box_text_header">Text</string>
+    <string name="settings_command_box_text_colors_title">Text colours</string>
+    <string name="settings_command_box_text_size_follows_title">Text size like the terminal</string>
+    <string name="settings_command_box_text_size_follows_summary">Off: use the size below.</string>
+    <string name="settings_command_box_text_size_title">Text size</string>
+    <string-array name="settings_command_box_text_colors_entries">
+        <item>Like the terminal</item>
+        <item>Like the launcher</item>
+    </string-array>
+    <string-array name="settings_command_box_text_colors_values" translatable="false">
+        <item>terminal</item>
+        <item>launcher</item>
+    </string-array>
+</resources>

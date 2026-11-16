@@ -102,6 +102,17 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
         applyColors();
     }
 
+    /** The window pills' {fill, label, rim}, or null to resolve its own. */
+    @Nullable private int[] mPillColors;
+
+    /** MadameLabs fork: wear the window pills' resting colours (fill, label) and accent rim. */
+    public void setPillColors(@ColorInt int fill, @ColorInt int label, @ColorInt int rim) {
+        int[] next = {fill, label, rim};
+        if (java.util.Arrays.equals(next, mPillColors)) return;
+        mPillColors = next;
+        applyColors();
+    }
+
     /** Match the session container to the selected status-bar surface geometry. */
     public void setSurfaceStyle(boolean capsule, float statusBarRadiusPx) {
         float radius = Math.max(0f, statusBarRadiusPx);
@@ -225,8 +236,19 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
             ? StatusBarInk.chipOn(mInk, mBand, panel, CONTAINER_ALPHA, onSurface, accent)
             : StatusBarInk.chip(mBandSurface != null ? mBandSurface : panel, panel,
                 CONTAINER_ALPHA, onSurface, accent);
+        int container = resolved.container;
+        int stroke = resolved.stroke;
+        int label = resolved.label;
+        // context bar: the window pills' resting colours, handed over by the bar beside
+        // it (TerminalWindowBar#setPaletteListener), so it reads as one of them rather than a
+        // dark card; the rim keeps the place's accent, as the current pill's outline does.
+        if (mPillColors != null) {
+            container = mPillColors[0];
+            label = mPillColors[1];
+            stroke = mPillColors[2];
+        }
 
-        mLabel.setTextColor(resolved.label);
+        mLabel.setTextColor(label);
         if (mDeck != null) {
             com.termux.app.terminal.DeckChipDrawable button =
                 new com.termux.app.terminal.DeckChipDrawable(getResources().getDisplayMetrics().density);
@@ -240,11 +262,11 @@ public final class SessionsIndicatorView extends LinearLayout implements TextSca
         // The caller resolves the shape (the chip-radius knob, or the bar's own shape while that
         // knob is untouched), so the indicator and the window pills beside it always agree.
         chip.setCornerRadius(mStatusBarRadiusPx);
-        chip.setColor(resolved.container);
-        chip.setStroke(dp(1), resolved.stroke);
+        chip.setColor(container);
+        chip.setStroke(dp(1), stroke);
         setBackground(chip);
 
-        mLabel.setTextColor(resolved.label);
+        mLabel.setTextColor(label);
     }
 
     /** Alpha-weighted visual center of the rendered label, relative to its text origin. */

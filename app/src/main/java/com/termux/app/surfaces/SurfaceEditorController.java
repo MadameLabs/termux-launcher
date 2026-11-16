@@ -1061,6 +1061,7 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
             case KEYBOARD: return getString(R.string.appearance_card_keyboard);
             case TERMINAL: return getString(R.string.appearance_card_terminal);
             case WIDGETS: return getString(R.string.editor_element_widgets);
+            case COMMAND_BOX: return getString(R.string.editor_element_command_box);
             case SHEETS:
             default:
                 return getString(R.string.editor_element_sheets);

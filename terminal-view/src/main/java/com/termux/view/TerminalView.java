@@ -93,6 +93,13 @@ public final class TerminalView extends View {
     private boolean mReportedFocus;
 
     /**
+     * MadameLabs fork: an input that types into this view's session holds its focus (the
+     * toolbar's command row). The program keeps hearing it focused, so a TUI that dims on
+     * focus-out (DECSET 1004) does not grey its text while the row is typed into.
+     */
+    private boolean mFocusLent;
+
+    /**
      * Whether this pane's cursor trail listener is turned on: the preference and the device's
      * power state, folded together by whoever installed the listener. Kept here rather than only
      * forwarded, so a listener installed after the policy already ran (a pane created mid-session)
@@ -848,12 +855,19 @@ public final class TerminalView extends View {
 
     /** Focus as a program sees it: this view's own focus while its window has focus too. */
     private void reportFocus() {
-        boolean focused = hasFocus() && hasWindowFocus();
+        boolean focused = (hasFocus() || mFocusLent) && hasWindowFocus();
         if (focused == mReportedFocus)
             return;
         mReportedFocus = focused;
         if (mEmulator != null)
             mEmulator.onFocusChanged(focused);
+    }
+
+    /** MadameLabs fork: see {@link #mFocusLent}. */
+    public void setFocusLent(boolean lent) {
+        if (mFocusLent == lent) return;
+        mFocusLent = lent;
+        reportFocus();
     }
 
     @Override

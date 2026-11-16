@@ -202,6 +202,14 @@
                         android:contentDescription="@string/termux_top_pane_clock_content_description"
                         android:importantForAccessibility="yes" />
 
+                    <!-- context bar (MadameLabs fork): the context chips stand in the
+                         clock's cell while the clock is off (TopPaneWidgetSlot). -->
+                    <com.termux.app.contextbar.ContextBarView
+                        android:id="@+id/context_bar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone" />
+
                     <com.termux.app.statusbar.PinnedNotificationsView
                         android:id="@+id/terminal_pinned_notifications"
                         android:layout_width="wrap_content"
@@ -303,6 +311,15 @@
                         android:gravity="center_vertical"
                         android:clipChildren="false"
                         android:clipToPadding="false">
+
+                        <!-- context bar (MadameLabs fork): the context chips in the
+                             row, before the readings, when "Context chips in the pills row" is
+                             on; a folded bar still shows them. -->
+                        <com.termux.app.contextbar.ContextBarView
+                            android:id="@+id/context_bar_row"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:visibility="gone" />
 
                         <!-- No working indicator here: the window pill's own rim carries it, so
                              the state is shown once, at the window it belongs to. -->
@@ -854,12 +871,72 @@
                         android:visibility="gone" />
                 </FrameLayout>
 
-                <FrameLayout
+                <!-- MadameLabs fork: a LinearLayout so the command row stands under the keys. -->
+                <LinearLayout
                     android:id="@+id/terminal_toolbar_host"
+                    android:orientation="vertical"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:clipChildren="false"
                     android:clipToPadding="false">
+
+                    <!-- context bar (MadameLabs fork): with "Chips and pills in the keys
+                         panel" on, the window pills (the status row's place strip, moved here at
+                         run time) and the context chips stand above the keys, and the status
+                         bar is put away. Sized by the accessory geometry pass. -->
+                    <LinearLayout
+                        android:id="@+id/context_dock"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp">
+
+                        <FrameLayout
+                            android:id="@+id/context_dock_pills"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1" />
+
+                        <HorizontalScrollView
+                            android:id="@+id/context_dock_scroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:fillViewport="true"
+                            android:scrollbars="none"
+                            android:overScrollMode="never"
+                            android:requiresFadingEdge="horizontal"
+                            android:fadingEdgeLength="24dp">
+
+                            <com.termux.app.contextbar.ContextBarView
+                                android:id="@+id/context_bar_dock"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent" />
+                        </HorizontalScrollView>
+
+                        <!-- The chat's name on a row of its own, whole, scrolling when long. -->
+                        <HorizontalScrollView
+                            android:id="@+id/context_dock_chat_scroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="0dp"
+                            android:layout_weight="1"
+                            android:fillViewport="true"
+                            android:scrollbars="none"
+                            android:overScrollMode="never"
+                            android:requiresFadingEdge="horizontal"
+                            android:fadingEdgeLength="24dp">
+
+                            <LinearLayout
+                                android:id="@+id/context_dock_chat"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:paddingStart="6dp"
+                                android:paddingEnd="6dp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="match_parent" />
+                        </HorizontalScrollView>
+
+                    </LinearLayout>
 
                     <androidx.viewpager.widget.ViewPager
                         android:id="@+id/terminal_toolbar_view_pager"
@@ -867,7 +944,16 @@
                         android:layout_width="match_parent"
                         android:layout_height="37.5dp"
                         android:background="@android:color/transparent"/>
-                </FrameLayout>
+
+                    <!-- MadameLabs fork: the persistent command row under the key pages, where a
+                         system keyboard such as Gboard types (TerminalToolbarViewPager). -->
+                    <include
+                        android:id="@+id/terminal_toolbar_command_row"
+                        layout="@layout/view_terminal_toolbar_text_input"
+                        android:visibility="gone"
+                        android:layout_width="match_parent"
+                        android:layout_height="37.5dp" />
+                </LinearLayout>
             </com.termux.app.place.EdgeStackView>
 
             <com.termux.app.LauncherAzGestureFxView

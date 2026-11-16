@@ -700,6 +700,11 @@ public interface TerminalHost extends SoftKeyboardPolicy {
         return false;
     }
 
+    /** MadameLabs fork: shows or hides the command box popup; answers whether it shows now. */
+    default boolean toggleCommandBoxPopup() {
+        return false;
+    }
+
     /**
      * Turns minimal mode on or off, as the corner tab's minimal button does, from any page.
      * Answers whether minimal mode is on now.

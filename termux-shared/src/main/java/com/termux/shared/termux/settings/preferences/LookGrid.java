@@ -129,7 +129,9 @@ public final class LookGrid {
     /** The glass elements. */
     public enum Element {
         STATUS("status"), DOCK("dock"), KEYBOARD("keyboard"), TERMINAL("terminal"),
-        WIDGETS("widgets"), SHEETS("sheets");
+        WIDGETS("widgets"), SHEETS("sheets"),
+        /** MadameLabs fork: the command box popup, seeded from the terminal's cells once. */
+        COMMAND_BOX("command_box");
 
         public final String key;
 
@@ -589,6 +591,25 @@ public final class LookGrid {
         if (!mStore.contains(source) || mStore.contains(target)) return false;
         mStore.putInt(target, mStore.getInt(source, property.shipped));
         return true;
+    }
+
+    /**
+     * MadameLabs fork: copies every cell {@code from} holds, on every page and kind, to {@code to}
+     * where {@code to} holds none of its own: a new element starts dressed as the one it grew out
+     * of (the command box from the terminal). Returns how many cells moved.
+     */
+    public int seedElement(@NonNull Element from, @NonNull Element to) {
+        int moved = 0;
+        for (String text : mStore.keys()) {
+            Key cell = parse(text);
+            if (cell == null || cell.element != from) continue;
+            String target = cell.kind != null ? key(cell.property, to, cell.kind)
+                : key(cell.property, to, cell.page);
+            if (mStore.contains(target)) continue;
+            mStore.putInt(target, mStore.getInt(text, cell.property.shipped));
+            moved++;
+        }
+        return moved;
     }
 
     /** Resets one kind's cell: it follows again. */

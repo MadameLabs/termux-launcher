@@ -3,6 +3,25 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory app:title="@string/settings_status_clock_header">
+        <!-- MadameLabs fork: the same key as the Status bar card's Clock toggle. -->
+        <SwitchPreferenceCompat
+            app:key="status_clock_shown"
+            app:title="@string/settings_status_clock_shown_title"
+            app:summary="@string/settings_status_clock_shown_summary"
+            app:defaultValue="true" />
+        <SwitchPreferenceCompat
+            app:key="orientation_chips_in_row"
+            app:title="@string/settings_context_chips_in_row_title"
+            app:summary="@string/settings_context_chips_in_row_summary"
+            app:defaultValue="false" />
+        <!-- MadameLabs fork: the session indicator's and window pills' corner (the chip knob). -->
+        <ListPreference
+            app:key="status_indicator_corner_radius"
+            app:title="@string/termux_surface_tuning_indicator_radius"
+            app:entries="@array/status_indicator_corner_radius_entries"
+            app:entryValues="@array/status_indicator_corner_radius_values"
+            app:defaultValue="-1"
+            app:useSimpleSummaryProvider="true" />
         <SwitchPreferenceCompat
             app:key="top_pane_clock_am_pm"
             app:title="@string/settings_use_12_hour_title"

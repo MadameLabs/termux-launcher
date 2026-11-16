@@ -1829,6 +1829,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 && (frame == mInAppKeyboardBackdropBitmap || frame == mUnderKeyboardBackdropBitmap
                     || frame == mFrameGutterBackdropBitmap
                     || (mLookGlass != null && mLookGlass.holds(frame))
+                    || (mCommandBoxGlass != null && mCommandBoxGlass.holds(frame))
                     || isSharedWallpaperBlurFrameInUse(frame));
         }
 
@@ -1837,6 +1838,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mPaneGlassClearFrame = null;
             mWallBehindFrame = null;
             if (mLookGlass != null) mLookGlass.onCacheCleared();
+            if (mCommandBoxGlass != null) mCommandBoxGlass.onCacheCleared();
         }
 
         @Override public boolean isActivityVisible() {
@@ -2608,6 +2610,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onResume() {
         super.onResume();
+        if (mContextBar != null) mContextBar.start(); // context bar
+        syncCommandBoxPopupMode(); // MadameLabs fork: the toggle may have moved in Settings
+        syncChipRadius();
         mHomePress.onResume();
         Logger.logVerbose(LOG_TAG, "onResume");
         // Text left waiting in the pill holds the screen again, its idle release started over.
@@ -2980,6 +2985,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     protected void onPause() {
+        if (mContextBar != null) mContextBar.stop(); // context bar
         mReturnHold.onPaused();
         // A landing still waiting for its post lands before the screen goes.
         flushLandedFrameSettle();
@@ -4183,6 +4189,67 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         };
     }
 
+    /** MadameLabs fork: the command box popup's glass; see {@link #commandBoxGlassStyle}. */
+    @Nullable private com.termux.app.chrome.LookGlassStyle mCommandBoxGlass;
+    /** What the popup was last dressed with ({@link com.termux.app.chrome.LookGlassStyle#key}). */
+    @Nullable private Object mCommandBoxGlassKey;
+
+    /**
+     * MadameLabs fork: the command box popup's glass, its own element of the look grid (ADR 0017,
+     * {@code look.<property>.command_box}), worn as a pane wears the terminal's: the same shared
+     * blur frames, grain, rim, Fancier Glass and wallpaper pan, on the Terminal page's cells.
+     */
+    @NonNull
+    private com.termux.app.chrome.LookGlassStyle commandBoxGlassStyle() {
+        if (mCommandBoxGlass == null) {
+            mCommandBoxGlass = new com.termux.app.chrome.LookGlassStyle(this, mChrome,
+                new com.termux.app.chrome.LookGlassStyle.Host() {
+                    @Override public TermuxAppSharedPreferences preferences() { return mPreferences; }
+                    @Override public View wallpaperFrame() {
+                        return findViewById(R.id.activity_termux_root_view);
+                    }
+                    @Override public boolean wallpaperBlurs() { return wallpaperSampleable(); }
+                    // The terminal's surface hue: the box is the terminal's input.
+                    @Override public int glassBaseColor() { return resolveTerminalSurfaceColor(); }
+                    @Override public com.termux.app.chrome.GlassRefraction.Look refraction() {
+                        return com.termux.app.chrome.ElementGlass.refraction(mPreferences,
+                            com.termux.shared.termux.settings.preferences.LookGrid.Element.COMMAND_BOX,
+                            pageId(), mFancierGlassLook);
+                    }
+                    @Override public int pageId() { return terminalLookPageId(); }
+                    @NonNull @Override
+                    public TermuxAppSharedPreferences.SurfaceSlot slot() {
+                        return TermuxAppSharedPreferences.SurfaceSlot.COMMAND_BOX;
+                    }
+                    @Override public com.termux.app.chrome.WallpaperParallax parallax() {
+                        return mWallpaperParallax;
+                    }
+                });
+        }
+        return mCommandBoxGlass;
+    }
+
+    /**
+     * Re-dresses the command box popup when what it wears has moved: a look write, a wallpaper
+     * change, or the blur frame it asked for landing (the key holds the frame by identity, as
+     * the widgets' does). Worn only while the popup shows, so a closed popup holds no frame.
+     */
+    private void refreshCommandBoxGlass() {
+        com.termux.app.terminal.io.CommandBoxPopup popup = mCommandBoxPopup;
+        boolean shown = popup != null && popup.isShown();
+        if (!shown) {
+            if (mCommandBoxGlass != null) mCommandBoxGlass.setWorn(false);
+            mCommandBoxGlassKey = null;
+            return;
+        }
+        com.termux.app.chrome.LookGlassStyle style = commandBoxGlassStyle();
+        style.setWorn(true);
+        Object key = style.key();
+        if (key.equals(mCommandBoxGlassKey)) return;
+        mCommandBoxGlassKey = key;
+        popup.applyStyle(style);
+    }
+
     /** The Look's glass Home's widgets wear; see {@link #lookGlassStyle}. */
     @Nullable private com.termux.app.chrome.LookGlassStyle mLookGlass;
 
@@ -4296,6 +4363,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (gutterBody != null && shouldUseWallpaperPassthroughMode())
             applyFrameGutterGlass(gutterBody, isTerminalPaneGlassActive() && hasDockedFrameCard());
         Trace.endSection();
+        // MadameLabs fork: the command box popup's own element, in the same pass; before the
+        // panes' early returns, so a frame that just landed reaches it as it reaches them.
+        refreshCommandBoxGlass();
         if (mPaneController == null) return;
         com.termux.app.terminal.PaneSurfaceStyle style = paneSurfaceStyle();
         // This runs behind every chrome apply, several times a page change, and the style is a
@@ -12452,7 +12522,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mInAppKeyboardShiftLocked = false;
             mInAppKeyboard.onConfigurationChanged(newConfig);
         }
-        // Every open surface measured the old orientation's geometry. The palette alone needs a
+        // Every open surface measured the old context bar's geometry. The palette alone needs a
         // refresh pass afterwards; a sheet's glass is built per show(), so the next one already
         // picks up the new configuration.
         mOverlays.closeAll(com.termux.app.chrome.OverlayRegistry.CloseReason.ROTATION);
@@ -13236,7 +13306,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     /**
      * The pinned apps row is a per-orientation placement, not a switch: it is on while this
-     * orientation's layout stands it somewhere. The older global switch only ever seeded that
+     * context bar's layout stands it somewhere. The older global switch only ever seeded that
      * layout, and nothing writes it any more — reading it here kept the catalogue warming, the
      * package scans running and the icon caches filling under a terminal-only install whose row
      * was hidden everywhere.
@@ -16634,6 +16704,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setTerminalToolbarView(Bundle savedInstanceState) {
+        setUpContextBar(); // context bar
         rebuildExtraKeysPageClients();
         final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
         ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
@@ -16644,9 +16715,270 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         String savedTextInput = null;
         if (savedInstanceState != null)
             savedTextInput = savedInstanceState.getString(ARG_TERMINAL_TOOLBAR_TEXT_INPUT);
+        TerminalToolbarViewPager.bindCommandRow(this, savedTextInput); // MadameLabs fork
         terminalToolbarViewPager.setAdapter(new TerminalToolbarViewPager.PageAdapter(this, savedTextInput));
         terminalToolbarViewPager.addOnPageChangeListener(new TerminalToolbarViewPager.OnPageChangeListener(this, terminalToolbarViewPager));
         mChrome.requestSync(ChromeRenderer.SCOPE_ACCESSORY_RENDER);
+    }
+
+    // context bar (MadameLabs fork): the chips in the status bar's clock cell and what
+    // they read.
+
+    @Nullable private com.termux.app.contextbar.ContextBarController mContextBar;
+
+    private void setUpContextBar() {
+        if (mContextBar != null) return;
+        bindSessionsIndicatorToWindowChips();
+        com.termux.app.contextbar.ContextBarView view = findViewById(R.id.context_bar);
+        if (view == null) return;
+        mContextBar = new com.termux.app.contextbar.ContextBarController(view,
+            findViewById(R.id.context_bar_dock),
+            new com.termux.app.contextbar.ContextBarController.Source() {
+                @Nullable @Override public TerminalSession focusedSession() {
+                    return getCurrentSession();
+                }
+                @Nullable @Override public java.util.List<String> foregroundCommand(int shellPid) {
+                    if (mWindowForegroundResolver == null) return null;
+                    com.termux.app.statusbar.WindowForegroundResolver.ForegroundInfo info =
+                        mWindowForegroundResolver.get(shellPid);
+                    return info == null ? null : info.command;
+                }
+                @Override public boolean agentPresent(int shellPid) {
+                    return mAgentStatuses.get(shellPid) != null;
+                }
+                @Override public void requestForegroundRefresh() {
+                    requestSessionBrowserForegroundRefresh();
+                }
+                @Override public long tickMs() {
+                    return statsInterval(com.termux.app.contextbar.ContextBarController.TICK_MS);
+                }
+                @Nullable @Override public android.graphics.Typeface terminalTypeface() {
+                    TerminalView view = getTerminalView();
+                    return view == null ? null : view.getTerminalTypeface();
+                }
+                @Override public boolean chipsInRow() {
+                    return mPreferences != null && mPreferences.isContextChipsInRow();
+                }
+                @Override public void chatRowShown(boolean shown) {
+                    if (shown == mChatRowShown) return;
+                    mChatRowShown = shown;
+                    View row = findViewById(R.id.context_dock_chat_scroll);
+                    if (row != null) row.setVisibility(shown ? View.VISIBLE : View.GONE);
+                    mKeyboardGeometry.requestGeometrySync();
+                }
+                @Override public void allowChipsInSlot(boolean allowed) {
+                    View slot = findViewById(R.id.terminal_top_widget_area);
+                    if (slot instanceof com.termux.app.statusbar.TopPaneWidgetSlot)
+                        ((com.termux.app.statusbar.TopPaneWidgetSlot) slot).setContextBarAllowed(allowed);
+                    syncChipsOnlySlot();
+                    syncPlaceStripDock();
+                    syncCommandBoxPopupMode();
+                }
+            });
+    }
+
+    /** MadameLabs fork: the sessions indicator wears the window chips' resting colours. */
+    private void bindSessionsIndicatorToWindowChips() {
+        com.termux.app.terminal.TerminalWindowBar windowBar = findViewById(R.id.terminal_window_bar);
+        com.termux.app.statusbar.SessionsIndicatorView sessions =
+            findViewById(R.id.terminal_sessions_indicator);
+        if (windowBar != null && sessions != null)
+            windowBar.setPaletteListener(() -> sessions.setPillColors(windowBar.restingFillColor(),
+                windowBar.restingLabelColor(), windowBar.selectedStrokeColor()));
+    }
+
+    // context bar (MadameLabs fork): "Chips and pills in the keys panel".
+
+    /** MadameLabs fork: whether the chat's own row shows; gone while there is no name. */
+    private boolean mChatRowShown = true;
+
+    /** Rows the keys panel gains above the keys while the toggle is on: the context chips and the window chips. */
+    private static final float CONTEXT_DOCK_ROW_DP = 26f;
+
+    private final com.termux.app.contextbar.PlaceStripDock mPlaceStripDock =
+        new com.termux.app.contextbar.PlaceStripDock();
+
+    /** Whether the window chips and context chips stand in the keys panel and the status bar is put away. */
+    private boolean placeStripDocked() {
+        return mPreferences != null && mPreferences.isContextChipsInRow();
+    }
+
+    /** Moves the place strip into the keys panel or back, as the toggle says (PlaceStripDock). */
+    private void syncPlaceStripDock() {
+        boolean docked = placeStripDocked();
+        View strip = findViewById(R.id.terminal_status_place_content);
+        ViewGroup dockSlot = findViewById(R.id.context_dock_pills);
+        View dock = findViewById(R.id.context_dock);
+        if (strip == null || dockSlot == null || dock == null) return;
+        if (!mPlaceStripDock.apply(docked, strip, dockSlot)) return;
+        dock.setVisibility(docked ? View.VISIBLE : View.GONE);
+        com.termux.app.contextbar.ContextBarView chips = findViewById(R.id.context_bar_dock);
+        ViewGroup chatRow = findViewById(R.id.context_dock_chat);
+        if (chips != null && chatRow != null) chips.setChatRow(chatRow);
+        applyStatusBarEdge(arrangement().layout());
+        refreshTerminalWindowBar();
+        mKeyboardGeometry.requestGeometrySync();
+    }
+
+    /**
+     * The dock rows' height for this pass: the window chips, the context chips and the chat's own row, while the
+     * keys show and the toggle is on.
+     */
+    private int contextDockHeightPx(int toolbarHeightPx) {
+        return toolbarHeightPx > 0 && placeStripDocked()
+            ? (mChatRowShown ? 3 : 2) * Math.round(dpToPx(CONTEXT_DOCK_ROW_DP)) : 0;
+    }
+
+    /** MadameLabs fork: the dock rows' height, gone at 0; true when it changed. */
+    private boolean applyContextDockHeight(int heightPx) {
+        View dock = findViewById(R.id.context_dock);
+        if (dock == null) return false;
+        ViewGroup.LayoutParams params = dock.getLayoutParams();
+        boolean changed = false;
+        int visibility = heightPx > 0 ? View.VISIBLE : View.GONE;
+        if (dock.getVisibility() != visibility) {
+            dock.setVisibility(visibility);
+            changed = true;
+        }
+        if (heightPx > 0 && params.height != heightPx) {
+            params.height = heightPx;
+            dock.setLayoutParams(params);
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * MadameLabs fork: with the clock off and the chips in its cell, the bar shrinks its slot to
+     * the chips' height (StatusBarEdgeGeometry#setChipsOnlySlot) and re-applies its geometry.
+     */
+    private void syncChipsOnlySlot() {
+        boolean chipsOnly = !isStatusClockShown()
+            && (mPreferences == null || !mPreferences.isContextChipsInRow());
+        if (!com.termux.app.statusbar.StatusBarEdgeGeometry.setChipsOnlySlot(chipsOnly)) return;
+        if (findViewById(R.id.terminal_window_bar_host) == null) return;
+        setTopStatusBarCollapsed(isStatusBarCompact(), false, 0f);
+    }
+
+    // MadameLabs fork: the floating command box (CommandBoxPopup).
+
+    @Nullable private com.termux.app.terminal.io.CommandBoxPopup mCommandBoxPopup;
+    private boolean mCommandBoxPopupApplied;
+
+    /** MadameLabs fork: the Chip radius last applied, so a change in Settings redresses the bar. */
+    private int mAppliedChipRadius = Integer.MIN_VALUE;
+
+    private void syncChipRadius() {
+        int radius = mPreferences == null ? -1 : mPreferences.getStatusIndicatorCornerRadius();
+        if (radius == mAppliedChipRadius) return;
+        boolean first = mAppliedChipRadius == Integer.MIN_VALUE;
+        mAppliedChipRadius = radius;
+        if (!first) refreshTerminalWindowBar();
+    }
+
+    private boolean commandBoxPopupOn() {
+        return mPreferences != null && mPreferences.isCommandBoxPopup();
+    }
+
+    /** Re-runs the geometry when the toggle moved since the last pass, so the row comes or goes. */
+    private void syncCommandBoxPopupMode() {
+        boolean on = commandBoxPopupOn();
+        if (on == mCommandBoxPopupApplied) return;
+        mCommandBoxPopupApplied = on;
+        if (!on && mCommandBoxPopup != null) mCommandBoxPopup.hide();
+        mKeyboardGeometry.requestGeometrySync();
+    }
+
+    /** Shows or hides the command box popup over the window; answers whether it shows now. */
+    boolean toggleCommandBoxPopup() {
+        View content = findViewById(android.R.id.content);
+        if (!(content instanceof android.widget.FrameLayout)) return false;
+        if (mCommandBoxPopup == null) {
+            mCommandBoxPopup = new com.termux.app.terminal.io.CommandBoxPopup(this,
+                new com.termux.app.terminal.io.CommandBoxPopup.Host() {
+                    private TerminalView mLentFrom;
+
+                    @Override public boolean send(@NonNull String text) {
+                        TerminalSession session = getCurrentSession();
+                        if (session == null) return false;
+                        if (!session.isRunning()) {
+                            getTermuxTerminalSessionClient().removeFinishedSession(session);
+                            return true;
+                        }
+                        session.write(text.isEmpty() ? "\r" : text);
+                        return true;
+                    }
+                    @Override public void beginInput(@NonNull android.widget.EditText field) {
+                        beginTerminalToolbarExternalTextInput(field);
+                    }
+                    @Override public void endInput() {
+                        endTerminalToolbarExternalTextInput();
+                        TerminalView terminal = getTerminalView();
+                        if (terminal != null) terminal.requestFocus();
+                    }
+                    @Override public float terminalTextSizePx() {
+                        TerminalView terminal = getTerminalView();
+                        float size = terminal == null ? 0f : terminal.getTerminalTextSizePixels();
+                        return size > 0f ? size : dpToPx(14);
+                    }
+                    @Nullable @Override public android.graphics.Typeface terminalTypeface() {
+                        TerminalView terminal = getTerminalView();
+                        return terminal == null ? null : terminal.getTerminalTypeface();
+                    }
+                    @Override public void toggleDictation() {
+                        toggleVoiceDictation();
+                    }
+                    @Nullable @Override public com.termux.app.terminal.PaneSurfaceStyle paneSurfaceStyle() {
+                        com.termux.app.chrome.LookGlassStyle style = commandBoxGlassStyle();
+                        style.setWorn(true);
+                        // Dressed now by the popup; the next pass only re-dresses on a change.
+                        mCommandBoxGlassKey = style.key();
+                        return style;
+                    }
+                    @Override public void openSettings() {
+                        try {
+                            startActivity(com.termux.app.activities.SettingsActivity.createFragmentIntent(
+                                TermuxActivity.this,
+                                com.termux.app.fragments.settings.termux.CommandBoxPreferencesFragment.class,
+                                R.string.settings_command_box_title));
+                        } catch (RuntimeException e) {
+                            // No Settings to open: the box just closes.
+                        }
+                    }
+                    @Override public int terminalForegroundColor() {
+                        TerminalSession session = getCurrentSession();
+                        com.termux.terminal.TerminalEmulator emulator =
+                            session == null ? null : session.getEmulator();
+                        if (emulator == null) return 0;
+                        return emulator.mColors.mCurrentColors[
+                            com.termux.terminal.TextStyle.COLOR_INDEX_FOREGROUND];
+                    }
+                    @Override public void lendTerminalFocus(boolean lent) {
+                        // As the command row does: the terminal keeps saying it is focused, so a
+                        // TUI that dims on a focus-out (DECSET 1004) does not grey its text.
+                        if (mLentFrom != null) mLentFrom.setFocusLent(false);
+                        mLentFrom = lent ? getTerminalView() : null;
+                        if (mLentFrom != null) mLentFrom.setFocusLent(true);
+                    }
+                });
+        }
+        return mCommandBoxPopup.toggle((android.widget.FrameLayout) content);
+    }
+
+    /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */
+    private boolean applyCommandRowHeight(int heightPx) {
+        View row = findViewById(R.id.terminal_toolbar_command_row);
+        if (row == null) return false;
+        int visibility = heightPx > 0 ? View.VISIBLE : View.GONE;
+        boolean changed = row.getVisibility() != visibility;
+        row.setVisibility(visibility);
+        ViewGroup.LayoutParams params = row.getLayoutParams();
+        if (heightPx > 0 && params.height != heightPx) {
+            params.height = heightPx;
+            row.setLayoutParams(params);
+            changed = true;
+        }
+        return changed;
     }
 
     /**
@@ -17589,7 +17921,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private void rebuildTerminalToolbarPages() {
         ViewPager pager = getTerminalToolbarViewPager();
         if (pager == null || pager.getAdapter() == null) return;
-        int page = Math.min(pager.getCurrentItem(), getExtraKeysPageCount());
+        int page = Math.max(0, Math.min(pager.getCurrentItem(), getExtraKeysPageCount() - 1));
         pager.getAdapter().notifyDataSetChanged();
         pager.setCurrentItem(page, false);
     }
@@ -18157,7 +18489,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void doSyncPlaceLayout() {
-        // The dock's height, the keyboard's height and its chin are the orientation's, so a turn
+        // The dock's height, the keyboard's height and its chin are the context bar's, so a turn
         // of the screen — or a grip dragged in the Layout editor — has to re-read them. The look
         // itself is every place's, so nothing else here depends on where the wall stands.
         Trace.beginSection("Place.sizes");
@@ -18399,7 +18731,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View host = findViewById(R.id.terminal_window_bar_host);
         if (!(host instanceof ViewGroup)) return;
         // Put away in the Layout editor: the bar and its fold go, and the content takes the band.
-        if (layout.slot(Element.STATUS).hidden) {
+        // MadameLabs fork: also while the pills and chips stand in the keys panel.
+        if (layout.slot(Element.STATUS).hidden || placeStripDocked()) {
             if (mDockRows.statusBarShown()) {
                 cancelTopStatusBarAnimator();
                 finishStatusBarTerminalResize(endTopStatusBarDrag(), true);
@@ -18590,6 +18923,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         applyPlaceSystemImeOwner();
         int toolbarHeightPx = state.extraKeysRowEnabled ? measuredToolbarHeightPx : 0;
         boolean toolbarHeightChanged = mDockRows.setExtraKeysHeight(toolbarHeightPx);
+        // MadameLabs fork: the command row stands under the key pages and shows with them.
+        int commandRowPx = toolbarHeightPx > 0 && !commandBoxPopupOn() ? AccessoryStackLayoutPolicy.computeTerminalToolbarHeightPx(
+            Math.round(mTerminalToolbarDefaultHeight), 1,
+            mProperties == null ? 1f : mProperties.getTerminalToolbarHeightScaleFactor()) : 0;
+        toolbarHeightChanged |= applyCommandRowHeight(commandRowPx);
+        // context bar: the chips and pills rows above the keys, when docked there.
+        int dockRowsPx = contextDockHeightPx(toolbarHeightPx);
+        toolbarHeightChanged |= applyContextDockHeight(dockRowsPx);
+        toolbarHeightPx += commandRowPx + dockRowsPx;
 
         // The whole bottom stack from one snapshot (Stack layout): the squeeze is worked out there
         // and flows into Dock geometry's snapshot, so this pass applies one dock.
@@ -19009,6 +19351,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         moved |= updateViewHorizontalMargins(R.id.apps_bar_indicator_band, contentInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_row, contentInset);
         moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_view_pager, extraKeysInset);
+        moved |= updateViewHorizontalMargins(R.id.terminal_toolbar_command_row, extraKeysInset);
+        moved |= updateViewHorizontalMargins(R.id.context_dock_scroll, extraKeysInset); // context bar: the chips alone
+        moved |= updateViewHorizontalMargins(R.id.context_dock_chat_scroll, extraKeysInset);
         moved |= updateViewPadding(R.id.apps_bar_viewpager, 0, appsTopPadding, 0, appsBottomPadding);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_underlay, surfaceInset);
         moved |= updateViewHorizontalMargins(R.id.apps_bar_az_fx_overlay, surfaceInset);
@@ -23594,13 +23939,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mTerminalToolbarDefaultHeight;
     }
 
-    /** Any key page is showing; the text input is the one page after them. */
+    /** MadameLabs fork: the terminal has typing unless the command row holds the focus. */
     public boolean isTerminalViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() < getExtraKeysPageCount();
+        return !isTerminalToolbarTextInputViewSelected();
     }
 
     public boolean isTerminalToolbarTextInputViewSelected() {
-        return getTerminalToolbarViewPager().getCurrentItem() == getExtraKeysPageCount();
+        View input = findViewById(R.id.terminal_toolbar_text_input);
+        return input != null && input.hasFocus();
     }
 
     void termuxSessionListNotifyUpdated() {
@@ -24043,6 +24389,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void onWindowForegroundResolved() {
         refreshTerminalWindowBar();
+        if (mContextBar != null) mContextBar.onRefresh(); // context bar
         refreshSessionsDrawer();
         syncBackgroundProcessStack();
     }
@@ -32636,7 +32983,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     /**
-     * The pad's keyboard mode button shows this orientation's keyboard mode, and is there only
+     * The pad's keyboard mode button shows this context bar's keyboard mode, and is there only
      * where the mode decides anything: over a floating keyboard it is not.
      */
     private void syncDisplayTouchpadModeSwitch(
@@ -32648,7 +32995,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     /**
-     * The pad's keyboard mode button: this orientation's keyboard mode flips between Overlay and
+     * The pad's keyboard mode button: this context bar's keyboard mode flips between Overlay and
      * Resize, saved where the Layout editor reads it. The pad stands in the keyboard's frame, so
      * the one geometry pass that follows floats it over the display or gives it the display's
      * room, as it would the keyboard. The display holds its size over that pass and takes the new
@@ -33595,7 +33942,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         // is shown.
         applyWallStripClockFace(mWallStripRow);
         boolean visible = isSplitPanesEnabled()
-            && !arrangement().layout().slot(Element.STATUS).hidden;
+            && !arrangement().layout().slot(Element.STATUS).hidden
+            && !placeStripDocked(); // context bar: the bar is put away while docked
         host.setVisibility(visible ? View.VISIBLE : View.GONE);
         // The Assistant page wears the status bar alone: no window chips (ADR 0022 section 2).
         int chips = com.termux.app.wall.PaneWallPolicy.showsWindowChips(mLastWallPage)
@@ -33605,8 +33953,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (!visible) {
             // With the bar put away the Wall strip's tiles still read
             // the same windows, on Home as on a window.
-            if (isWidgetsPageShowing() ? homeWallStrip()
-                : wallStripOn(mLastWallPage))
+            if (placeStripDocked() || (isWidgetsPageShowing() ? homeWallStrip()
+                : wallStripOn(mLastWallPage)))
                 syncWindowBarItems(bar);
             applyTerminalSurfaceAppearance();
             // Idempotence: the widgets live inside the GONE host here, so nothing is shown either
@@ -33635,6 +33983,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             ((com.termux.app.statusbar.TopPaneWidgetSlot) slotView).setClockShown(
                 isStatusClockShown());
         }
+        syncChipsOnlySlot(); // context bar
         com.termux.app.statusbar.StatusBarStackedClockView stackedClock =
             findViewById(R.id.terminal_status_column_clock);
         if (stackedClock != null && mPreferences != null) {
@@ -37460,6 +37809,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         @Override public boolean toggleVoiceDictation() {
             return TermuxActivity.this.toggleVoiceDictation();
+        }
+
+        @Override public boolean toggleCommandBoxPopup() {
+            return TermuxActivity.this.toggleCommandBoxPopup();
         }
 
         @Override public boolean toggleKeyboardClipboard() {

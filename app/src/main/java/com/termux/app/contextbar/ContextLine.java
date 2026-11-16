@@ -1,0 +1,53 @@
+package com.termux.app.contextbar;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+/** What the context bar draws: one chip per field, a null field draws no chip. */
+public final class ContextLine {
+
+    /** {@code user@host} in lower case, or {@code tlnix} for this device. Never cut. */
+    @NonNull public final String machine;
+    @Nullable public final String path;
+    @Nullable public final String chat;
+    /** Percent of the harness's limits already spent, 0–100. */
+    @Nullable public final Integer fiveHour;
+    @Nullable public final Integer weekly;
+    public final boolean fiveHourHot;
+    /** MadameLabs fork: when the 5 h limit renews, {@code HH:MM}, or null. */
+    @Nullable public final String fiveHourReset;
+    public final boolean weeklyHot;
+    /** MadameLabs fork: the day the weekly limit renews, as the statusline sends it, or null. */
+    @Nullable public final String weeklyReset;
+
+    public ContextLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
+                           @Nullable Integer fiveHour, @Nullable Integer weekly) {
+        this(machine, path, chat, fiveHour, weekly, null);
+    }
+
+    public ContextLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
+                           @Nullable Integer fiveHour, @Nullable Integer weekly,
+                           @Nullable String fiveHourReset) {
+        this(machine, path, chat, fiveHour, weekly, fiveHourReset, null);
+    }
+
+    public ContextLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
+                           @Nullable Integer fiveHour, @Nullable Integer weekly,
+                           @Nullable String fiveHourReset, @Nullable String weeklyReset) {
+        this.weeklyReset = weekly == null ? null : weeklyReset;
+        this.fiveHourReset = fiveHour == null ? null : fiveHourReset;
+        this.machine = machine;
+        this.path = path;
+        this.chat = chat;
+        this.fiveHour = fiveHour;
+        this.weekly = weekly;
+        this.fiveHourHot = fiveHour != null && fiveHour > ContextModel.HOT_ABOVE;
+        this.weeklyHot = weekly != null && weekly > ContextModel.HOT_ABOVE;
+    }
+
+    @NonNull
+    ContextLine with(@Nullable String newPath, @Nullable String newChat) {
+        return new ContextLine(machine, newPath, newChat, fiveHour, weekly, fiveHourReset,
+            weeklyReset);
+    }
+}

@@ -57,6 +57,15 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             case "terminal_clipboard_cleanup":
                 mPreferences.setClipboardCleanupEnabled(value);
                 break;
+            case "status_clock_shown": // context bar (MadameLabs fork)
+                mPreferences.setStatusClockShown(value);
+                break;
+            case "orientation_chips_in_row": // context bar (MadameLabs fork)
+                mPreferences.setContextChipsInRow(value);
+                break;
+            case "command_box_popup": // MadameLabs fork
+                mPreferences.setCommandBoxPopup(value);
+                break;
             case "top_pane_clock_am_pm":
                 mPreferences.setTopPaneClockAmPmEnabled(value);
                 break;
@@ -116,6 +125,12 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
                 return mPreferences.isOsc52ClipboardReadEnabled();
             case "terminal_clipboard_cleanup":
                 return mPreferences.isClipboardCleanupEnabled();
+            case "status_clock_shown": // context bar (MadameLabs fork)
+                return mPreferences.isStatusClockShown();
+            case "orientation_chips_in_row": // context bar (MadameLabs fork)
+                return mPreferences.isContextChipsInRow();
+            case "command_box_popup": // MadameLabs fork
+                return mPreferences.isCommandBoxPopup();
             case "top_pane_clock_am_pm":
                 return mPreferences.isTopPaneClockAmPmEnabled();
             case "show_key_hints":
@@ -156,6 +171,12 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
             mPreferences.setTopPaneClockAlignment(value);
         } else if ("status_bar_cutout_mode".equals(key)) {
             mPreferences.setStatusBarCutoutMode(value);
+        } else if ("status_indicator_corner_radius".equals(key)) { // MadameLabs fork
+            try {
+                mPreferences.setStatusIndicatorCornerRadius(Integer.parseInt(value));
+            } catch (NumberFormatException e) {
+                mPreferences.setStatusIndicatorCornerRadius(-1);
+            }
         }
     }
 
@@ -170,6 +191,9 @@ class TerminalIOPreferencesDataStore extends PreferenceDataStore {
         }
         if ("status_bar_cutout_mode".equals(key)) {
             return mPreferences.getStatusBarCutoutMode();
+        }
+        if ("status_indicator_corner_radius".equals(key)) { // MadameLabs fork
+            return Integer.toString(mPreferences.getStatusIndicatorCornerRadius());
         }
         return defValue;
     }

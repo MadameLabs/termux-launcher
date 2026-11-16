@@ -77,6 +77,13 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
     private final Rect mMediaBounds = new Rect();
 
     @Nullable private TerminalClockWidget mClock;
+    /** context bar (MadameLabs fork): the chips that take the clock's cell while it is off. */
+    @Nullable private View mContextBar;
+    /** Off while the chips stand in the status row instead (Context chips in the pills row). */
+    private boolean mContextBarAllowed = true;
+    private final Rect mContextBarBounds = new Rect();
+    /** The run the chips may take, from the last measure: what the controller fits the line to. */
+    private int mContextBarRoomPx;
     @Nullable private PinnedNotificationsView mNotifications;
     @Nullable private MediaWidgetView mMedia;
     @Nullable private PinnedNotificationIconCache mIcons;
@@ -145,6 +152,8 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         super.onFinishInflate();
         mClock = findViewById(R.id.terminal_clock_widget);
         if (mClock != null && !mClockShown) mClock.setVisibility(GONE);
+        mContextBar = findViewById(R.id.context_bar); // context bar
+        applyContextBarVisibility();
         mNotifications = findViewById(R.id.terminal_pinned_notifications);
         mMedia = findViewById(R.id.terminal_media_widget);
         mIcons = new PinnedNotificationIconCache(getContext());
@@ -237,6 +246,7 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         if (mClockShown == shown) return;
         mClockShown = shown;
         if (mClock != null) mClock.setVisibility(shown ? VISIBLE : GONE);
+        applyContextBarVisibility(); // context bar
         requestLayout();
         invalidate();
     }
@@ -405,15 +415,22 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
             int cap = Math.max(Math.round(available * .55f), available - sideMin - gap);
             cap = Math.max(0, cap);
             mClock.setFitBudget(cap, heightBudget, mClockShared);
-            int clockWidth = !mClockShown ? 0 : Math.min(cap,
-                (int) Math.ceil(mClock.fitWidthPx(cap, heightBudget, mClockShared)));
-            row = TopPaneSlotRow.shared(width, contentStart, gutter, mClockShown ? gap : 0,
-                clockWidth, mClockAlignment);
+            boolean contextBar = contextBarShown(); // context bar: the chips' run
+            int clockWidth = mClockShown ? Math.min(cap,
+                (int) Math.ceil(mClock.fitWidthPx(cap, heightBudget, mClockShared)))
+                : contextBar ? Math.min(cap, contextBarWidth(cap, height)) : 0;
+            row = TopPaneSlotRow.shared(width, contentStart, gutter,
+                mClockShown || contextBar ? gap : 0, clockWidth, mClockAlignment);
         }
+        // context bar: alone the chips have the whole row; shared, the clock's cap.
+        mContextBarRoomPx = mMode == TopPaneSlotMode.CLOCK_ONLY ? row.clockWidth()
+            : Math.max(Math.round(available * .55f), available - Math.round(dp(SIDE_MIN_DP))
+                - gap);
         mClock.measure(MeasureSpec.makeMeasureSpec(row.clockWidth(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(clockHeight, MeasureSpec.EXACTLY));
         mClockBounds.set(row.clockStart, (height - clockHeight) / 2,
             row.clockEnd, (height - clockHeight) / 2 + clockHeight);
+        measureContextBar(row.clockStart, row.clockEnd, height); // context bar
 
         mNotificationBounds.setEmpty();
         mMediaBounds.setEmpty();
@@ -459,6 +476,47 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
         }
     }
 
+    // context bar (MadameLabs fork): the chips stand where the clock would, centred.
+
+    /** Whether the chips may take the clock's cell; false while they stand in the status row. */
+    public void setContextBarAllowed(boolean allowed) {
+        if (mContextBarAllowed == allowed) return;
+        mContextBarAllowed = allowed;
+        applyContextBarVisibility();
+        requestLayout();
+    }
+
+    private void applyContextBarVisibility() {
+        if (mContextBar != null)
+            mContextBar.setVisibility(!mClockShown && mContextBarAllowed ? VISIBLE : GONE);
+    }
+
+    /** context bar: the width the chips may take, 0 before the first measure. */
+    public int contextBarRoomPx() {
+        return mContextBarRoomPx;
+    }
+
+    private boolean contextBarShown() {
+        return !mClockShown && mContextBar != null && mContextBar.getVisibility() != GONE;
+    }
+
+    /** The chips' own width, at most {@code cap}. */
+    private int contextBarWidth(int cap, int height) {
+        mContextBar.measure(MeasureSpec.makeMeasureSpec(Math.max(0, cap), MeasureSpec.AT_MOST),
+            MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+        return mContextBar.getMeasuredWidth();
+    }
+
+    private void measureContextBar(int start, int end, int height) {
+        mContextBarBounds.setEmpty();
+        if (!contextBarShown() || end <= start) return;
+        mContextBar.measure(MeasureSpec.makeMeasureSpec(end - start, MeasureSpec.EXACTLY),
+            MeasureSpec.makeMeasureSpec(height, MeasureSpec.AT_MOST));
+        int h = mContextBar.getMeasuredHeight();
+        int top = (height - h) / 2;
+        mContextBarBounds.set(start, top, end, top + h);
+    }
+
     private void measureExact(@NonNull View view, @NonNull Rect bounds) {
         view.measure(MeasureSpec.makeMeasureSpec(bounds.width(), MeasureSpec.EXACTLY),
             MeasureSpec.makeMeasureSpec(bounds.height(), MeasureSpec.EXACTLY));
@@ -477,6 +535,10 @@ public final class TopPaneWidgetSlot extends ViewGroup implements TopPaneFeed.Ob
                 float size = bandHeight > 0f ? Math.min(bandHeight, dp(36f)) : dp(28f);
                 mHomeAnchorListener.onHomeAnchor(centerY, size);
             }
+        }
+        if (mContextBar != null && !mContextBarBounds.isEmpty()) { // context bar
+            mContextBar.layout(mContextBarBounds.left, mContextBarBounds.top,
+                mContextBarBounds.right, mContextBarBounds.bottom);
         }
         if (mNotifications != null && !mNotificationBounds.isEmpty()) {
             mNotifications.layout(mNotificationBounds.left, mNotificationBounds.top,

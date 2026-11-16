@@ -53,7 +53,7 @@ public class TerminalPreferencesFragmentTest {
         TerminalPreferencesFragment fragment = launch(TerminalPreferencesFragment.class);
         PreferenceScreen screen = fragment.getPreferenceScreen();
         String[] rows = {"terminal_layout_editor", "terminal_sub_windows", "status_bar",
-            "terminal_sub_text", "terminal_sub_clipboard"};
+            "command_box", "terminal_sub_text", "terminal_sub_clipboard"}; // command_box: MadameLabs fork
         assertEquals(rows.length, screen.getPreferenceCount());
         for (int i = 0; i < rows.length; i++) assertEquals(rows[i], screen.getPreference(i).getKey());
         assertEquals(StatusBarPreferencesFragment.class.getName(),
@@ -63,6 +63,13 @@ public class TerminalPreferencesFragmentTest {
             launch(TerminalTextPreferencesFragment.class).findPreference("terminal_fonts").getFragment());
         assertNull("the rows live on the subpages now", screen.findPreference("split_pane_controls"));
         assertEquals("Terminal", activityTitle(fragment));
+    }
+
+    @Test
+    public void theCommandBoxRowOpensItsPage() {
+        PreferenceScreen screen = launch(TerminalPreferencesFragment.class).getPreferenceScreen();
+        assertEquals(CommandBoxPreferencesFragment.class.getName(),
+            screen.findPreference("command_box").getFragment());
     }
 
     @Test

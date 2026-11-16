@@ -447,4 +447,27 @@
         <item>crt_material</item>
         <item>tft</item>
     </string-array>
+    <!-- MadameLabs fork: Chip radius, in dp; Auto follows the bar's own shape. -->
+    <string-array name="status_indicator_corner_radius_entries">
+        <item>Auto</item>
+        <item>0 dp</item>
+        <item>2 dp</item>
+        <item>4 dp</item>
+        <item>6 dp</item>
+        <item>8 dp</item>
+        <item>10 dp</item>
+        <item>12 dp</item>
+        <item>16 dp</item>
+    </string-array>
+    <string-array name="status_indicator_corner_radius_values" translatable="false">
+        <item>-1</item>
+        <item>0</item>
+        <item>2</item>
+        <item>4</item>
+        <item>6</item>
+        <item>8</item>
+        <item>10</item>
+        <item>12</item>
+        <item>16</item>
+    </string-array>
 </resources>

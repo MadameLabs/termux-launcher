@@ -414,6 +414,8 @@ public final class LauncherToolRegistry {
     public static final String TOOL_WORKSPACE_PICKER = "workspace.picker";
     public static final String TOOL_WORKSPACE_SAVE_PROMPT = "workspace.save_prompt";
     public static final String TOOL_TERMINAL_TOGGLE_SCRATCHPAD = "terminal.toggle_scratchpad";
+    /** MadameLabs fork: the command box popup (CommandBoxPopup). */
+    public static final String TOOL_TERMINAL_TOGGLE_COMMAND_BOX = "terminal.toggle_command_box";
     public static final String TOOL_EXTRA_KEYS_EDIT = "extrakeys.edit";
     public static final String TOOL_PANE_SPLIT = "pane.split";
     public static final String TOOL_PANE_SPLIT_VERTICAL = "pane.split_vertical";
@@ -777,6 +779,12 @@ public final class LauncherToolRegistry {
             R.string.tool_desc_terminal_toggle_scratchpad,
             Collections.singletonList(Binding.of("ctrl+alt+`", BindingCondition.SPLITS_ON)),
             REQUIRES_SPLITS);
+        addUi(map, TOOL_TERMINAL_TOGGLE_COMMAND_BOX,
+            "Show or hide the command box popup, a floating multi-line field whose Enter sends its text to the focused session.",
+            schemaEmpty(),
+            ToolRisk.LOW, false, ToolExecutor.TERMINAL,
+            CATEGORY_TERMINAL, R.string.tool_terminal_toggle_command_box,
+            R.string.tool_desc_terminal_toggle_command_box, null);
         addUi(map, TOOL_WINDOW_NEW,
             "Create a new window with a fresh shell in the current session.",
             schemaEmpty(),

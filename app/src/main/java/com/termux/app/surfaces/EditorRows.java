@@ -395,6 +395,7 @@ public final class EditorRows {
             case KEYBOARD: return KeyboardCard.rows(offers);
             case WIDGETS:
             case SHEETS:
+            case COMMAND_BOX:
                 return GlassRows.appearance(new CardRows(), offers, 1).build();
             case APPEARANCE:
             default:

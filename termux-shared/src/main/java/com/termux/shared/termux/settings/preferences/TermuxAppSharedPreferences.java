@@ -1088,6 +1088,28 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
         SharedPreferenceUtils.setBoolean(mSharedPreferences, TERMUX_APP.KEY_STATUS_CLOCK_SHOWN, value, false);
     }
 
+    /** MadameLabs fork: the context chips in the status row rather than the clock's cell. */
+    public boolean isContextChipsInRow() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_CONTEXT_CHIPS_IN_ROW, TERMUX_APP.DEFAULT_CONTEXT_CHIPS_IN_ROW);
+    }
+
+    public void setContextChipsInRow(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_CONTEXT_CHIPS_IN_ROW, value, false);
+    }
+
+    /** MadameLabs fork: the command box as a floating popup, the row under the keys put away. */
+    public boolean isCommandBoxPopup() {
+        return SharedPreferenceUtils.getBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_COMMAND_BOX_POPUP, TERMUX_APP.DEFAULT_COMMAND_BOX_POPUP);
+    }
+
+    public void setCommandBoxPopup(boolean value) {
+        SharedPreferenceUtils.setBoolean(mSharedPreferences,
+            TERMUX_APP.KEY_COMMAND_BOX_POPUP, value, false);
+    }
+
     /** Whose box the status row's camera gap follows: auto, custom or off; unknown reads as auto. */
     @NonNull
     public String getStatusBarCutoutMode() {
@@ -3657,7 +3679,9 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     public enum SurfaceSlot {
         DOCK("dock", LookGrid.Element.DOCK), KEYBOARD("keyboard", LookGrid.Element.KEYBOARD),
         STATUS("status", LookGrid.Element.STATUS), CANVAS("canvas", LookGrid.Element.TERMINAL),
-        WIDGETS("widgets", LookGrid.Element.WIDGETS), SHEETS("sheets", LookGrid.Element.SHEETS);
+        WIDGETS("widgets", LookGrid.Element.WIDGETS), SHEETS("sheets", LookGrid.Element.SHEETS),
+        /** MadameLabs fork: the command box popup's glass. */
+        COMMAND_BOX("command_box", LookGrid.Element.COMMAND_BOX);
 
         public final String key;
         /** The grid's element this surface is (ADR 0017). */

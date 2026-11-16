@@ -2403,7 +2403,24 @@ public final class TerminalWindowBar extends HorizontalScrollView {
         mTabs.setHighlightStyle(mSelectedFillColor, mSelectedStrokeColor,
             mStatusBarRadiusPx, dp(1));
         applyChipWatermarks();
+        if (mPaletteListener != null) mPaletteListener.run();
     }
+
+    // MadameLabs fork: the sessions indicator beside the pills wears their resting colours.
+    @Nullable private Runnable mPaletteListener;
+
+    /** Runs {@code listener} each time the pills' palette is resolved again. */
+    public void setPaletteListener(@Nullable Runnable listener) {
+        mPaletteListener = listener;
+        if (listener != null) listener.run();
+    }
+
+    /** The resting pill's wash, alpha included. */
+    public int restingFillColor() { return mUnselectedFillColor; }
+    /** The resting pill's label. */
+    public int restingLabelColor() { return mUnselectedTextColor; }
+    /** The current pill's outline, in the place's accent. */
+    public int selectedStrokeColor() { return mSelectedStrokeColor; }
 
     private void applyTabSurfaceStyle() {
         applyActivityStates(true);
