@@ -156,6 +156,10 @@
     <string name="command_box_up">Cursor up</string>
     <string name="command_box_down">Cursor down</string>
     <string name="command_box_right">Cursor right</string>
+    <string name="command_box_arrows">Arrows: swipe to move the cursor; corners are home, page up, page down and end</string>
+    <string name="command_box_send">Send; swipe up for a new line</string>
+    <string name="command_box_dictate">Dictate</string>
+    <string name="command_box_space">Space; slide to move the cursor</string>
     <string name="settings_use_12_hour_title">12-hour time</string>
     <string name="settings_use_12_hour_summary">Show AM and PM.</string>
     <string name="settings_cpu_usage_title">CPU usage</string>

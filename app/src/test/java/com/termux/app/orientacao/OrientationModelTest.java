@@ -95,11 +95,27 @@ public class OrientationModelTest {
             line.chat.substring(0, OrientationModel.CHAT_MAX - 1));
     }
 
+    /** The weekly chip carries the day its limit renews, as the statusline sends it. */
+    @Test
+    public void weeklyResetIsKeptOnlyAsADay() {
+        assertEquals("20", OrientationModel.resetDay(" 20 "));
+        assertEquals("20/11", OrientationModel.resetDay("20/11"));
+        assertEquals(null, OrientationModel.resetDay("1731690000"));
+        assertEquals(null, OrientationModel.resetDay(null));
+        OrientationLine line = OrientationModel.resolve(new OrientationInput(null, null, "/x",
+            SHELL, "t", true, "42", "10", "14:30", "20"));
+        assertEquals("20", line.weeklyReset);
+        OrientationLine noWeekly = OrientationModel.resolve(new OrientationInput(null, null, "/x",
+            SHELL, "t", true, "42", null, "14:30", "20"));
+        assertEquals(null, noWeekly.weeklyReset);
+    }
+
     /** The 5 h chip carries when the limit renews, HH:MM as the statusline sends it. */
     @Test
     public void fiveHourResetIsKeptOnlyAsATime() {
         assertEquals("14:30", OrientationModel.resetTime(" 14:30 "));
         assertEquals("9:05", OrientationModel.resetTime("9:05"));
+        assertEquals("01h20", OrientationModel.resetTime("01h20"));
         assertEquals(null, OrientationModel.resetTime("1731690000"));
         assertEquals(null, OrientationModel.resetTime(null));
         OrientationLine line = OrientationModel.resolve(new OrientationInput(null, null, "/x",

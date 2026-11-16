@@ -141,6 +141,8 @@ public final class SettingsTree {
             R.string.settings_terminal_sub_windows_title, R.xml.terminal_windows_preferences);
         page(terminal, PAGES + "StatusBarPreferencesFragment", R.string.settings_destination_status_bar,
             R.xml.status_bar_preferences);
+        page(terminal, PAGES + "CommandBoxPreferencesFragment", R.string.settings_command_box_title,
+            R.xml.command_box_preferences);
         String text = PAGES + "TerminalTextPreferencesFragment";
         page(terminal, text, R.string.settings_terminal_sub_text_title, R.xml.terminal_text_preferences);
         page(text, PAGES + "TermuxFontsPreferencesFragment", R.string.termux_fonts_preferences_title,
@@ -394,7 +396,9 @@ public final class SettingsTree {
                     case "terminal_osc52_clipboard_read_enabled": case "terminal_clipboard_cleanup":
                     case "terminal_margin_adjustment": case "terminal_engine":
                         return "TerminalClipboardPreferencesFragment";
-                    case "status_clock_shown": case "orientation_chips_in_row": case "command_box_popup":
+                    case "command_box_popup":
+                        return "CommandBoxPreferencesFragment";
+                    case "status_clock_shown": case "orientation_chips_in_row":
                     case "status_indicator_corner_radius":
                     case "top_pane_clock_am_pm": case "status_widget_cpu": case "status_widget_ram":
                     case "status_widget_media": case "status_widget_weather":

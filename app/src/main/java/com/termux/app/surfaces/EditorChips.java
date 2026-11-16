@@ -70,7 +70,8 @@ public final class EditorChips {
     public static AppliesTo fixedFor(@Nullable EditorCard card) {
         if (card == null || card == EditorCard.APPEARANCE) return AppliesTo.GLOBAL;
         if (card == EditorCard.HOME || card == EditorCard.WIDGETS) return AppliesTo.HOME;
-        if (card == EditorCard.WORKSPACE || card == EditorCard.TERMINAL) return AppliesTo.WORKSPACE;
+        if (card == EditorCard.WORKSPACE || card == EditorCard.TERMINAL
+            || card == EditorCard.COMMAND_BOX) return AppliesTo.WORKSPACE;
         return offersAppliesTo(card) ? null : AppliesTo.GLOBAL;
     }
 

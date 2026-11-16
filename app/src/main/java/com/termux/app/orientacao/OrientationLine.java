@@ -17,6 +17,8 @@ public final class OrientationLine {
     /** MadameLabs fork: when the 5 h limit renews, {@code HH:MM}, or null. */
     @Nullable public final String fiveHourReset;
     public final boolean weeklyHot;
+    /** MadameLabs fork: the day the weekly limit renews, as the statusline sends it, or null. */
+    @Nullable public final String weeklyReset;
 
     public OrientationLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
                            @Nullable Integer fiveHour, @Nullable Integer weekly) {
@@ -26,6 +28,13 @@ public final class OrientationLine {
     public OrientationLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
                            @Nullable Integer fiveHour, @Nullable Integer weekly,
                            @Nullable String fiveHourReset) {
+        this(machine, path, chat, fiveHour, weekly, fiveHourReset, null);
+    }
+
+    public OrientationLine(@NonNull String machine, @Nullable String path, @Nullable String chat,
+                           @Nullable Integer fiveHour, @Nullable Integer weekly,
+                           @Nullable String fiveHourReset, @Nullable String weeklyReset) {
+        this.weeklyReset = weekly == null ? null : weeklyReset;
         this.fiveHourReset = fiveHour == null ? null : fiveHourReset;
         this.machine = machine;
         this.path = path;
@@ -38,6 +47,7 @@ public final class OrientationLine {
 
     @NonNull
     OrientationLine with(@Nullable String newPath, @Nullable String newChat) {
-        return new OrientationLine(machine, newPath, newChat, fiveHour, weekly, fiveHourReset);
+        return new OrientationLine(machine, newPath, newChat, fiveHour, weekly, fiveHourReset,
+            weeklyReset);
     }
 }

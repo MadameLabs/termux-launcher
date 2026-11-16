@@ -286,6 +286,12 @@ fails when the catalogue has gone stale.
   changes, drawn at `PASTE_PICTURE_SCALE` (0.78) of the key's size so the full-em picture
   matches the key-font glyphs beside it; colour and the value sent are the key's own. Upstream has
   no such state.
+- `numeric.xml` (MadameLabs fork, 2026-11-15): the third row's modifier key is `loc alt`, with
+  `shift` on its north-east corner and no `fn` (upstream: `shift`, `fn` north-east, `loc alt`
+  south-east). The digits 1 to 9 carry F1 to F9 on their south-east corner, and the wide 0 carries
+  F10 (south-east), F11 (south-west) and F12 (north-east), each written
+  `:keyevent symbol='F₄' flags='small':134` (Android key codes 131 to 142), so the F keys draw small
+  with a subscript number. Upstream's numeric layout has no F keys. A refresh re-applies both.
 
 ## Refresh procedure
 

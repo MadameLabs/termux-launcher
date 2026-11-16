@@ -170,6 +170,10 @@ public class TermuxApplication extends Application {
             com.termux.shared.termux.settings.preferences.LookGridMarginMigration.run(
                 new com.termux.shared.termux.settings.preferences.LookGrid.PrefsStore(
                     surfacePreferences.getSharedPreferences()));
+            // MadameLabs fork: the command box element starts as the terminal's glass, once.
+            com.termux.shared.termux.settings.preferences.LookGridCommandBoxSeed.run(
+                new com.termux.shared.termux.settings.preferences.LookGrid.PrefsStore(
+                    surfacePreferences.getSharedPreferences()));
         }
         // Init app wide SharedProperties loaded from termux.properties
         TermuxAppSharedProperties properties = TermuxAppSharedProperties.init(context);

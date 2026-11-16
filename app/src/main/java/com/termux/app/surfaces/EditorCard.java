@@ -42,7 +42,13 @@ public enum EditorCard {
         R.drawable.ic_symbol_stacks),
     /** The sheets' glass (drawer, menus, palette): a plain glass card with no surface in the frame. */
     SHEETS("sheets", SurfaceSlot.SHEETS, R.string.editor_element_sheets,
-        R.drawable.ic_symbol_grid_view);
+        R.drawable.ic_symbol_grid_view),
+    /**
+     * MadameLabs fork: the command box popup's glass, a plain glass card with no surface in the
+     * frame, on the Terminal page's cells as the Terminal card is.
+     */
+    COMMAND_BOX("command_box", SurfaceSlot.COMMAND_BOX, R.string.editor_element_command_box,
+        R.drawable.ic_symbol_edit);
 
     /** The name a door and a deep link use. */
     @NonNull public final String key;

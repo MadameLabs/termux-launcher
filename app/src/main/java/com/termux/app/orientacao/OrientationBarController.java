@@ -47,6 +47,8 @@ public final class OrientationBarController {
     public static final String VAR_WEEKLY = "ml_semana";
     /** MadameLabs fork: when the 5 h limit renews, HH:MM, from the statusline script. */
     public static final String VAR_FIVE_HOUR_RESET = "ml_5h_reset";
+    /** MadameLabs fork: the day the weekly limit renews, from the statusline script. */
+    public static final String VAR_WEEKLY_RESET = "ml_semana_reset";
     /** The conversation's name, from the statusline script; the terminal title is the fallback. */
     public static final String VAR_CHAT = "ml_chat";
 
@@ -111,7 +113,8 @@ public final class OrientationBarController {
                 inRow ? Integer.MAX_VALUE : OrientationModel.CHAT_MAX),
             view.maxChars(room));
         String key = inRow + "\u0000" + room + "\u0000" + line.machine + '\u0000' + line.path + '\u0000' + line.chat + '\u0000'
-            + line.fiveHour + '\u0000' + line.weekly + '\u0000' + line.fiveHourReset;
+            + line.fiveHour + '\u0000' + line.weekly + '\u0000' + line.fiveHourReset
+            + '\u0000' + line.weeklyReset;
         if (key.equals(mLastDrawn)) return;
         mLastDrawn = key;
         view.render(line);
@@ -138,6 +141,7 @@ public final class OrientationBarController {
             cwd != null ? cwd : emulator.getReportedWorkingDirectory(), mSource.foregroundCommand(pid),
             chatName(emulator.getUserVar(VAR_CHAT), session.getTitle()),
             mSource.agentPresent(pid), emulator.getUserVar(VAR_FIVE_HOUR),
-            emulator.getUserVar(VAR_WEEKLY), emulator.getUserVar(VAR_FIVE_HOUR_RESET));
+            emulator.getUserVar(VAR_WEEKLY), emulator.getUserVar(VAR_FIVE_HOUR_RESET),
+            emulator.getUserVar(VAR_WEEKLY_RESET));
     }
 }

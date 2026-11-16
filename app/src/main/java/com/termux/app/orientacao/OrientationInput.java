@@ -37,16 +37,28 @@ public final class OrientationInput {
         this.fiveHour = fiveHour;
         this.weekly = weekly;
         this.fiveHourReset = null;
+        this.weeklyReset = null;
     }
 
     /** MadameLabs fork: when the 5 h limit renews, as {@code HH:MM} ({@code ml_5h_reset}), raw. */
     @Nullable public final String fiveHourReset;
+    /** MadameLabs fork: the day the weekly limit renews ({@code ml_semana_reset}), raw. */
+    @Nullable public final String weeklyReset;
 
     public OrientationInput(@Nullable String remoteUserHost, @Nullable String remotePath,
                             @Nullable String localPath, @Nullable List<String> foregroundCommand,
                             @Nullable String title, boolean agentPresent,
                             @Nullable String fiveHour, @Nullable String weekly,
                             @Nullable String fiveHourReset) {
+        this(remoteUserHost, remotePath, localPath, foregroundCommand, title, agentPresent,
+            fiveHour, weekly, fiveHourReset, null);
+    }
+
+    public OrientationInput(@Nullable String remoteUserHost, @Nullable String remotePath,
+                            @Nullable String localPath, @Nullable List<String> foregroundCommand,
+                            @Nullable String title, boolean agentPresent,
+                            @Nullable String fiveHour, @Nullable String weekly,
+                            @Nullable String fiveHourReset, @Nullable String weeklyReset) {
         this.remoteUserHost = remoteUserHost;
         this.remotePath = remotePath;
         this.localPath = localPath;
@@ -56,5 +68,6 @@ public final class OrientationInput {
         this.fiveHour = fiveHour;
         this.weekly = weekly;
         this.fiveHourReset = fiveHourReset;
+        this.weeklyReset = weeklyReset;
     }
 }

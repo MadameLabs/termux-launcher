@@ -44,6 +44,13 @@ public final class LookGlassStyle implements PaneSurfaceStyle, WidgetInkSource {
          * (ADR 0017); everywhere by default.
          */
         default int pageId() { return TermuxAppSharedPreferences.PAGE_WALL; }
+        /**
+         * The element whose cells this style wears (ADR 0017): the Card-form widgets by default;
+         * the command box popup names its own (MadameLabs fork).
+         */
+        @NonNull default TermuxAppSharedPreferences.SurfaceSlot slot() {
+            return TermuxAppSharedPreferences.SurfaceSlot.WIDGETS;
+        }
         @Nullable WallpaperParallax parallax();
     }
 
@@ -64,9 +71,9 @@ public final class LookGlassStyle implements PaneSurfaceStyle, WidgetInkSource {
     /** The Look as stored this instant. */
     @NonNull
     public LookGlassSpec spec() {
-        // The Card-form widgets wear the Widgets element (ADR 0017) on the page being drawn.
-        return LookGlassSpec.read(mHost.preferences(),
-            TermuxAppSharedPreferences.SurfaceSlot.WIDGETS, mHost.pageId());
+        // The Card-form widgets wear the Widgets element (ADR 0017) on the page being drawn; a
+        // host naming another element wears that one's.
+        return LookGlassSpec.read(mHost.preferences(), mHost.slot(), mHost.pageId());
     }
 
     /**
@@ -225,11 +232,14 @@ public final class LookGlassStyle implements PaneSurfaceStyle, WidgetInkSource {
     }
 
     @Override public boolean paneGlassRimWanted() {
-        return true;
+        // The widgets always wore the rim; an element with a Rim cell of its own set to Off
+        // (the command box, MadameLabs fork) goes without.
+        if (mHost.slot() == TermuxAppSharedPreferences.SurfaceSlot.WIDGETS) return true;
+        return !ElementGlass.of(mHost.preferences(), mHost.slot().element, mHost.pageId()).rimOff();
     }
 
     @Override @Nullable public Drawable paneGlassRim(float radiusPx) {
-        return mChrome.glass().rimDrawable(radiusPx);
+        return paneGlassRimWanted() ? mChrome.glass().rimDrawable(radiusPx) : null;
     }
 
     @Override @Nullable public Drawable paneRimDrawable(float radiusPx) {

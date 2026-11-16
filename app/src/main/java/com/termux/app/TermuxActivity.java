@@ -1829,6 +1829,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 && (frame == mInAppKeyboardBackdropBitmap || frame == mUnderKeyboardBackdropBitmap
                     || frame == mFrameGutterBackdropBitmap
                     || (mLookGlass != null && mLookGlass.holds(frame))
+                    || (mCommandBoxGlass != null && mCommandBoxGlass.holds(frame))
                     || isSharedWallpaperBlurFrameInUse(frame));
         }
 
@@ -1837,6 +1838,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mPaneGlassClearFrame = null;
             mWallBehindFrame = null;
             if (mLookGlass != null) mLookGlass.onCacheCleared();
+            if (mCommandBoxGlass != null) mCommandBoxGlass.onCacheCleared();
         }
 
         @Override public boolean isActivityVisible() {
@@ -4187,6 +4189,67 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         };
     }
 
+    /** MadameLabs fork: the command box popup's glass; see {@link #commandBoxGlassStyle}. */
+    @Nullable private com.termux.app.chrome.LookGlassStyle mCommandBoxGlass;
+    /** What the popup was last dressed with ({@link com.termux.app.chrome.LookGlassStyle#key}). */
+    @Nullable private Object mCommandBoxGlassKey;
+
+    /**
+     * MadameLabs fork: the command box popup's glass, its own element of the look grid (ADR 0017,
+     * {@code look.<property>.command_box}), worn as a pane wears the terminal's: the same shared
+     * blur frames, grain, rim, Fancier Glass and wallpaper pan, on the Terminal page's cells.
+     */
+    @NonNull
+    private com.termux.app.chrome.LookGlassStyle commandBoxGlassStyle() {
+        if (mCommandBoxGlass == null) {
+            mCommandBoxGlass = new com.termux.app.chrome.LookGlassStyle(this, mChrome,
+                new com.termux.app.chrome.LookGlassStyle.Host() {
+                    @Override public TermuxAppSharedPreferences preferences() { return mPreferences; }
+                    @Override public View wallpaperFrame() {
+                        return findViewById(R.id.activity_termux_root_view);
+                    }
+                    @Override public boolean wallpaperBlurs() { return wallpaperSampleable(); }
+                    // The terminal's surface hue: the box is the terminal's input.
+                    @Override public int glassBaseColor() { return resolveTerminalSurfaceColor(); }
+                    @Override public com.termux.app.chrome.GlassRefraction.Look refraction() {
+                        return com.termux.app.chrome.ElementGlass.refraction(mPreferences,
+                            com.termux.shared.termux.settings.preferences.LookGrid.Element.COMMAND_BOX,
+                            pageId(), mFancierGlassLook);
+                    }
+                    @Override public int pageId() { return terminalLookPageId(); }
+                    @NonNull @Override
+                    public TermuxAppSharedPreferences.SurfaceSlot slot() {
+                        return TermuxAppSharedPreferences.SurfaceSlot.COMMAND_BOX;
+                    }
+                    @Override public com.termux.app.chrome.WallpaperParallax parallax() {
+                        return mWallpaperParallax;
+                    }
+                });
+        }
+        return mCommandBoxGlass;
+    }
+
+    /**
+     * Re-dresses the command box popup when what it wears has moved: a look write, a wallpaper
+     * change, or the blur frame it asked for landing (the key holds the frame by identity, as
+     * the widgets' does). Worn only while the popup shows, so a closed popup holds no frame.
+     */
+    private void refreshCommandBoxGlass() {
+        com.termux.app.terminal.io.CommandBoxPopup popup = mCommandBoxPopup;
+        boolean shown = popup != null && popup.isShown();
+        if (!shown) {
+            if (mCommandBoxGlass != null) mCommandBoxGlass.setWorn(false);
+            mCommandBoxGlassKey = null;
+            return;
+        }
+        com.termux.app.chrome.LookGlassStyle style = commandBoxGlassStyle();
+        style.setWorn(true);
+        Object key = style.key();
+        if (key.equals(mCommandBoxGlassKey)) return;
+        mCommandBoxGlassKey = key;
+        popup.applyStyle(style);
+    }
+
     /** The Look's glass Home's widgets wear; see {@link #lookGlassStyle}. */
     @Nullable private com.termux.app.chrome.LookGlassStyle mLookGlass;
 
@@ -4300,6 +4363,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (gutterBody != null && shouldUseWallpaperPassthroughMode())
             applyFrameGutterGlass(gutterBody, isTerminalPaneGlassActive() && hasDockedFrameCard());
         Trace.endSection();
+        // MadameLabs fork: the command box popup's own element, in the same pass; before the
+        // panes' early returns, so a frame that just landed reaches it as it reaches them.
+        refreshCommandBoxGlass();
         if (mPaneController == null) return;
         com.termux.app.terminal.PaneSurfaceStyle style = paneSurfaceStyle();
         // This runs behind every chrome apply, several times a page change, and the style is a
@@ -16939,6 +17005,34 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     @Nullable @Override public android.graphics.Typeface terminalTypeface() {
                         TerminalView terminal = getTerminalView();
                         return terminal == null ? null : terminal.getTerminalTypeface();
+                    }
+                    @Override public void toggleDictation() {
+                        toggleVoiceDictation();
+                    }
+                    @Nullable @Override public com.termux.app.terminal.PaneSurfaceStyle paneSurfaceStyle() {
+                        com.termux.app.chrome.LookGlassStyle style = commandBoxGlassStyle();
+                        style.setWorn(true);
+                        // Dressed now by the popup; the next pass only re-dresses on a change.
+                        mCommandBoxGlassKey = style.key();
+                        return style;
+                    }
+                    @Override public void openSettings() {
+                        try {
+                            startActivity(com.termux.app.activities.SettingsActivity.createFragmentIntent(
+                                TermuxActivity.this,
+                                com.termux.app.fragments.settings.termux.CommandBoxPreferencesFragment.class,
+                                R.string.settings_command_box_title));
+                        } catch (RuntimeException e) {
+                            // No Settings to open: the box just closes.
+                        }
+                    }
+                    @Override public int terminalForegroundColor() {
+                        TerminalSession session = getCurrentSession();
+                        com.termux.terminal.TerminalEmulator emulator =
+                            session == null ? null : session.getEmulator();
+                        if (emulator == null) return 0;
+                        return emulator.mColors.mCurrentColors[
+                            com.termux.terminal.TextStyle.COLOR_INDEX_FOREGROUND];
                     }
                     @Override public void lendTerminalFocus(boolean lent) {
                         // As the command row does: the terminal keeps saying it is focused, so a

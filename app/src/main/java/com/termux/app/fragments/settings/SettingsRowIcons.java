@@ -154,8 +154,13 @@ public final class SettingsRowIcons {
         key(R.drawable.ic_ms_gesture, "home_gestures_helper");
         key(R.drawable.ic_ms_widgets, "app_launcher_widget_pane_enabled", "widgets_on_glass");
         key(R.drawable.ic_ms_schedule, "app_launcher_builtin_widget_style", "top_pane_clock_am_pm",
-            "status_clock_shown", "orientation_chips_in_row", "command_box_popup",
+            "status_clock_shown", "orientation_chips_in_row",
             "status_indicator_corner_radius");
+        // MadameLabs fork: Settings › Terminal › Command box.
+        key(R.drawable.ic_ms_edit_note, "command_box", "command_box_popup");
+        key(R.drawable.ic_ms_palette, "command_box_text_colors", "command_box_glass");
+        key(R.drawable.ic_ms_format_size, "command_box_text_size");
+        key(R.drawable.ic_ms_text_fields, "command_box_text_size_follows_terminal");
         key(R.drawable.ic_ms_more_horiz, "app_launcher_home_page_indicator");
         key(R.drawable.ic_ms_view_carousel, "home_edit_pages");
         key(R.drawable.ic_ms_panorama, "wallpaper_parallax");

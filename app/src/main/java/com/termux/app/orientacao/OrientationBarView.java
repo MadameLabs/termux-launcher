@@ -146,7 +146,8 @@ public class OrientationBarView extends LinearLayout {
         show(mFolder, line.path, false);
         show(mChat, line.chat, false);
         show(mFiveHour, line.fiveHour == null ? null : fiveHourText(line), line.fiveHourHot);
-        show(mWeekly, line.weekly == null ? null : line.weekly + "%", line.weeklyHot); // the calendar icon names it
+        show(mWeekly, line.weekly == null ? null : withReset(line.weekly, line.weeklyReset),
+            line.weeklyHot); // the calendar icon names it
     }
 
     @Nullable private Typeface mTypeface;
@@ -218,17 +219,24 @@ public class OrientationBarView extends LinearLayout {
     /** MadameLabs fork: the 5 h chip's percent, then when it renews in a smaller face. */
     @NonNull
     static CharSequence fiveHourText(@NonNull OrientationLine line) {
-        String percent = line.fiveHour + "%";
-        if (line.fiveHourReset == null) return percent;
+        return withReset(line.fiveHour, line.fiveHourReset);
+    }
+
+    /** A limit's percent, then when it renews in a smaller face: the 5 h hour, the weekly day. */
+    @NonNull
+    static CharSequence withReset(int percentValue, @Nullable String reset) {
+        String percent = percentValue + "%";
+        if (reset == null) return percent;
+        // Right against the percent, no space: "42%01h20", "10%18/11".
         android.text.SpannableStringBuilder out = new android.text.SpannableStringBuilder(percent)
-            .append(' ').append(line.fiveHourReset);
-        out.setSpan(new android.text.style.RelativeSizeSpan(RESET_SCALE), percent.length() + 1,
+            .append(reset);
+        out.setSpan(new android.text.style.RelativeSizeSpan(RESET_SCALE), percent.length(),
             out.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         return out;
     }
 
-    /** How much smaller the 5 h chip's renewal time is drawn than its percent. */
-    static final float RESET_SCALE = .8f;
+    /** How much smaller the renewal time and day are drawn than their percent. */
+    static final float RESET_SCALE = .7f;
 
     private void show(@NonNull Chip chip, @Nullable CharSequence text, boolean hot) {
         if (text == null || text.length() == 0) {

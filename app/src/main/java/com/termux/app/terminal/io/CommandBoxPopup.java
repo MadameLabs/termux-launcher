@@ -48,6 +48,17 @@ public final class CommandBoxPopup {
         /** The terminal's text size, in px, so the popup reads at the terminal's size. */
         float terminalTextSizePx();
         @Nullable Typeface terminalTypeface();
+        /**
+         * The panes' surface style, the Terminal element's glass the terminal panes wear (and the
+         * assistant page and the floats' titlebars beside them); null before there is one.
+         */
+        @Nullable com.termux.app.terminal.PaneSurfaceStyle paneSurfaceStyle();
+        /** The focused terminal's text colour, or 0 without one. */
+        int terminalForegroundColor();
+        /** Opens Settings › Terminal › Command box. */
+        void openSettings();
+        /** Starts or stops the launcher's voice dictation, as the Dictate key does. */
+        void toggleDictation();
         /** Lends the terminal's focus while the field holds it (see TerminalView#setFocusLent). */
         void lendTerminalFocus(boolean lent);
     }
@@ -65,7 +76,21 @@ public final class CommandBoxPopup {
     private static final int MIN_HEIGHT_DP = 128;
     private static final int HEADER_DP = 28;
     private static final int CORNER_DP = 28;
-    private static final int TOOLBAR_DP = 34;
+    /** The one row of keys, at about the height of a key of the in-app keyboard. */
+    private static final int KEY_ROW_DP = 48;
+    private static final int KEY_GAP_DP = 4;
+    /** Each key's share of the row, as a keyboard row shares its width. */
+    private static final float W_KEY = 1f, W_SPACE = 2.8f, W_DPAD = 1.35f, W_ENTER = 1.6f;
+    private static final String G_NEW_LINE = "¶";
+    private static final String G_SETTINGS = "";
+
+    // Glyphs of the in-app keyboard's font (juloo.keyboard2.KeyValue), so the keys match it.
+    private static final String G_PAGE_UP = "", G_PAGE_DOWN = "";
+    private static final String G_UP = "", G_RIGHT = "", G_DOWN = "",
+        G_LEFT = "";
+    private static final String G_HOME = "", G_END = "", G_ENTER = "";
+    private static final String G_CLIPBOARD = "", G_DICTATE = "";
+    private static final String G_COPY = "", G_CUT = "", G_PASTE = "";
 
     private final Context mContext;
     private final Host mHost;
@@ -74,8 +99,13 @@ public final class CommandBoxPopup {
     @NonNull private final RectF mFrac;
 
     @Nullable private FrameLayout mParent;
-    @Nullable private LinearLayout mRoot;
+    @Nullable private FrameLayout mRoot;
+    /** The Terminal element's glass slab, as a pane wears it (PaneGlass). */
+    @Nullable private com.termux.app.terminal.PaneGlassBackdropView mGlass;
+    private final com.termux.app.terminal.PaneRim mRim = new com.termux.app.terminal.PaneRim();
+    private float mRadiusPx;
     @Nullable private EditText mField;
+    @NonNull private CommandBoxLook mLook = CommandBoxLook.defaults();
     private final View.OnLayoutChangeListener mParentLayout =
         (v, l, t, r, b, ol, ot, or, ob) -> {
             if (r - l != or - ol || b - t != ob - ot) place();
@@ -108,16 +138,25 @@ public final class CommandBoxPopup {
     }
 
     public void show(@NonNull FrameLayout parent) {
+        // Built again on each open, so what was changed in Settings › Command box shows at once.
+        mLook = CommandBoxLook.read(mContext);
         ensureViews(parent);
-        LinearLayout root = mRoot;
+        FrameLayout root = mRoot;
         EditText field = mField;
         if (root == null || field == null) return;
-        field.setTextSize(TypedValue.COMPLEX_UNIT_PX, mHost.terminalTextSizePx());
+        if (mLook.textSizeFollowsTerminal) {
+            field.setTextSize(TypedValue.COMPLEX_UNIT_PX, mHost.terminalTextSizePx());
+        } else {
+            field.setTextSize(TypedValue.COMPLEX_UNIT_SP, mLook.textSizeSp);
+        }
         Typeface typeface = mHost.terminalTypeface();
         if (typeface != null) field.setTypeface(typeface);
         root.setVisibility(View.VISIBLE);
         root.bringToFront();
         place();
+        applyStyle(mHost.paneSurfaceStyle());
+        // Once laid out, so the slab is cut at the popup's own size, as a pane's is.
+        root.post(() -> applyStyle(mHost.paneSurfaceStyle()));
         field.requestFocus();
         field.setSelection(field.length());
         mHost.beginInput(field);
@@ -125,7 +164,7 @@ public final class CommandBoxPopup {
 
     /** Hides the popup; the draft stays in the field for the next time. */
     public void hide() {
-        LinearLayout root = mRoot;
+        FrameLayout root = mRoot;
         if (root == null || root.getVisibility() != View.VISIBLE) return;
         root.setVisibility(View.GONE);
         if (mField != null) mField.clearFocus();
@@ -135,43 +174,56 @@ public final class CommandBoxPopup {
     // ------------------------------------------------------------------------------- views
 
     private void ensureViews(@NonNull FrameLayout parent) {
-        if (mRoot != null && mParent == parent) return;
+        CharSequence draft = mField != null ? mField.getText() : null;
         if (mRoot != null && mParent != null) {
             mParent.removeView(mRoot);
             mParent.removeOnLayoutChangeListener(mParentLayout);
         }
         mParent = parent;
-        LinearLayout root = new LinearLayout(mContext);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setClickable(true);
-        int panel = MaterialColors.getColor(mContext,
-            com.termux.shared.R.attr.termuxColorSurfacePanelHigh,
-            ContextCompat.getColor(mContext, R.color.termux_surface_panel_high));
+        CommandBoxLook look = mLook;
         int outline = MaterialColors.getColor(mContext,
             com.termux.shared.R.attr.termuxColorOutlineVariant, Color.GRAY);
-        int onSurface = MaterialColors.getColor(mContext,
+        int launcherInk = MaterialColors.getColor(mContext,
             com.termux.shared.R.attr.termuxColorOnSurface,
             ContextCompat.getColor(mContext, R.color.termux_on_surface));
-        GradientDrawable card = new GradientDrawable();
-        card.setColor(panel);
-        card.setCornerRadius(dp(14));
-        card.setStroke(Math.max(1, dp(1)), outline);
-        root.setBackground(card);
-        root.setElevation(dp(8));
+        int terminalInk = look.terminalColors ? mHost.terminalForegroundColor() : 0;
+        // The terminal's colours when asked for, so the text reads as it does in the terminal.
+        int onSurface = terminalInk != 0 ? (terminalInk | 0xFF000000) : launcherInk;
+        int hint = terminalInk != 0
+            ? Color.argb(140, Color.red(onSurface), Color.green(onSurface), Color.blue(onSurface))
+            : MaterialColors.getColor(mContext,
+                com.termux.shared.R.attr.termuxColorOnSurfaceVariant, outline);
+
+        // The Terminal element's glass, worn as a pane wears it (PaneGlass, as the assistant page
+        // and the floats' titlebars do): one slab under the content, its rim on the frame, all of
+        // it from the panes' surface style. Nothing here reads a look value of its own.
+        FrameLayout frame = new FrameLayout(mContext);
+        frame.setClickable(true);
+        frame.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, android.graphics.Outline outlineOut) {
+                outlineOut.setRoundRect(0, 0, view.getWidth(), view.getHeight(), mRadiusPx);
+            }
+        });
+        frame.setClipToOutline(true);
+        com.termux.app.terminal.PaneGlassBackdropView glass =
+            new com.termux.app.terminal.PaneGlassBackdropView(mContext);
+        glass.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        glass.setVisibility(View.GONE);
+        frame.addView(glass, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        com.termux.app.terminal.PaneGlass.followLayout(glass);
+
+        LinearLayout root = new LinearLayout(mContext);
+        root.setOrientation(LinearLayout.VERTICAL);
+        frame.addView(root, new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         root.addView(header(onSurface), new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, dp(HEADER_DP)));
 
         FrameLayout body = new FrameLayout(mContext);
         EditText field = new EditText(mContext);
-        // The keys scroll sideways when the popup is narrower than they are.
-        android.widget.HorizontalScrollView keys = new android.widget.HorizontalScrollView(mContext);
-        keys.setFillViewport(true);
-        keys.setHorizontalScrollBarEnabled(false);
-        keys.addView(toolbar(field, onSurface), new FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        root.addView(keys, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, dp(TOOLBAR_DP)));
         // Wraps instead of scrolling sideways, and the keyboard's Enter still says Send.
         field.setRawInputType(InputType.TYPE_CLASS_TEXT);
         field.setImeOptions(EditorInfo.IME_ACTION_SEND | EditorInfo.IME_FLAG_NO_FULLSCREEN);
@@ -181,15 +233,13 @@ public final class CommandBoxPopup {
         field.setBackground(null);
         field.setTextColor(onSurface);
         field.setHint(R.string.extra_keys_command_hint);
-        field.setHintTextColor(MaterialColors.getColor(mContext,
-            com.termux.shared.R.attr.termuxColorOnSurfaceVariant, outline));
+        field.setHintTextColor(hint);
+        if (draft != null) field.setText(draft);
         field.setPadding(dp(12), dp(4), dp(12), dp(12));
         field.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);
         field.setVerticalScrollBarEnabled(true);
         field.setOnEditorActionListener((v, actionId, event) -> {
-            if (!mHost.send(field.getText().toString())) return true;
-            field.setText("");
-            hide();
+            send(field);
             return true;
         });
         field.setOnFocusChangeListener((v, hasFocus) -> mHost.lendTerminalFocus(hasFocus));
@@ -199,12 +249,53 @@ public final class CommandBoxPopup {
             dp(CORNER_DP), dp(CORNER_DP), Gravity.BOTTOM | Gravity.END));
         root.addView(body, new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        root.addView(keyRow(field, onSurface), new LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, dp(KEY_ROW_DP)));
 
-        root.setVisibility(View.GONE);
-        parent.addView(root, new FrameLayout.LayoutParams(dp(MIN_WIDTH_DP), dp(MIN_HEIGHT_DP)));
+        frame.setVisibility(View.GONE);
+        parent.addView(frame, new FrameLayout.LayoutParams(dp(MIN_WIDTH_DP), dp(MIN_HEIGHT_DP)));
         parent.addOnLayoutChangeListener(mParentLayout);
-        mRoot = root;
+        mRoot = frame;
+        mGlass = glass;
         mField = field;
+    }
+
+    /**
+     * Dresses the popup from the panes' surface style, as a pane is dressed: the slab, the radius
+     * and the rim, or a solid card while the Look wears no glass. Run on open and on every style
+     * change, the same pass that re-dresses the panes and the wall's pages.
+     */
+    public void applyStyle(@Nullable com.termux.app.terminal.PaneSurfaceStyle style) {
+        FrameLayout frame = mRoot;
+        com.termux.app.terminal.PaneGlassBackdropView glass = mGlass;
+        if (frame == null || glass == null || frame.getVisibility() != View.VISIBLE) return;
+        mRadiusPx = style == null ? dp(14)
+            : com.termux.app.terminal.PaneGlass.radiusPx(style, mDensity);
+        boolean slab = com.termux.app.terminal.PaneGlass.apply(style, frame, glass, mRadiusPx);
+        // CBX-DBG temporario (nao vai para a main).
+        android.util.Log.i("CBX-DBG", "applyStyle style=" + (style == null ? "null" : style.getClass().getSimpleName())
+            + " active=" + (style != null && style.isPaneGlassActive())
+            + " frame=" + (style == null ? null : style.paneGlassBlurFrame())
+            + " slab=" + slab + " glassVis=" + glass.getVisibility()
+            + " size=" + frame.getWidth() + "x" + frame.getHeight()
+            + " glassSize=" + glass.getWidth() + "x" + glass.getHeight());
+        // Glass off: a solid card, as the assistant page falls back to.
+        if (slab) {
+            frame.setBackground(null);
+        } else {
+            GradientDrawable card = new GradientDrawable();
+            card.setColor(MaterialColors.getColor(mContext,
+                com.termux.shared.R.attr.termuxColorSurfacePanelHigh,
+                ContextCompat.getColor(mContext, R.color.termux_surface_panel_high)));
+            card.setCornerRadius(mRadiusPx);
+            frame.setBackground(card);
+        }
+        if (slab || com.termux.app.terminal.PaneRim.plainBorderWanted(style)) {
+            mRim.apply(frame, slab, mRadiusPx, com.termux.app.terminal.PaneBorderStyle.lone(), style);
+        } else {
+            mRim.clear(frame);
+        }
+        frame.invalidateOutline();
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -240,59 +331,114 @@ public final class CommandBoxPopup {
         return header;
     }
 
-    // ------------------------------------------------------------------------------- toolbar
+    // ------------------------------------------------------------------------------- keys
 
     /**
-     * The editing keys under the header: cut, copy, paste, the clipboard's history, a line break
-     * and the four arrows, all acting on the field. Cut and copy take the selection, or the whole
-     * text when nothing is selected; the line break is a bare LF, which Claude Code and most line
-     * editors take as a new line rather than as Enter.
+     * The one row of keys under the field, drawn and shared out as a row of the in-app keyboard
+     * with its icons: cut, copy, paste and the clipboard's history; the space bar, which slides
+     * the cursor; the arrow key; and Enter. Cut and copy take the selection, or the whole text
+     * when nothing is selected. The arrow key is swiped like the keyboard's: the four sides move
+     * the cursor and repeat while held; the corners are home, page up, page down and end.
      */
     @NonNull
-    private View toolbar(@NonNull EditText field, int ink) {
-        LinearLayout bar = new LinearLayout(mContext);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(6), 0, dp(6), 0);
-        addKey(bar, ink, "✂", R.string.command_box_cut, v -> {
+    private View keyRow(@NonNull EditText field, int ink) {
+        LinearLayout row = new LinearLayout(mContext);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(6), dp(2), dp(6), dp(6));
+
+        Typeface font = keyFont();
+        int key = Color.argb(34, Color.red(ink), Color.green(ink), Color.blue(ink));
+        int pressed = Color.argb(80, Color.red(ink), Color.green(ink), Color.blue(ink));
+
+        addTapKey(row, font, ink, key, pressed, G_CUT, R.string.command_box_cut, v -> {
             CharSequence taken = taken(field);
             com.termux.app.terminal.ClipboardHistory.copy(mContext, taken.toString());
             replaceTaken(field, "");
         });
-        addKey(bar, ink, "⧉", R.string.command_box_copy, v ->
+        addTapKey(row, font, ink, key, pressed, G_COPY, R.string.command_box_copy, v ->
             com.termux.app.terminal.ClipboardHistory.copy(mContext, taken(field).toString()));
-        addKey(bar, ink, "⎘", R.string.command_box_paste, v -> {
+        addTapKey(row, font, ink, key, pressed, G_PASTE, R.string.command_box_paste, v -> {
             String clip = clipboardText();
             if (clip != null) insert(field, clip);
         });
-        addKey(bar, ink, "☰", R.string.command_box_clipboard_history,
-            v -> showHistory(v, field));
-        addKey(bar, ink, "↵", R.string.command_box_new_line, v -> insert(field, "\n"));
-        bar.addView(new View(mContext), new LinearLayout.LayoutParams(0, 1, 1f));
-        addKey(bar, ink, "←", R.string.command_box_left, v -> moveBy(field, -1));
-        addKey(bar, ink, "↑", R.string.command_box_up, v -> moveLine(field, -1));
-        addKey(bar, ink, "↓", R.string.command_box_down, v -> moveLine(field, 1));
-        addKey(bar, ink, "→", R.string.command_box_right, v -> moveBy(field, 1));
-        return bar;
+        addTapKey(row, font, ink, key, pressed, G_CLIPBOARD,
+            R.string.command_box_clipboard_history, v -> showHistory(v, field));
+
+        SpaceSliderView space = new SpaceSliderView(mContext,
+            () -> insert(field, " "), steps -> moveBy(field, steps));
+        space.setColors(ink, key, pressed);
+        space.setContentDescription(mContext.getString(R.string.command_box_space));
+        row.addView(space, keyParams(W_SPACE));
+
+        SwipeKeyView dpad = new SwipeKeyView(mContext, font)
+            .set(SwipeKeyView.N, G_UP, () -> moveLine(field, -1), true)
+            .set(SwipeKeyView.S, G_DOWN, () -> moveLine(field, 1), true)
+            .set(SwipeKeyView.W, G_LEFT, () -> moveBy(field, -1), true)
+            .set(SwipeKeyView.E, G_RIGHT, () -> moveBy(field, 1), true)
+            .set(SwipeKeyView.NW, G_HOME, () -> lineEdge(field, false), false)
+            .set(SwipeKeyView.NE, G_PAGE_UP, () -> movePage(field, -1), false)
+            .set(SwipeKeyView.SW, G_PAGE_DOWN, () -> movePage(field, 1), false)
+            .set(SwipeKeyView.SE, G_END, () -> lineEdge(field, true), false);
+        dpad.setColors(ink, key, pressed);
+        dpad.setContentDescription(mContext.getString(R.string.command_box_arrows));
+        row.addView(dpad, keyParams(W_DPAD));
+
+        addTapKey(row, font, ink, key, pressed, G_DICTATE, R.string.command_box_dictate,
+            v -> mHost.toggleDictation());
+
+        // Enter sends; swiped up it breaks the line instead (a bare LF, which Claude Code and
+        // most line editors take as a new line rather than as Enter).
+        SwipeKeyView enter = new SwipeKeyView(mContext, font)
+            .set(SwipeKeyView.C, G_ENTER, () -> send(field), false)
+            .set(SwipeKeyView.N, G_NEW_LINE, () -> insert(field, "\n"), false)
+            // Down and left: this box's own page in Settings.
+            .set(SwipeKeyView.SW, G_SETTINGS, () -> {
+                hide();
+                mHost.openSettings();
+            }, false);
+        enter.setColors(ink, key, pressed);
+        enter.setContentDescription(mContext.getString(R.string.command_box_send));
+        LinearLayout.LayoutParams enterParams = keyParams(W_ENTER);
+        enterParams.setMarginEnd(0);
+        row.addView(enter, enterParams);
+        return row;
     }
 
-    private void addKey(@NonNull LinearLayout bar, int ink, @NonNull String glyph, int labelRes,
-                        @NonNull View.OnClickListener action) {
-        TextView key = new TextView(mContext);
-        key.setText(glyph);
-        key.setTextColor(ink);
-        key.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        key.setGravity(Gravity.CENTER);
-        key.setContentDescription(mContext.getString(labelRes));
-        TypedValue ripple = new TypedValue();
-        if (mContext.getTheme().resolveAttribute(
-                android.R.attr.selectableItemBackgroundBorderless, ripple, true))
-            key.setBackgroundResource(ripple.resourceId);
-        // A key keeps the field's focus, so the keyboard stays up and the cursor where it was.
-        key.setFocusable(false);
-        key.setOnClickListener(action);
-        bar.addView(key, new LinearLayout.LayoutParams(dp(34), ViewGroup.LayoutParams.MATCH_PARENT));
+    @NonNull
+    private LinearLayout.LayoutParams keyParams(float weight) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+            0, ViewGroup.LayoutParams.MATCH_PARENT, weight);
+        params.setMarginEnd(dp(KEY_GAP_DP));
+        return params;
     }
+
+    /** A key that only answers a tap, drawn as the others are. */
+    private void addTapKey(@NonNull LinearLayout row, @Nullable Typeface font, int ink, int key,
+                           int pressed, @NonNull String glyph, int labelRes,
+                           @NonNull View.OnClickListener action) {
+        SwipeKeyView view = new SwipeKeyView(mContext, font);
+        view.set(SwipeKeyView.C, glyph, () -> action.onClick(view), false);
+        view.setColors(ink, key, pressed);
+        view.setContentDescription(mContext.getString(labelRes));
+        row.addView(view, keyParams(W_KEY));
+    }
+
+    /** Sends the field to the focused session and closes, as the keyboard's Enter does. */
+    private void send(@NonNull EditText field) {
+        if (!mHost.send(field.getText().toString())) return;
+        field.setText("");
+        hide();
+    }
+
+    @Nullable
+    private Typeface keyFont() {
+        try {
+            return juloo.keyboard2.Theme.getKeyFont(mContext);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
 
     /** The selection, or the whole text when nothing is selected. */
     @NonNull
@@ -346,6 +492,23 @@ public final class CommandBoxPopup {
         field.setSelection(layout.getOffsetForHorizontal(line, layout.getPrimaryHorizontal(at)));
     }
 
+    /** The cursor to the start or the end of the line it is on, as the layout wraps the text. */
+    private static void lineEdge(@NonNull EditText field, boolean end) {
+        android.text.Layout layout = field.getLayout();
+        if (layout == null) return;
+        int line = layout.getLineForOffset(field.getSelectionEnd());
+        int at = end ? layout.getLineVisibleEnd(line) : layout.getLineStart(line);
+        field.setSelection(Math.max(0, Math.min(field.length(), at)));
+    }
+
+    /** The cursor a field's height of lines up or down. */
+    private static void movePage(@NonNull EditText field, int direction) {
+        int lineHeight = Math.max(1, field.getLineHeight());
+        int lines = Math.max(1, (field.getHeight() - field.getTotalPaddingTop()
+            - field.getTotalPaddingBottom()) / lineHeight - 1);
+        moveLine(field, direction * lines);
+    }
+
     @Nullable
     private String clipboardText() {
         android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
@@ -391,6 +554,7 @@ public final class CommandBoxPopup {
                 mPaint.setColor(ink);
                 mPaint.setStrokeWidth(Math.max(1f, mDensity * 1.5f));
                 float w = getWidth(), h = getHeight(), inset = mDensity * 7f;
+                // The grip sits in the bottom-right corner of the text, above the keys.
                 for (int i = 1; i <= 2; i++) {
                     float d = inset + i * mDensity * 5f;
                     canvas.drawLine(w - inset, h - d, w - d, h - inset, mPaint);
@@ -420,6 +584,7 @@ public final class CommandBoxPopup {
                 float dy = (event.getRawY() - down[1]) / h;
                 RectF next = new RectF(start);
                 if (resize) {
+                    // Resized from the bottom-right corner: the left edge stays put.
                     next.right = start.right + dx;
                     next.bottom = start.bottom + dy;
                 } else {
@@ -433,6 +598,8 @@ public final class CommandBoxPopup {
             case MotionEvent.ACTION_CANCEL:
                 mPrefs.edit().putFloat(KEY_LEFT, mFrac.left).putFloat(KEY_TOP, mFrac.top)
                     .putFloat(KEY_RIGHT, mFrac.right).putFloat(KEY_BOTTOM, mFrac.bottom).apply();
+                // A resize changes the slab's size and so its corner; a pane re-dresses the same way.
+                if (resize) applyStyle(mHost.paneSurfaceStyle());
                 return true;
             default:
                 return false;
@@ -440,9 +607,25 @@ public final class CommandBoxPopup {
     }
 
     /** Lays the popup at its fraction of the parent as the parent is now. */
+    /** Where the status bar ends in {@code parent}, in px: 0 where it does not cover it. */
+    private static int statusBarBottomPx(@NonNull View parent) {
+        android.view.WindowInsets insets = parent.getRootWindowInsets();
+        if (insets == null) return 0;
+        int inset;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            inset = insets.getInsets(android.view.WindowInsets.Type.statusBars()).top;
+        } else {
+            inset = insets.getSystemWindowInsetTop();
+        }
+        // The inset is measured from the window's top; the parent may start below it.
+        int[] at = new int[2];
+        parent.getLocationInWindow(at);
+        return Math.max(0, inset - at[1]);
+    }
+
     private void place() {
         FrameLayout parent = mParent;
-        LinearLayout root = mRoot;
+        FrameLayout root = mRoot;
         if (parent == null || root == null || root.getVisibility() != View.VISIBLE) return;
         int w = parent.getWidth(), h = parent.getHeight();
         if (w <= 0 || h <= 0) {
@@ -450,6 +633,15 @@ public final class CommandBoxPopup {
             return;
         }
         int[] box = boundsPx(mFrac, w, h, dp(MIN_WIDTH_DP), dp(MIN_HEIGHT_DP));
+        // Never under the status bar: there its header, the only place it is dragged from, would
+        // be out of reach. A place kept from before this rule is brought down here too.
+        int minTop = statusBarBottomPx(parent);
+        if (box[1] < minTop) {
+            box[1] = Math.max(0, Math.min(minTop, h - box[3]));
+            float height = mFrac.height();
+            mFrac.top = box[1] / (float) h;
+            mFrac.bottom = Math.min(1f, mFrac.top + height);
+        }
         FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) root.getLayoutParams();
         if (params.leftMargin == box[0] && params.topMargin == box[1]
             && params.width == box[2] && params.height == box[3]) return;
@@ -484,6 +676,7 @@ public final class CommandBoxPopup {
         minW = Math.min(1f, minW);
         minH = Math.min(1f, minH);
         if (resize) {
+            // Resized from the bottom-right corner: the right and bottom edges move.
             out.right = Math.max(out.left + minW, Math.min(1f, out.right));
             out.bottom = Math.max(out.top + minH, Math.min(1f, out.bottom));
         } else {

@@ -3679,7 +3679,9 @@ public class TermuxAppSharedPreferences extends AppSharedPreferences {
     public enum SurfaceSlot {
         DOCK("dock", LookGrid.Element.DOCK), KEYBOARD("keyboard", LookGrid.Element.KEYBOARD),
         STATUS("status", LookGrid.Element.STATUS), CANVAS("canvas", LookGrid.Element.TERMINAL),
-        WIDGETS("widgets", LookGrid.Element.WIDGETS), SHEETS("sheets", LookGrid.Element.SHEETS);
+        WIDGETS("widgets", LookGrid.Element.WIDGETS), SHEETS("sheets", LookGrid.Element.SHEETS),
+        /** MadameLabs fork: the command box popup's glass. */
+        COMMAND_BOX("command_box", LookGrid.Element.COMMAND_BOX);
 
         public final String key;
         /** The grid's element this surface is (ADR 0017). */

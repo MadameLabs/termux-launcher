@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MadameLabs fork: Settings › Terminal › Command box. See CommandBoxPreferencesFragment. -->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/settings_command_box_open_header">
+        <SwitchPreferenceCompat
+            app:key="command_box_popup"
+            app:title="@string/settings_command_box_popup_title"
+            app:summary="@string/settings_command_box_popup_summary"
+            app:defaultValue="false" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_command_box_glass_header">
+        <!-- Its own card in Appearance: the box is an element of the look grid (ADR 0017). -->
+        <Preference
+            app:key="command_box_glass"
+            app:persistent="false"
+            app:title="@string/settings_command_box_glass_title"
+            app:summary="@string/settings_command_box_glass_summary" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_command_box_text_header">
+        <ListPreference
+            app:key="command_box_text_colors"
+            app:title="@string/settings_command_box_text_colors_title"
+            app:entries="@array/settings_command_box_text_colors_entries"
+            app:entryValues="@array/settings_command_box_text_colors_values"
+            app:defaultValue="terminal"
+            app:useSimpleSummaryProvider="true" />
+        <SwitchPreferenceCompat
+            app:key="command_box_text_size_follows_terminal"
+            app:title="@string/settings_command_box_text_size_follows_title"
+            app:summary="@string/settings_command_box_text_size_follows_summary"
+            android:disableDependentsState="true"
+            app:defaultValue="true" />
+        <com.termux.app.fragments.settings.SliderPreference
+            app:key="command_box_text_size"
+            app:dependency="command_box_text_size_follows_terminal"
+            app:title="@string/settings_command_box_text_size_title"
+            android:defaultValue="14"
+            app:min="8"
+            android:max="40"
+            app:showSeekBarValue="true" />
+    </PreferenceCategory>
+</PreferenceScreen>
