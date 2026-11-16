@@ -15641,6 +15641,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             return mInAppKeyboard.isVisible();
         }
 
+        @Override public void previewCommandBox(boolean shown) {
+            TermuxActivity.this.previewCommandBox(shown);
+        }
+
         @Override public void hideInAppKeyboardForEditor() {
             // At the session's end, Home with always on keeps it: it is the keyboard Home wants.
             PlaceLayoutStore store = placeLayoutStore();
@@ -16899,6 +16903,22 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     boolean toggleCommandBoxPopup() {
         View content = findViewById(android.R.id.content);
         if (!(content instanceof android.widget.FrameLayout)) return false;
+        return commandBoxPopup().toggle((android.widget.FrameLayout) content);
+    }
+
+    /** Puts the command box up as the Appearance editor's preview, or takes that preview down. */
+    private void previewCommandBox(boolean shown) {
+        if (!shown) {
+            if (mCommandBoxPopup != null) mCommandBoxPopup.hidePreview();
+            return;
+        }
+        View content = findViewById(android.R.id.content);
+        if (content instanceof android.widget.FrameLayout)
+            commandBoxPopup().showPreview((android.widget.FrameLayout) content);
+    }
+
+    @NonNull
+    private com.termux.app.terminal.io.CommandBoxPopup commandBoxPopup() {
         if (mCommandBoxPopup == null) {
             mCommandBoxPopup = new com.termux.app.terminal.io.CommandBoxPopup(this,
                 new com.termux.app.terminal.io.CommandBoxPopup.Host() {
@@ -16968,7 +16988,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     }
                 });
         }
-        return mCommandBoxPopup.toggle((android.widget.FrameLayout) content);
+        return mCommandBoxPopup;
     }
 
     /** MadameLabs fork: the command row's height, gone at 0; true when either changed. */

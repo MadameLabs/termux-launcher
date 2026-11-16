@@ -129,7 +129,7 @@ public final class CommandBoxPopup {
 
     /** Shows the popup over {@code parent}, or hides it; answers whether it shows now. */
     public boolean toggle(@NonNull FrameLayout parent) {
-        if (isShown()) {
+        if (isShown() && !mPreviewing) {
             hide();
             return false;
         }
@@ -138,6 +138,28 @@ public final class CommandBoxPopup {
     }
 
     public void show(@NonNull FrameLayout parent) {
+        open(parent, false);
+    }
+
+    /**
+     * Shows the popup as a preview for the Appearance editor's Command box card: drawn above the
+     * editor's sheet, without focus or a keyboard, so the glass being tuned is in sight.
+     */
+    public void showPreview(@NonNull FrameLayout parent) {
+        if (isShown() && !mPreviewing) return; // already open for typing: it is the preview
+        open(parent, true);
+    }
+
+    /** Takes down a popup {@link #showPreview} put up; one opened for typing stays. */
+    public void hidePreview() {
+        if (mPreviewing) hide();
+    }
+
+    /** Whether the popup shows only as the editor's preview. */
+    private boolean mPreviewing;
+
+    private void open(@NonNull FrameLayout parent, boolean preview) {
+        mPreviewing = preview;
         // Built again on each open, so what was changed in Settings › Command box shows at once.
         mLook = CommandBoxLook.read(mContext);
         ensureViews(parent);
@@ -153,13 +175,28 @@ public final class CommandBoxPopup {
         if (typeface != null) field.setTypeface(typeface);
         root.setVisibility(View.VISIBLE);
         root.bringToFront();
+        // bringToFront alone draws under the editor's sheet: the preview stands above its Z.
+        root.setTranslationZ(preview ? siblingsTopZ(root) + 1f : 0f);
         place();
         applyStyle(mHost.paneSurfaceStyle());
         // Once laid out, so the slab is cut at the popup's own size, as a pane's is.
         root.post(() -> applyStyle(mHost.paneSurfaceStyle()));
+        if (preview) return;
         field.requestFocus();
         field.setSelection(field.length());
         mHost.beginInput(field);
+    }
+
+    private static float siblingsTopZ(@NonNull View view) {
+        float top = 0f;
+        if (view.getParent() instanceof android.view.ViewGroup) {
+            android.view.ViewGroup parent = (android.view.ViewGroup) view.getParent();
+            for (int i = 0; i < parent.getChildCount(); i++) {
+                View child = parent.getChildAt(i);
+                if (child != view) top = Math.max(top, child.getZ());
+            }
+        }
+        return top;
     }
 
     /** Hides the popup; the draft stays in the field for the next time. */
@@ -167,6 +204,10 @@ public final class CommandBoxPopup {
         FrameLayout root = mRoot;
         if (root == null || root.getVisibility() != View.VISIBLE) return;
         root.setVisibility(View.GONE);
+        root.setTranslationZ(0f);
+        boolean previewing = mPreviewing;
+        mPreviewing = false;
+        if (previewing) return; // the preview never took the input
         if (mField != null) mField.clearFocus();
         mHost.endInput();
     }

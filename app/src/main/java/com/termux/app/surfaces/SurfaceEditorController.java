@@ -141,6 +141,11 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
         boolean showInAppKeyboardForEditor();
         /** Takes down a keyboard {@link #showInAppKeyboardForEditor()} raised. */
         void hideInAppKeyboardForEditor();
+        /**
+         * MadameLabs fork: puts the floating command box up while its card is open, so the glass
+         * being tuned is in sight, and takes it down again; one open for typing stays.
+         */
+        default void previewCommandBox(boolean shown) {}
         boolean isFloatingDock();
         /** The pinned-apps row shares its container with nothing; Height reads its icon off it. */
         boolean isAppsRowAlone();
@@ -679,6 +684,17 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
     private boolean mGoingBack;
     /** Whether the editor raised the in-app keyboard itself, and so owes taking it down. */
     private boolean mRaisedKeyboard;
+    /** Whether the command box is up as the Command box card's preview. */
+    private boolean mCommandBoxPreviewed;
+
+    /** Puts the command box up while its card is open and the editor shows, and down after. */
+    private void syncCommandBoxPreview() {
+        boolean want = mOpen && mSession && mCard == EditorCard.COMMAND_BOX;
+        if (want == mCommandBoxPreviewed)
+            return;
+        mCommandBoxPreviewed = want;
+        mHost.previewCommandBox(want);
+    }
     /** The session a relaunch handed over, continued by the next presentation. */
     @Nullable private CarriedSession mCarriedNext;
 
@@ -962,6 +978,7 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
         mPageCustoms.clear();
         mCard = null;
         mRaisedKeyboard = false;
+        syncCommandBoxPreview();
 
         if (mFrame == null || mFrame.root() != rootContainer)
             mFrame = new AppearanceEditorFrame(rootContainer);
@@ -1330,6 +1347,7 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
             ensureIconsContent();
         sheet.show(card, EditorRows.rows(card, offers()), resetLabel(card), animate, raiseTo);
         restateBar(animate);
+        syncCommandBoxPreview();
         layoutSheet();
         applyPose(animate);
         positionOutline(animate);
@@ -5898,6 +5916,7 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
         mEntrySettings = null;
         mSettingsNow = null;
         mCard = null;
+        syncCommandBoxPreview();
         removeHalo();
         mLastDetent = -1;
         LayoutEditorController layout = mHost.layoutEditor();
@@ -6014,6 +6033,7 @@ public final class SurfaceEditorController implements AppearanceSurfaceControlle
         if (mRaisedKeyboard)
             mHost.hideInAppKeyboardForEditor();
         mRaisedKeyboard = false;
+        syncCommandBoxPreview();
         mHost.holdPaneWall(false);
         mHost.setTopStatusBarExpandedForEditor(false, false);
         mHost.editorSessionEnded();
