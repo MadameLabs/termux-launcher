@@ -3007,6 +3007,17 @@ public final class TerminalView extends View {
         return true;
     }
 
+    /**
+     * MadameLabs fork: whether a key belongs to accent composition, so the kitty encoder leaves it
+     * to the legacy path: it is a dead key bare ({@code unshifted}) or with its modifiers
+     * ({@code composed}), or a dead key is waiting for it ({@code pendingAccent}).
+     */
+    static boolean composesAccent(int unshifted, int composed, int pendingAccent) {
+        return (unshifted & KeyCharacterMap.COMBINING_ACCENT) != 0
+            || (composed & KeyCharacterMap.COMBINING_ACCENT) != 0
+            || pendingAccent != 0;
+    }
+
     public void inputCodePoint(int eventSource, int codePoint, boolean controlDownFromEvent, boolean leftAltDownFromEvent) {
         if (TERMINAL_VIEW_KEY_LOGGING_ENABLED) {
             mClient.logInfo(LOG_TAG, "inputCodePoint(eventSource=" + eventSource + ", codePoint=" + codePoint + ", controlDownFromEvent=" + controlDownFromEvent + ", leftAltDownFromEvent=" + leftAltDownFromEvent + ")");
@@ -3166,8 +3177,14 @@ public final class TerminalView extends View {
         if (flags == 0)
             return false;
         int unshifted = event.getUnicodeChar(0);
-        if ((unshifted & KeyCharacterMap.COMBINING_ACCENT) != 0) {
-            // A dead key. Composition happens in the legacy path, which owns mCombiningAccent.
+        // MadameLabs fork: the dead key may need the modifier it came with (AltGr, as scrcpy and
+        // some layouts send it), and the key after a dead key is the accent's to compose: both
+        // go to the legacy path, which owns mCombiningAccent. Asked with left Alt and Ctrl off,
+        // as the legacy path reads the character.
+        int composed = event.getUnicodeChar(event.getMetaState()
+            & ~(KeyEvent.META_CTRL_MASK | KeyEvent.META_ALT_LEFT_ON
+                | ((event.getMetaState() & KeyEvent.META_ALT_RIGHT_ON) != 0 ? 0 : KeyEvent.META_ALT_ON)));
+        if (composesAccent(unshifted, composed, mCombiningAccent)) {
             return false;
         }
         int modifiers = 0;
