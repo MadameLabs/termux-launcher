@@ -53,6 +53,7 @@ away, since nothing there takes typing. On the Display place its keys go to the 
 | Ctrl | down-right | Numeric layer |
 | Alt | up-left | Fn layer |
 | Alt | up-right | Hide the keyboard |
+| Alt | down-left | Full QWERTY layer (the `abc+` key) |
 | Alt | down-right | Open Settings |
 | Space bar | up | [Command palette](Command_Palette_And_Actions.md) |
 | Space bar | up-left / up-right | Previous / next window |
@@ -74,6 +75,14 @@ Fn is the up-left swipe on the Alt key; there is no separate Fn key. While it is
 - D, F and G type Home, Up and End; H, J, K and L type Page Up, Left, Down and Right;
 - C, V and B type Insert, Delete and Page Down;
 - N and M send `^C` and `^D`.
+
+## The full QWERTY layer
+
+The `abc+` swipe (down-left on Alt) opens a desktop keyboard in five rows: the number row with
+`!@#$%^&*()` on the up-right corners and F1 to F12 on the down-right ones, `` ` - = [ ] ; ' \ , . / ``
+on keys of their own, Tab and Esc on the left, and Ctrl, Alt, the space bar, the four arrows and
+Enter along the bottom. The same swipe, now reading `ABC`, brings your layout back. If you keep
+your own `~/.termux/keyboard/layout.xml`, add `sw="switch_full"` to its Alt key to get the swipe.
 
 ## Layouts
 

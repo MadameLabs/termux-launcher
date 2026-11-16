@@ -524,6 +524,28 @@ public class TermuxInAppKeyboardTest {
     }
 
     @Test
+    public void fullQwertyPadOpensFromItsKeyAndTheTextKeyLeavesIt() throws Exception {
+        mPreferences.setInAppKeyboardEnabled(true);
+        mController.onCreate(null);
+
+        mController.requestFullLayout();
+        assertEquals(TermuxInAppKeyboard.LAYOUT_FULL, mController.getSelectedLayoutId());
+        Keyboard2View view = (Keyboard2View) mHost.attachedView;
+        // A desktop keyboard: the number row on top, Tab before q, Esc before a.
+        assertEquals('`', centerKey(view, 0, 0).getChar());
+        assertEquals('1', centerKey(view, 0, 1).getChar());
+        assertEquals(KeyEvent.KEYCODE_TAB, centerKey(view, 1, 0).getKeyevent());
+        assertEquals('q', centerKey(view, 1, 1).getChar());
+        assertEquals(KeyEvent.KEYCODE_ESCAPE, centerKey(view, 2, 0).getKeyevent());
+        // It is a pad: never in the ring, and the ring does not move while it is up.
+        assertTrue(TermuxInAppKeyboard.isPad(TermuxInAppKeyboard.LAYOUT_FULL));
+        assertEquals(TermuxInAppKeyboard.LAYOUT_MAIN, mController.getActiveTextLayoutId());
+
+        mController.requestTextLayout();
+        assertEquals(TermuxInAppKeyboard.LAYOUT_MAIN, mController.getSelectedLayoutId());
+    }
+
+    @Test
     public void cyclingWalksTheConfiguredLayoutRingAndRemembersWhereItStopped() throws Exception {
         mPreferences.setInAppKeyboardEnabled(true);
         mPreferences.setInAppKeyboardLayouts("main,latn_dvorak,latn_colemak");
@@ -1029,6 +1051,7 @@ public class TermuxInAppKeyboardTest {
         @Override public void requestTextLayout() { }
         @Override public void requestNumericLayout() { }
         @Override public void requestGreekMathLayout() { }
+        @Override public void requestFullLayout() { }
         @Override public void requestForwardLayout() { }
         @Override public void requestBackwardLayout() { }
         @Override public void openLauncherSettings() { }

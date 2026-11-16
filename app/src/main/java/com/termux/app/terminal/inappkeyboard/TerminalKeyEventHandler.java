@@ -355,6 +355,9 @@ public final class TerminalKeyEventHandler implements Config.IKeyEventHandler {
             case SWITCH_GREEKMATH:
                 mHostActions.requestGreekMathLayout();
                 break;
+            case SWITCH_FULL:
+                mHostActions.requestFullLayout();
+                break;
             case CAPS_LOCK:
                 mHostActions.toggleCapsLock();
                 break;

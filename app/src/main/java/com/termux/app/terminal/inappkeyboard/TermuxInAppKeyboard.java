@@ -55,6 +55,7 @@ public final class TermuxInAppKeyboard {
     static final String LAYOUT_MAIN = LauncherKeyboardLayouts.LAYOUT_MAIN;
     static final String LAYOUT_NUMERIC = "numeric";
     static final String LAYOUT_GREEK_MATH = "greekmath";
+    static final String LAYOUT_FULL = "full_qwerty";
 
     public enum ShowReason {
         FIRST_ENABLE,
@@ -117,6 +118,7 @@ public final class TermuxInAppKeyboard {
     private KeyboardData mMainKeyboardData;
     private KeyboardData mNumericKeyboardData;
     private KeyboardData mGreekMathKeyboardData;
+    private KeyboardData mFullKeyboardData;
     /** Parsed bundled text layouts, keyed by catalogue id. Dropped whenever extra keys move. */
     private final Map<String, KeyboardData> mTextLayoutCache = new HashMap<>();
     /** One-entry memo of the parted layout: what it was parted from, by how much, and the result. */
@@ -407,6 +409,7 @@ public final class TermuxInAppKeyboard {
         mMainKeyboardData = null;
         mNumericKeyboardData = null;
         mGreekMathKeyboardData = null;
+        mFullKeyboardData = null;
         mTextLayoutCache.clear();
         mSystemImeFocusListener = null;
         mAttachedSession = null;
@@ -1035,6 +1038,16 @@ public final class TermuxInAppKeyboard {
         selectLayout(LAYOUT_GREEK_MATH);
     }
 
+    public void requestFullLayout() {
+        selectLayout(LAYOUT_FULL);
+    }
+
+    /** The numeric, Greek/math and full QWERTY pads: reached by their own keys, never in the ring. */
+    static boolean isPad(@Nullable String layoutId) {
+        return LAYOUT_NUMERIC.equals(layoutId) || LAYOUT_GREEK_MATH.equals(layoutId)
+            || LAYOUT_FULL.equals(layoutId);
+    }
+
     /**
      * The next text layout in the user's ring. Upstream's {@code switch_forward} key means this,
      * and so does the {@code keyboard.cycle_layout} action.
@@ -1602,6 +1615,7 @@ public final class TermuxInAppKeyboard {
         mMainKeyboardData = null;
         mNumericKeyboardData = null;
         mGreekMathKeyboardData = null;
+        mFullKeyboardData = null;
         if (mLayoutLoader != null)
             mLayoutLoader.setLayoutOptions(mLayoutOptions);
         for (TermuxInAppKeyboardLayoutLoader loader : mFileLayoutLoaders.values())
@@ -1931,8 +1945,7 @@ public final class TermuxInAppKeyboard {
             return;
         mActiveTextLayoutId = active;
         // A modal pad keeps its place; it picks the new ring position up when it returns to text.
-        if (applyToView && !LAYOUT_NUMERIC.equals(mSelectedLayoutId)
-            && !LAYOUT_GREEK_MATH.equals(mSelectedLayoutId))
+        if (applyToView && !isPad(mSelectedLayoutId))
             selectLayout(active);
     }
 
@@ -1962,7 +1975,7 @@ public final class TermuxInAppKeyboard {
      */
     private void recheckLayoutFile(String layoutId) {
         if (!mEnabled || mDestroyed || layoutId == null || LAYOUT_MAIN.equals(layoutId)
-            || LAYOUT_NUMERIC.equals(layoutId) || LAYOUT_GREEK_MATH.equals(layoutId))
+            || isPad(layoutId))
             return;
         TermuxInAppKeyboardLayoutLoader loader = mFileLayoutLoaders.get(layoutId);
         if (loader == null) {
@@ -2256,6 +2269,10 @@ public final class TermuxInAppKeyboard {
                 if (mGreekMathKeyboardData == null)
                     mGreekMathKeyboardData = loadBundledLayout(juloo.keyboard2.R.xml.greekmath);
                 return mGreekMathKeyboardData;
+            case LAYOUT_FULL:
+                if (mFullKeyboardData == null)
+                    mFullKeyboardData = loadBundledLayout(juloo.keyboard2.R.xml.full_qwerty);
+                return mFullKeyboardData;
             case LAYOUT_MAIN:
                 if (mMainKeyboardData == null && mLayoutLoader != null)
                     mMainKeyboardData = mLayoutLoader.getLastKnownGood();
@@ -2312,8 +2329,7 @@ public final class TermuxInAppKeyboard {
     /** Any modal pad, any catalogued text layout, or — for anything else — where the ring is. */
     @NonNull
     private String normalizeLayoutId(@Nullable String layoutId) {
-        if (LAYOUT_NUMERIC.equals(layoutId) || LAYOUT_GREEK_MATH.equals(layoutId)
-            || LAYOUT_MAIN.equals(layoutId))
+        if (isPad(layoutId) || LAYOUT_MAIN.equals(layoutId))
             return layoutId;
         if (layoutId != null && LauncherKeyboardLayouts.find(
                 requireContainer().getResources(), layoutId) != null)

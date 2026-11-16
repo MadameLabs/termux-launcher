@@ -293,6 +293,12 @@ fails when the catalogue has gone stale.
   `:keyevent symbol='F₄' flags='small':134` (Android key codes 131 to 142), so the F keys draw small
   with a subscript number. Upstream's numeric layout has no F keys. A refresh re-applies both.
 
+- `full_qwerty.xml` and the `switch_full` key (MadameLabs fork, 2026-11-16): a launcher pad, a
+  desktop QWERTY in five rows of 13 units, reached by `switch_full` (label `abc+`,
+  `KeyValue.Event.SWITCH_FULL`, appended after `HIDE_SELF`) and left by `switch_text`. The
+  launcher layout puts it on the Alt key's down-left corner, `bottom_row.xml` on the Fn key's.
+  Upstream has neither the event nor the layout.
+
 ## Refresh procedure
 
 1. Record the new upstream commit and copy the selected sources, all layout

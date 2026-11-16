@@ -53,6 +53,7 @@ public class LauncherKeyboardLayoutsTest {
         assertNotNull(LauncherKeyboardLayouts.find(resources, "latn_dvorak"));
         assertNotNull(LauncherKeyboardLayouts.find(resources, "latn_colemak"));
         assertNull(LauncherKeyboardLayouts.find(resources, "numeric"));   // a pad, not a layout
+        assertNull(LauncherKeyboardLayouts.find(resources, "full_qwerty"));   // a pad too
         assertNull(LauncherKeyboardLayouts.find(resources, "bottom_row"));
         assertEquals("Dvorak", LauncherKeyboardLayouts.labelFor(resources, "latn_dvorak"));
     }

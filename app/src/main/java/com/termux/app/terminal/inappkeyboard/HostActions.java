@@ -27,6 +27,9 @@ public interface HostActions {
 
     void requestGreekMathLayout();
 
+    /** The full QWERTY pad, from the {@code abc+} key. */
+    void requestFullLayout();
+
     void requestForwardLayout();
 
     void requestBackwardLayout();

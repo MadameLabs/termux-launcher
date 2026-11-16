@@ -13,7 +13,7 @@
 -->
 <row height="0.95">
   <key width="1.7" role="action" key0="ctrl" key1="loc switch_greekmath" key2="loc meta" key4="switch_numeric"/>
-  <key width="1.1" role="action" key0="fn" key1="loc alt" key4="config"/>
+  <key width="1.1" role="action" key0="fn" key1="loc alt" key3="switch_full" key4="config"/>
   <key width="4.4" role="space_bar" key0="space"
        key7="tool:app.command_palette:󱎱"
        key8="switch_backward"
