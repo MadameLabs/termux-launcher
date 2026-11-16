@@ -4245,6 +4245,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         com.termux.app.chrome.LookGlassStyle style = commandBoxGlassStyle();
         style.setWorn(true);
         Object key = style.key();
+        android.util.Log.i("CBX-DBG", "refresh same=" + key.equals(mCommandBoxGlassKey)); // CBX-DBG temporary
         if (key.equals(mCommandBoxGlassKey)) return;
         mCommandBoxGlassKey = key;
         popup.applyStyle(style);

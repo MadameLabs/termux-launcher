@@ -313,6 +313,17 @@ public final class CommandBoxPopup {
         mRadiusPx = style == null ? dp(14)
             : com.termux.app.terminal.PaneGlass.radiusPx(style, mDensity);
         boolean slab = com.termux.app.terminal.PaneGlass.apply(style, frame, glass, mRadiusPx);
+        // CBX-DBG temporary diagnostic (removed before main).
+        if (style instanceof com.termux.app.chrome.LookGlassStyle) {
+            com.termux.app.chrome.LookGlassSpec spec = ((com.termux.app.chrome.LookGlassStyle) style).spec();
+            android.util.Log.i("CBX-DBG", "applyStyle preview=" + mPreviewing + " slab=" + slab
+                + " wallpaper=" + spec.slabShown() + " blur=" + spec.blurDp + " opacity=" + spec.opacityPercent
+                + " grain=" + spec.grainPercent + " tint=" + spec.tintPercent
+                + " frame=" + (style.paneGlassBlurFrame() != null) + " tintColor=" + Integer.toHexString(style.paneGlassTintColor())
+                + " size=" + frame.getWidth() + "x" + frame.getHeight() + " glassVis=" + glass.getVisibility());
+        } else {
+            android.util.Log.i("CBX-DBG", "applyStyle style=" + style + " slab=" + slab);
+        }
         // Glass off: a solid card, as the assistant page falls back to.
         if (slab) {
             frame.setBackground(null);
