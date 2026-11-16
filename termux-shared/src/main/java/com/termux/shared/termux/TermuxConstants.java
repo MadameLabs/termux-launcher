@@ -356,7 +356,8 @@ public final class TermuxConstants {
      * Termux package name
      */
     // Default: "com.termux"
-    public static final String TERMUX_PACKAGE_NAME = "com.termux.launcher.nix";
+    // Set at build time from TERMUX_APP_PACKAGE_NAME; the nix edition defaults to "com.termux.launcher.nix".
+    public static final String TERMUX_PACKAGE_NAME = com.termux.shared.BuildConfig.TERMUX_PACKAGE_NAME;
 
     /**
      * Termux GitHub repo name

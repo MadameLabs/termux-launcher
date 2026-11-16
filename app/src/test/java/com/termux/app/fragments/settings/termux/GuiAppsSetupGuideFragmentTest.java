@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertFalse;
 import org.junit.After;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 import android.app.Application;
 import android.content.Context;
@@ -111,6 +112,8 @@ public class GuiAppsSetupGuideFragmentTest {
 
     @Test public void theSummaryNamesWhatWasSetUp() {
         Context context = themed(1f);
+        // MadameLabs fork: a Nix build counts as set up from the start (isSetUp).
+        assumeFalse(AppEdition.running(context).usesNixPackages());
         SharedPreferences prefs = prefs();
         GuiAppsSetupGuide.markerPresent = () -> false;
         assertEquals("Not set up yet",

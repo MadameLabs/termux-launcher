@@ -153,7 +153,7 @@ final class DisplayCardPage implements SetupCardPage {
 
     @NonNull
     private AppEdition edition() {
-        return AppEdition.of(mContext.getPackageName());
+        return AppEdition.running(mContext);
     }
 
     private int dp(float value) {

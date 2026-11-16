@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 import android.app.Application;
 import android.content.Intent;
@@ -81,6 +82,8 @@ public class X11DisplayKeyboardFollowsTextTest {
     @Test
     public void beforeLinuxAppsAreSetUp_theRowIsGreyedAndKeepsItsValue() {
         Application app = RuntimeEnvironment.getApplication();
+        // MadameLabs fork: a Nix build has no guide, so the row is never greyed there.
+        assumeFalse(com.termux.app.AppEdition.running(app).usesNixPackages());
         Preference row = launch().getPreferenceScreen().findPreference(KEY);
         assertNotNull(row);
         assertFalse(row.isEnabled());
@@ -92,6 +95,8 @@ public class X11DisplayKeyboardFollowsTextTest {
     @Test
     public void fcitx5OnDiskWithoutTheGuideRunStillGreysTheRow() {
         Application app = RuntimeEnvironment.getApplication();
+        // MadameLabs fork: a Nix build has no guide, so the row is never greyed there.
+        assumeFalse(com.termux.app.AppEdition.running(app).usesNixPackages());
         com.termux.app.x11.GuiAppsSetupGuide.fcitx5Installed = () -> true;
         Preference row = launch().getPreferenceScreen().findPreference(KEY);
         assertNotNull(row);

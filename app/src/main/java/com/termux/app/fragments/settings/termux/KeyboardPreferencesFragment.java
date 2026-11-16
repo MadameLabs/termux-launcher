@@ -174,6 +174,12 @@ public class KeyboardPreferencesFragment extends MaterialPreferenceFragment {
                     TaiModelCentreFragment.open(getActivity(), TaiModelCentreFragment.SEGMENT_SPEECH);
                     return false;
                 }
+                // Groq dictates with the remote model's Groq key; without it, that screen opens.
+                if (TermuxPreferenceConstants.TERMUX_APP.IN_APP_KEYBOARD_VOICE_ENGINE_GROQ.equals(newValue)
+                    && !com.termux.ai.GroqTranscriber.isReady(context)) {
+                    openRemoteModelSettings();
+                    return false;
+                }
                 return true;
             });
         }
@@ -190,6 +196,13 @@ public class KeyboardPreferencesFragment extends MaterialPreferenceFragment {
         }
 
         SettingsLayoutUtils.applyScreenLayout(this);
+    }
+
+    private void openRemoteModelSettings() {
+        if (getActivity() instanceof com.termux.app.activities.SettingsActivity) {
+            ((com.termux.app.activities.SettingsActivity) getActivity()).openScreen(
+                TaiRemotePreferencesFragment.class, R.string.tai_remote_screen_title, null);
+        }
     }
 
     /** The status row says learning, active or paused and how much was learned; reset follows. */

@@ -36,6 +36,92 @@ path, read [`docs/agents/performance.md`](docs/agents/performance.md). When the 
 handling, CI matrix). Each edition has its own package and prefix, so name the package through
 `context.getPackageName()` or `TermuxConstants`, never a literal `com.termux`.
 
+## This fork (MadameLabs/termux-launcher)
+
+This checkout is **not** the upstream project. It is the Madame Labs fork of
+[PickleHik3/termux-launcher](https://github.com/PickleHik3/termux-launcher), taken from upstream's
+`nix-v2.0.0-pre.5` pre-release tag (since 2026-11-14) and built to install as **`com.termux`** with the Nix bootstrap. Everything
+below this section is upstream's manual and still applies to the code; where it talks about
+editions, releases, pong, CI or `gh`, this section wins.
+
+**Remotes.** `origin` is `MadameLabs/termux-launcher` (this fork, branch `main`); `upstream` is
+`PickleHik3/termux-launcher`. Upstream's own text calls `termux/termux-app` "upstream" — here it is
+not a remote at all. Pass `--repo MadameLabs/termux-launcher` to every `gh` command. Never open an
+issue, PR or release on `PickleHik3/termux-launcher` unless the developer asks for that exact
+thing.
+
+**One branch, one build.** `main` is the only branch that matters. There are no edition branches,
+no `dev`, no tags and no release cut here; the "Branches and releases" section below describes
+upstream's process, not this fork's.
+
+**The identity is chosen at build time, not by branch.** The root `build.gradle` sets
+`ext.termuxPackageName` from the environment variable `TERMUX_APP_PACKAGE_NAME` (default
+`com.termux.launcher.nix`, upstream's Nix edition). `app/build.gradle` uses it for `applicationId`
+and the `TERMUX_PACKAGE_NAME` placeholder, and `termux-shared` exposes it as
+`BuildConfig.TERMUX_PACKAGE_NAME`, which `TermuxConstants.TERMUX_PACKAGE_NAME` reads. Keep those
+three wired to the one value: a merge that brings back a literal package name in any of them
+silently builds the wrong app. The bootstrap is chosen separately by `TERMUX_PACKAGE_VARIANT`
+(default `apt-android-7`); this fork's build is the pair `com.termux` + `nix`. Because a Nix build
+can now carry the regular Termux package name, edition checks must go through
+`TourEdition.running(context)`, which also reads the build variant — never
+`TourEdition.of(packageName)` alone.
+
+**What the fork adds on top of upstream** (keep it through every sync):
+
+- The **Groq** speech engine for upstream's voice card (`com.termux.ai.GroqTranscriber`,
+  `docs/en/Voice_Input.md#groq`). **Speech engine** `groq` runs the on-device card unchanged with
+  the virtual model id `GroqTranscriber.MODEL_ID`; `TaiManager.transcribe` and `sttWarm` answer
+  that id in the app process, before any speech-model resolution, so nothing of the runtime
+  process is involved. The key is the remote model's (`TaiRemoteSettings`, Groq preset): the fork
+  keeps no key of its own. Cleanup is upstream's, unchanged.
+- The terminal toolbar's command input row below the key pages (`terminal_toolbar_command_row`,
+  `TerminalToolbarViewPager.bindCommandRow`).
+- Back lowers the embedded keyboard (`InAppKeyboardBack`, registered outermost in the back
+  registry).
+- No system-IME lift on the accessory stack (`resolveAccessoryStackBottomMarginPx`):
+  `adjustResize` already lifts the content on HyperOS, and the insets lift doubled it on the
+  Poco F7 in full screen.
+- Full screen uses the visible status bar inset for the root's top padding, not the legacy
+  cutout inset HyperOS keeps (`TermuxActivityRootView`).
+- `scripts/nix/com-termux-profile-compat.nix`: a nix-on-droid module that makes package
+  activation work when the Nix build runs as `com.termux` (test:
+  `scripts/nix/test-com-termux-profile-compat.py`).
+- The Claude GitHub workflows (`.github/workflows/claude.yml`, `claude-code-review.yml`).
+
+**Syncing with upstream.** Apply the fork's own diff onto the newest `nix-v*-pre.N` tag (not `upstream/pre`, which builds the Termux edition) in a
+`sync/…` branch, resolve, build, then fast-forward `main`. Expect conflicts in
+`TermuxActivity` (voice fields and the accessory margin), `values/strings.xml` (both voice blocks
+stay), the keyboard/voice preference XML and `docs/en/` index pages. After resolving, check that
+`build.gradle`, `app/build.gradle`, `termux-shared/build.gradle` and `TermuxConstants` still read
+`termuxPackageName`, and that no new caller uses `AppEdition.of` with a package name alone.
+
+**Building and installing this fork.** Build from the repo root with the Android SDK in
+`ANDROID_HOME` (or `local.properties`) and **JDK 21** in `JAVA_HOME`, as upstream's CI does — the
+LiteRT-LM classes are Java 21 bytecode and JDK 17 fails with "class file has wrong version 65.0".
+Run the unit tests under `LC_ALL=C.UTF-8`: a few TAI tests format decimals with the host locale
+and fail on a pt_BR machine (`1,5` for `1.5`).
+
+```sh
+TERMUX_APP_PACKAGE_NAME=com.termux TERMUX_PACKAGE_VARIANT=nix ./gradlew :app:assembleDebug
+```
+
+The APK is debug-signed with `testkey_untrusted.jks`. It cannot install over a `com.termux` from
+Google Play or F-Droid (different signature): that one has to be uninstalled first, and
+uninstalling deletes its whole `$HOME` and prefix. Never do that without the developer's explicit
+go-ahead, and suggest a backup first. Upgrades over an install of this fork are plain
+`adb -s <serial> install -r`. `scripts/dev-install.sh` is upstream's and looks for
+`apt-android-7` APK names, so it does not fit this build as is.
+
+**Devices.** The developer's phones are Xiaomi/POCO on HyperOS/MIUI; the Poco F7 is the reference
+for the IME and full-screen fixes. "pong" below is upstream's phone, not one of ours. The
+phone-safety rule still holds: ask before installing, force-stopping or injecting input, and pass
+`-s <serial>` to every adb command.
+
+**Hub rule still open.** The Madame Labs hub keeps skills out of every repository, but upstream
+versions `.agents/skills/`, so this fork inherits it. Removing it would conflict on every sync;
+leave it until the developer decides.
+
+
 ## Words
 
 The developer is the maintainer, who uses the launcher daily. **Pong** is their phone and the

@@ -5,6 +5,9 @@ on:
   push:
     branches:
       - nix-edition
+      # MadameLabs fork: the sync and feature branches run the tests too.
+      - 'sync/**'
+      - 'feat/**'
 
 
 concurrency:

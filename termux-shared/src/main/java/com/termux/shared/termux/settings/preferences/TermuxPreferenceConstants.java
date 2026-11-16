@@ -1005,14 +1005,17 @@ public final class TermuxPreferenceConstants {
 
         /**
          * Which engine the in-app keyboard's voice key uses: {@code system} (the Android
-         * recognizer, an activity) or {@code on_device} (the installed Whisper speech model in the
-         * TAI runtime). The system engine stays the default: it needs no model download.
+         * recognizer, an activity), {@code on_device} (the installed Whisper speech model in the
+         * TAI runtime) or {@code groq} (Groq's Whisper, with the remote model's Groq key, in the
+         * same voice card). The system engine stays the default: it needs no model download.
          */
         public static final String KEY_IN_APP_KEYBOARD_VOICE_ENGINE = "keyboard_voice_engine";
 
         public static final String IN_APP_KEYBOARD_VOICE_ENGINE_SYSTEM = "system";
 
         public static final String IN_APP_KEYBOARD_VOICE_ENGINE_ON_DEVICE = "on_device";
+
+        public static final String IN_APP_KEYBOARD_VOICE_ENGINE_GROQ = "groq";
 
         public static final String DEFAULT_IN_APP_KEYBOARD_VOICE_ENGINE = IN_APP_KEYBOARD_VOICE_ENGINE_SYSTEM;
 

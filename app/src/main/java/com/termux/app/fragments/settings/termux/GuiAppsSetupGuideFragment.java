@@ -120,7 +120,7 @@ public class GuiAppsSetupGuideFragment extends Fragment {
         Bundle args = getArguments();
         String override = args == null ? null : args.getString(ARG_EDITION);
         mEdition = override != null ? AppEdition.valueOf(override)
-            : AppEdition.of(context.getPackageName());
+            : AppEdition.running(context);
         mPrefs = GuiAppsSetupGuide.preferences(context);
         if (savedInstanceState != null) {
             String saved = savedInstanceState.getString(STATE_STEP);

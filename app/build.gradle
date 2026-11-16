@@ -36,7 +36,7 @@ android {
         || Boolean.parseBoolean(project.property('x11Server').toString())
 
     defaultConfig {
-        applicationId "com.termux.launcher.nix"
+        applicationId rootProject.ext.termuxPackageName
         buildConfigField "String", "LITERT_LM_VERSION", "\"${project.ext.litertLmVersion}\""
         minSdkVersion project.properties.minSdkVersion.toInteger()
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
@@ -64,7 +64,7 @@ android {
         buildConfigField "boolean", "X11_SERVER", String.valueOf(x11ServerEnabled)
 
         manifestPlaceholders = [
-            TERMUX_PACKAGE_NAME    : "com.termux.launcher.nix",
+            TERMUX_PACKAGE_NAME    : rootProject.ext.termuxPackageName,
             TERMUX_APP_NAME        : "Termux:Launcher Nix",
             TERMUX_API_APP_NAME    : "Termux:API",
             TERMUX_GUI_APP_NAME    : "Termux:GUI",

@@ -18908,20 +18908,23 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     /**
      * The margin under the accessory stack: the shared bottom edge gap
      * ({@link ChromePolicy#bottomEdgeGapPx}) whatever the stack holds — the dock's rows, the
-     * keyboard, both — plus the system IME's lift while it stands under the dock. The same number
-     * with the keyboard up and down, so a slide that brings the keyboard in or puts it away lands
-     * the dock where the slide left it — except under a Floating Peek glass card, which stands
-     * flush on the screen's edge with the keyboard down and gives way to the Floating tray, gap
-     * and all, with it up (DockPlacement, as Stack layout works it out). Root/decor inset policy
-     * keeps the whole stack above the navigation bar; nothing here is for that. Also read for a
-     * stack other than the one on screen: the arriving place's, mid-slide.
+     * keyboard, both. The same number with the keyboard up and down, so a slide that brings the
+     * keyboard in or puts it away lands the dock where the slide left it — except under a Floating
+     * Peek glass card, which stands flush on the screen's edge with the keyboard down and gives way
+     * to the Floating tray, gap and all, with it up (DockPlacement, as Stack layout works it out).
+     * Root/decor inset policy keeps the whole stack above the navigation bar; nothing here is for
+     * that. Also read for a stack other than the one on screen: the arriving place's, mid-slide.
+     *
+     * <p>No system IME lift is added (MadameLabs fork): adjustResize already places
+     * terminal_root_container above the IME, and adding its height here lifts the whole dock a
+     * second time (HyperOS/Poco F7 in full screen, where both bars are hidden and the insets lift
+     * would otherwise engage).
      */
     private int resolveAccessoryStackBottomMarginPx(boolean toolbarShown, boolean keyboardShown) {
-        int lift = toolbarShown || keyboardShown ? mImeLiftPx : 0;
         boolean floating = arrangement().floating();
         boolean floats = com.termux.app.dock.DockPlacement.floats(floating,
             floating && peekCardStandsWith(toolbarShown, keyboardShown));
-        return lift + ChromePolicy.bottomEdgeGapPx(floats, appliedDockLayout().capsuleBottomGapPx);
+        return ChromePolicy.bottomEdgeGapPx(floats, appliedDockLayout().capsuleBottomGapPx);
     }
 
     // Kept for test compatibility and to preserve existing RelativeLayout params in-place.
@@ -21759,6 +21762,22 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     new String(Character.toChars(codePoint)), floatFocused);
             }
         });
+        // MadameLabs fork. Outermost: the embedded keyboard goes down only on a press no surface
+        // above wanted.
+        registry.register(new com.termux.app.terminal.inappkeyboard.InAppKeyboardBack(() -> {
+            if (mInAppKeyboard == null) return null;
+            return new com.termux.app.terminal.inappkeyboard.InAppKeyboardBack.Keyboard() {
+                @Override public boolean isVisible() {
+                    return mInAppKeyboard != null && mInAppKeyboard.isVisible();
+                }
+                @Override public void hideForBack() {
+                    // The same way down as the KEYBOARD extra key, Display place frame included.
+                    if (applyDisplayFrameKeyboard(false)) return;
+                    if (mInAppKeyboard != null) mInAppKeyboard.hide(
+                        com.termux.app.terminal.inappkeyboard.TermuxInAppKeyboard.HideReason.KEYBOARD_ACTION);
+                }
+            };
+        }));
         return registry;
     }
 
@@ -22518,17 +22537,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mVoiceInput != null) return;
         if (fromKeyboard && (mInAppKeyboard == null || !mInAppKeyboard.isVisible())) return;
         com.termux.ai.TaiSettings tai = new com.termux.ai.TaiSettings(this);
-        // The settings' choice, or another installed speech model when that one's files are gone.
-        com.termux.ai.TaiModelSpec model = com.termux.ai.TaiSpeechModels.resolveActive(this);
-        if (model == null) {
-            AppNotice.show(this, R.string.voice_input_no_model, false);
+        // Groq transcribes each phrase remotely and needs only the remote model's Groq key; the
+        // on-device engine needs the settings' speech model, or another installed one when that
+        // one's files are gone. Either way the card, the cleanup and Insert are the same.
+        boolean groq = mPreferences.isInAppKeyboardVoiceGroq();
+        com.termux.ai.TaiModelSpec model = groq ? null : com.termux.ai.TaiSpeechModels.resolveActive(this);
+        if (groq ? !com.termux.ai.GroqTranscriber.isReady(this) : model == null) {
+            AppNotice.show(this, groq ? R.string.voice_input_groq_not_ready : R.string.voice_input_no_model, false);
             launchVoiceTyping(false);
             return;
         }
-        String modelId = model.id;
+        String modelId = groq ? com.termux.ai.GroqTranscriber.MODEL_ID : model.id;
         // Each installed graph carries its own window in its file name; the setting is only the
-        // preference for the next download.
-        int windowSeconds = com.termux.ai.TaiSpeechModels.windowSeconds(model);
+        // preference for the next download. Groq's Whisper reads 30 s at once.
+        int windowSeconds = groq ? com.termux.ai.GroqTranscriber.WINDOW_SECONDS
+            : com.termux.ai.TaiSpeechModels.windowSeconds(model);
         if (windowSeconds <= 0) windowSeconds = tai.getSttWindowSeconds();
         if (androidx.core.content.ContextCompat.checkSelfPermission(this,
                 android.Manifest.permission.RECORD_AUDIO)
@@ -22586,7 +22609,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             // speech model's own guess arrives later (onSpeechLanguage), and the keyboard's or the
             // phone's language is assumed only for text that reads as no language in particular.
             cleanup.setLanguageHint(language.forced != null ? language.forced
-                : com.termux.ai.TaiSpeechModels.isEnglishOnly(model) ? "en" : null);
+                : model != null && com.termux.ai.TaiSpeechModels.isEnglishOnly(model) ? "en" : null);
             cleanup.setLanguageFallback(VoiceLanguage.resolve(mPreferences.getInAppKeyboardVoiceLanguage(),
                 mInAppKeyboard == null ? null : mInAppKeyboard.getActiveTextLayoutId(), userLocale()).code);
             mVoiceCleanup = cleanup;
@@ -22624,14 +22647,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * the graph falls back to while it is not sure what it hears; nothing for an English-only
      * graph or Parakeet, which decide alone. Both one-time notices live here: a setting Whisper
      * does not know (English is used), and a non-English choice against an {@code .en} model (the
-     * choice is ignored).
+     * choice is ignored). Groq ({@code model} null) is a multilingual Whisper: it is sent the
+     * forced language, and with Auto detects it, the hint only deciding when the card says so.
      */
     @NonNull
-    private VoiceLanguage.Choice resolveVoiceLanguage(@NonNull com.termux.ai.TaiModelSpec model) {
+    private VoiceLanguage.Choice resolveVoiceLanguage(@Nullable com.termux.ai.TaiModelSpec model) {
         mVoiceSpokenLanguage = null;
         String setting = mPreferences.getInAppKeyboardVoiceLanguage();
-        if (com.termux.ai.TaiSpeechModels.isParakeet(model.id, model.localPath)) return VoiceLanguage.Choice.NONE;
-        boolean englishOnly = com.termux.ai.TaiSpeechModels.isEnglishOnly(model);
+        if (model != null && com.termux.ai.TaiSpeechModels.isParakeet(model.id, model.localPath)) return VoiceLanguage.Choice.NONE;
+        boolean englishOnly = model != null && com.termux.ai.TaiSpeechModels.isEnglishOnly(model);
         if (englishOnly) {
             if (!VoiceLanguage.AUTO.equals(setting) && !VoiceLanguage.FALLBACK.equals(setting)
                 && !mVoiceEnglishOnlyNoticed) {
@@ -22696,11 +22720,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     /**
-     * The speech engine in use: the one picked in Keyboard settings, or, never picked, on-device as
-     * soon as a speech model is installed and Android's recognizer before that.
+     * Whether the voice card takes the dictation: the engine picked in Keyboard settings is
+     * on-device or Groq, or, never picked, a speech model is installed. Android's recognizer
+     * otherwise.
      */
     private boolean voiceUsesOnDevice() {
-        if (mPreferences.isInAppKeyboardVoiceEngineChosen()) return mPreferences.isInAppKeyboardVoiceOnDevice();
+        if (mPreferences.isInAppKeyboardVoiceEngineChosen()) {
+            return mPreferences.isInAppKeyboardVoiceOnDevice() || mPreferences.isInAppKeyboardVoiceGroq();
+        }
         return com.termux.ai.TaiSpeechModels.resolveActive(this) != null;
     }
 

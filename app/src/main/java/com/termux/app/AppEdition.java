@@ -1,15 +1,19 @@
 package com.termux.app;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.termux.BuildConfig;
+
 /**
- * Which of the three shipped editions is running, as far as the closing card has to care.
+ * Which of the three shipped editions is running, as far as the screens that print install
+ * commands have to care.
  *
- * <p>The applicationId is the only thing that differs between the edition branches at runtime —
- * they carry no build flag of their own, and a {@code BuildConfig} field added here would have to
- * be added to each branch's {@code app/build.gradle} by hand and would silently be wrong the first
- * time a merge took the other side. The package name cannot be wrong.
+ * <p>The package name identifies the shipped editions. A Nix build installed as com.termux (the
+ * MadameLabs fork) also needs its bootstrap variant, since its application ID matches the regular
+ * Termux edition.
  */
 public enum AppEdition {
 
@@ -22,6 +26,19 @@ public enum AppEdition {
 
     public static final String NIX_PACKAGE_NAME = "com.termux.launcher.nix";
     public static final String VAJ_PACKAGE_NAME = "io.vaj.tl";
+
+    /** The edition this build is: its own package name and the bootstrap variant it was built with. */
+    @NonNull
+    public static AppEdition running(@Nullable Context context) {
+        return of(context == null ? null : context.getPackageName(), BuildConfig.TERMUX_PACKAGE_VARIANT);
+    }
+
+    /** The edition for {@code packageName} built with {@code packageVariant}; anything unknown is Termux. */
+    @NonNull
+    public static AppEdition of(@Nullable String packageName, @Nullable String packageVariant) {
+        if ("nix".equals(packageVariant)) return NIX;
+        return of(packageName);
+    }
 
     /** The edition that ships under {@code packageName}; anything unknown is treated as Termux. */
     @NonNull
