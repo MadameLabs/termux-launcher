@@ -10,6 +10,11 @@ Seen items are **deleted**, never ticked; the commit or a bug is the record. Bef
 cut the developer works this list or accepts what is left (recorded as in
 `docs/agents/releasing.md`, "Cutting a stable release").
 
+## MadameLabs fork (2026-11-16)
+- 2026-11-16 · contextbar, CommandBoxPopup · The floating command box by hand: drag and resize,
+  the arrows key's swipes and corners, the space bar's slide, Send's swipe up, dictation; and
+  whether the full QWERTY pad's 13-unit keys are wide enough for a thumb in portrait · Poco F7.
+
 ## Swipe stalls (2026-11-08)
 - 2026-11-08 · 96f3c94ae, 30270fe41 · Bench `set.sh` x3, H2 ↔ WS and WS ↔ AI, against
   9dae2f26e: the landed frame (`Wall.landed`) under 16.7 ms; `Wall.pageSettled` now runs in the

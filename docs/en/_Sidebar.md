@@ -40,6 +40,7 @@
 - [Linux apps from a distro](Linux_Apps_From_A_Distro.md)
 - [On-device AI](On_Device_AI.md)
 - [On-device AI models](On_Device_AI_Models.md)
+- [Context bar and command box](Context_Bar_And_Command_Box.md)
 - [Voice input](Voice_Input.md)
 - [Text to speech](Text_To_Speech.md)
 - [tlstore](Tlstore.md)

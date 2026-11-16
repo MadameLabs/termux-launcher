@@ -87,6 +87,17 @@ can now carry the regular Termux package name, edition checks must go through
   activation work when the Nix build runs as `com.termux` (test:
   `scripts/nix/test-com-termux-profile-compat.py`).
 - The Claude GitHub workflows (`.github/workflows/claude.yml`, `claude-code-review.yml`).
+- The **context chips** (`app/contextbar`, `docs/en/Context_Bar_And_Command_Box.md`): machine,
+  folder, chat and usage limits of the focused pane, in the clock's cell or above the extra keys.
+  The terminal keeps the remote OSC 7 user and host and `SetUserVar` values for them
+  (`TerminalEmulator`, `ghostty_jni.c`); the foreground folder is read from procfs on a reader
+  thread (`ForegroundFolder`). The stored preference key is still `orientation_chips_in_row`.
+- The **floating command box** (`CommandBoxPopup`, `CommandBoxPreferencesFragment`), with its own
+  glass card in Appearance and the `terminal.toggle_command_box` tool.
+- The **full QWERTY layer** of the in-app keyboard (`full_qwerty.xml`, `switch_full` on Alt's
+  down-left swipe; `inapp-keyboard/UPSTREAM.md`).
+- Show clock toggle (`status_clock_shown`), F1 to F12 on the numeric pad, and dead-key accents
+  under the kitty keyboard protocol.
 
 **Syncing with upstream.** Apply the fork's own diff onto the newest `nix-v*-pre.N` tag (not `upstream/pre`, which builds the Termux edition) in a
 `sync/…` branch, resolve, build, then fast-forward `main`. Expect conflicts in

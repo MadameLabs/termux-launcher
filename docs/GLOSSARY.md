@@ -29,8 +29,8 @@ in, exactly as the **border drag** does: on a terminal **window** it pages the w
 windows, the display window among them, and from the first window back to the last **Home page**);
 on a **Home float** it pages Home. Clearly sideways means at least 1.5 times as far across as up or
 down at the touch slop; anything steeper stays the terminal's scroll. The terminal keeps the swipe
-while it is selecting text, a program is tracking the mouse or asked for touch reports, or mouse
-mode is on; taps, the long press, vertical scrolls and pinches are always the terminal's. Any pane
+while it is selecting text or mouse mode is on (in this fork a program tracking the mouse or asking
+for touch reports no longer keeps it: Claude Code tracks the mouse); taps, the long press, vertical scrolls and pinches are always the terminal's. Any pane
 of a split pages the row, never between panes. Not on the display window's picture. On by default:
 Settings › Home › Gestures › Swipe on the terminal to switch windows (the Home float's
 is always on). One rule, `TerminalBodySwipe`.
@@ -62,6 +62,20 @@ overlays that take no room from the grid. The dock and
 status bar are one each across both halves and stay put while the wall moves (decided 2026-10-21,
 replacing the 2026-10-19 Home without a launcher status bar).
 _Avoid_: UI (too wide), decoration
+
+**Command box** (MadameLabs fork):
+A text field for composing a command before it reaches the focused session: a row under the
+extra keys, or a floating card moved and resized by hand, opened by the **Toggle command box** key
+(`terminal.toggle_command_box`). It has its own glass card in Appearance. Guide:
+`docs/en/Context_Bar_And_Command_Box.md`.
+_Avoid_: command row (the row form's code name), caixa, input popup
+
+**Context chips** (MadameLabs fork):
+The chips that say where the focused pane is: machine, folder, and, while a coding agent runs,
+its chat and usage limits. They stand in the status bar's clock cell while the clock is off, or
+above the extra keys beside the **window chips** (the status bar put away). Fed by OSC 7 and
+`SetUserVar` (`ml_chat`, `ml_5h`, `ml_semana` and their `_reset`). Code: `app/contextbar`.
+_Avoid_: orientation bar (**Orientation** is portrait or landscape), barra de orientação, pills
 
 **Crossing**:
 One slide of the wall between Home and the Workspace, from the first frame the wall moves to the
@@ -214,6 +228,12 @@ _Avoid_: send, key-down
 What the shell writes back for a committed key, drawn in the terminal; the typed character appearing
 is the echo, not the key press.
 _Avoid_: local echo (the app never draws a character before the shell sends it)
+
+**Full QWERTY layer** (MadameLabs fork):
+A pad of the in-app keyboard with a desktop keyboard's five rows: number row, every punctuation
+key on its own, Tab, Esc and the arrows. Reached by `abc+` (the Alt key's down-left swipe),
+left by the same swipe (`ABC`). A pad like the numeric one, never in the layout ring.
+_Avoid_: PC layout, full keyboard
 
 **Layer**, **open layer**:
 Launcher UI that opens over a page and closes again: the app drawer, the command palette, a sheet,

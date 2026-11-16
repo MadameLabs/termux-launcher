@@ -18,6 +18,12 @@ unfixed findings were listed for the developer to file as issues, not kept here.
 
 ## Agent
 
+- **Context chips and full QWERTY (2026-11-16, MadameLabs fork).** On the Poco F7 over scrcpy:
+  with Show clock off, the chips show `tlnix`, the folder and, with Claude Code running, the chat
+  and limits; with Context chips above the keys on, they and the window chips stand above the
+  extra keys and the status bar is gone, in Docked and Floating, keyboard up and down, light and
+  dark. Alt's down-left swipe opens the full QWERTY pad, `` ` `` types a backtick, F5 reaches
+  `htop`, and the same swipe returns to the text layout · Poco F7, `adb -s <serial>`.
 - **GIF import converts to video (11-09, perf/gif-wallpaper).** Seen on pong 11-09 with the
   developer's 32 MB 800x1412 5 s GIF: the stored file is a 3.2 MB HEVC .mp4, the GIF is gone, the
   hint reads "GIF converted to video · 800×1412 · 5 s · 3 MB · hardware decoded", it plays through
