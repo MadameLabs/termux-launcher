@@ -29,13 +29,15 @@ public final class TerminalBodySwipe {
      * Whether a press on a terminal gives a sideways swipe to the place it stands in. Not where the
      * press is on the terminal's own chrome ({@code onChrome}: a Home float's titlebar, which moves
      * it, or its resize corner); not while a selection is under way ({@code selecting}), which the
-     * drag extends; not while a program tracks the mouse ({@code mouseTracking}) or asked for touch
-     * reports ({@code touchReports}), since the drag is the program's; and not in mouse mode
-     * ({@code touchMouseMode}), where a finger drives the pointer.
+     * drag extends; and not in mouse mode ({@code touchMouseMode}), where a finger drives the
+     * pointer. A program that tracks the mouse ({@code mouseTracking}) or asked for touch reports
+     * ({@code touchReports}) no longer keeps it (MadameLabs fork, 2026-11-15): Claude Code turns
+     * mouse tracking on, which left only the seam to page from. Its clicks, wheel and vertical
+     * drags stay its own; only a start {@link #isSideways} enough to page is taken from it.
      */
     public static boolean yieldsSideways(boolean onChrome, boolean selecting, boolean mouseTracking,
                                          boolean touchReports, boolean touchMouseMode) {
-        return !onChrome && !selecting && !mouseTracking && !touchReports && !touchMouseMode;
+        return !onChrome && !selecting && !touchMouseMode;
     }
 
     /**

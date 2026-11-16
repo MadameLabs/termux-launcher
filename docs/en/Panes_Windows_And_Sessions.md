@@ -55,7 +55,8 @@ slides Home back in.
   the first window goes back to the last Home page.
 - Swipe sideways across a window's text to do the same, on any pane of a split. A swipe that is
   more up and down than across scrolls as before, and the terminal keeps the swipe while you are
-  selecting text or a program is using the mouse. **Settings → Home → Gestures → Swipe
+  selecting text or in mouse mode; a program using the mouse keeps its clicks and scrolling, but a
+  clear sideways swipe still pages. **Settings → Home → Gestures → Swipe
   on the terminal to switch windows** ("Swipe sideways across the text to move between windows and
   Home") turns it off; the border drag stays.
 - Tap a window chip in the status bar to switch to it; tap `+` to make a new one.

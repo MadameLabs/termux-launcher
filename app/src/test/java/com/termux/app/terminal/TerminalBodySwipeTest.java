@@ -22,9 +22,10 @@ public class TerminalBodySwipeTest {
             TerminalBodySwipe.yieldsSideways(true, false, false, false, false));
         assertFalse("a selection under way is extended",
             TerminalBodySwipe.yieldsSideways(false, true, false, false, false));
-        assertFalse("a program tracking the mouse gets the drag",
+        // MadameLabs fork: a mouse-tracking program (Claude Code) gives a sideways swipe away too.
+        assertTrue("a program tracking the mouse still pages sideways",
             TerminalBodySwipe.yieldsSideways(false, false, true, false, false));
-        assertFalse("a program asking for touch reports gets the drag",
+        assertTrue("a program asking for touch reports still pages sideways",
             TerminalBodySwipe.yieldsSideways(false, false, false, true, false));
         assertFalse("mouse mode drives the pointer",
             TerminalBodySwipe.yieldsSideways(false, false, false, false, true));
