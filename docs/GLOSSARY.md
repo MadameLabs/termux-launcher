@@ -229,6 +229,17 @@ What the shell writes back for a committed key, drawn in the terminal; the typed
 is the echo, not the key press.
 _Avoid_: local echo (the app never draws a character before the shell sends it)
 
+**Layouts key** (MadameLabs fork):
+The in-app keyboard key, right of Alt (first on the bottom row of the numeric and Greek/math
+pads), that moves between layouts: a tap goes to `abc+` or back (`>_`), and its corners always
+lead to `abc+` (up-left), `#+=` (up-right), `123+` (down-left) and `πλ∇¬` (down-right).
+_Avoid_: ABC key, switch key
+
+**Symbols pad** (MadameLabs fork):
+The `#+=` pad of the in-app keyboard: every ASCII symbol on a key of its own, ten columns, no
+digits, the rarer symbols (currencies, ©, ×, √) on corners. A pad, never in the layout ring.
+_Avoid_: symbols layout, page 2
+
 **Full QWERTY layer** (MadameLabs fork):
 A pad of the in-app keyboard in ten columns: a top row of shifted symbols with F1 to F12 on its
 corners, and every other punctuation key, Tab and Esc on the letters' corners. Reached by `abc+` (the Alt key's down-left swipe),

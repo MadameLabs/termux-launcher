@@ -85,8 +85,39 @@ first, then up-left: `` ` ~ `` on `!`, `= +` on `(`, `- _` on `)`, `[ {` and `] 
 `; :`, `' "` and `\ |` on J, K and L, `, <`, `. >` and `/ ?` on B, N and M. Tab is on Q's
 down-right corner and Esc on A's. The bottom row is the launcher layout's: Ctrl, Alt, the space
 bar, one direction key with the arrows on its swipes, and Enter. The same swipe, now reading
-`ABC`, brings your layout back. If you keep
+`>_`, brings your layout back. If you keep
 your own `~/.termux/keyboard/layout.xml`, add `sw="switch_full"` to its Alt key to get the swipe.
+
+## The layouts key
+
+Every layout and pad has one key for moving between them, in the same place: right of Alt on the
+QWERTY, Minimal, `abc+` and `#+=` layouts, first on the bottom row of the `123+` and `πλ∇¬` pads.
+A tap goes to `abc+` from the QWERTY and Minimal layouts, and back to your layout (`>_`) from
+everywhere else. Its corners always lead to the same place; the corner of the layout you are on,
+and the one the tap already goes to, stay empty.
+
+| Corner | Goes to |
+|---|---|
+| up-left | `abc+`, the full QWERTY layer |
+| up-right | `#+=`, the symbols pad |
+| down-left | `123+`, the numeric pad |
+| down-right | `πλ∇¬`, the Greek and math pad |
+
+The old shortcuts stay: Alt's down-left swipe opens `abc+` and Ctrl's down-right opens `123+`. To
+get the key in your own `~/.termux/keyboard/layout.xml`, add
+`<key c="switch_full" ne="switch_symbols" sw="switch_numeric" se="switch_greekmath"/>` after Alt.
+
+## The symbols pad
+
+`#+=` is the symbols page of a phone keyboard without its digits, ten columns wide. Each ASCII
+symbol has a key of its own (`{` and `}` ride the up-left corners of `[` and `]`), and the less
+common ones sit on corners, grouped by meaning: `©` `®` `™` on `@`, `§` on `#`, `€` `£` `¥` `¢`
+on `$`, `•` on `-`, `π` `Δ` on `+`, `×` `÷` on `*`, `✓` on `!`, `√` `°` on `^`. The bottom row
+has the comma and the full stop either side of the space bar.
+
+The **Minimal** layout (Settings → Keyboard → Layouts) has no letters: two rows of terminal keys
+(Esc, cut, copy, paste, clipboard, the direction key, Backspace; Ctrl, Alt, the layouts key, the
+space bar, voice typing, Enter) for typing letters with another keyboard.
 
 ## Layouts
 
