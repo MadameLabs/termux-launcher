@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MadameLabs fork: a commands-only layout in two rows, for typing letters with another keyboard
+  (Gboard, a hardware keyboard) and keeping the terminal's keys at hand: Esc, cut, copy, paste,
+  the clipboard, one direction key and Backspace on top; Ctrl, Alt, the space bar, voice typing and
+  Enter below. Both rows are 12 units wide. Brought in from a user's ~/.termux/keyboard/layout.xml
+  ("Minimal Unkb") on 2026-11-16.
+-->
+<keyboard bottom_row="false" name="Minimal (Termux Launcher)" script="latin">
+  <row height="1.1">
+    <key width="1.5" key0="loc esc"/>
+    <key width="1.5" key0="cut"/>
+    <key width="1.5" key0="copy"/>
+    <key width="1.5" key0="paste" key4="pasteAsPlainText"/>
+    <key width="1.5" key0="switch_clipboard"/>
+    <key width="1.7" key0="loc compose" key1="home" key2="page_up" key3="page_down" key4="end" key5="left" key6="right" key7="up" key8="down"/>
+    <key width="2.8" key0="backspace"/>
+  </row>
+  <row height="0.95">
+    <key width="1.4" key0="ctrl" key2="switch_numeric" key4="loc meta"/>
+    <key width="1.4" key0="loc alt" key2="loc change_method" key3="switch_full" key4="config"/>
+    <key width="5.5" key0="space" key5="tool:session.previous:󰜹" key6="tool:session.next:󰜰" key7="tool:app.command_palette:󱎱"/>
+    <key width="1.8" key0="voice_typing"/>
+    <key width="1.9" key0="enter" key7=":str symbol='¶':'&#xA;'"/>
+  </row>
+</keyboard>

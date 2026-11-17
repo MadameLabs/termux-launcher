@@ -18,9 +18,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 XML_DIR = os.path.join(HERE, "..", "src", "main", "res", "xml")
 OUT = os.path.join(HERE, "..", "src", "main", "res", "values", "layouts.xml")
 
+# Named pads reached by their own key, never picked as a layout.
+PADS = {"full_qwerty"}
+
 # The programming layouts lead the catalogue; everything else is alphabetical by
 # display name, which is the order the picker shows.
-FIRST_LAYOUTS = ["termux_launcher_qwerty", "latn_qwerty_us", "latn_colemak", "latn_dvorak"]
+FIRST_LAYOUTS = ["termux_launcher_qwerty", "termux_launcher_minimal", "latn_qwerty_us", "latn_colemak", "latn_dvorak"]
 
 
 def read_layouts(files):
@@ -29,7 +32,7 @@ def read_layouts(files):
         root = XML.parse(path).getroot()
         # Rows (bottom_row, number_row) and the modal pads (numeric, numpad,
         # greekmath) carry no name and are not selectable layouts.
-        if root.tag != "keyboard" or root.get("name") is None:
+        if root.tag != "keyboard" or root.get("name") is None or layout_id in PADS:
             continue
         yield (layout_id, root.get("name"))
 
