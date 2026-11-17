@@ -230,8 +230,8 @@ is the echo, not the key press.
 _Avoid_: local echo (the app never draws a character before the shell sends it)
 
 **Full QWERTY layer** (MadameLabs fork):
-A pad of the in-app keyboard with a desktop keyboard's five rows: number row, every punctuation
-key on its own, Tab, Esc and the arrows. Reached by `abc+` (the Alt key's down-left swipe),
+A pad of the in-app keyboard in ten columns: a top row of shifted symbols with F1 to F12 on its
+corners, and every other punctuation key, Tab and Esc on the letters' corners. Reached by `abc+` (the Alt key's down-left swipe),
 left by the same swipe (`ABC`). A pad like the numeric one, never in the layout ring.
 _Avoid_: PC layout, full keyboard
 

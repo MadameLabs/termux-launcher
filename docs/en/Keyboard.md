@@ -78,10 +78,14 @@ Fn is the up-left swipe on the Alt key; there is no separate Fn key. While it is
 
 ## The full QWERTY layer
 
-The `abc+` swipe (down-left on Alt) opens a desktop keyboard in five rows: the number row with
-`!@#$%^&*()` on the up-right corners and F1 to F12 on the down-right ones, `` ` - = [ ] ; ' \ , . / ``
-on keys of their own, Tab and Esc on the left, and Ctrl, Alt, the space bar, the four arrows and
-Enter along the bottom. The same swipe, now reading `ABC`, brings your layout back. If you keep
+The `abc+` swipe (down-left on Alt) opens a symbols-first keyboard in ten columns, as wide as your
+layout. The top row types `!@#$%^&*()`, with F1 to F12 on the down-right corners (F11 and F12 on
+the up-right corners of `(` and `)`). Every other symbol sits on a letter's corners, down-left
+first, then up-left: `` ` ~ `` on `!`, `= +` on `(`, `- _` on `)`, `[ {` and `] }` on O and P,
+`; :`, `' "` and `\ |` on J, K and L, `, <`, `. >` and `/ ?` on B, N and M. Tab is on Q's
+down-right corner and Esc on A's. The bottom row is the launcher layout's: Ctrl, Alt, the space
+bar, one direction key with the arrows on its swipes, and Enter. The same swipe, now reading
+`ABC`, brings your layout back. If you keep
 your own `~/.termux/keyboard/layout.xml`, add `sw="switch_full"` to its Alt key to get the swipe.
 
 ## Layouts

@@ -3,31 +3,29 @@
   MadameLabs fork: the full QWERTY pad, reached by the abc+ key (the Alt key's down-left swipe on
   the launcher layout) and left by the same swipe, which reads ABC here.
 
-  A desktop keyboard in five rows of 13 units: the number row with the shifted symbols on the
-  up-right corners and F1 to F12 on the down-right ones, every bracket and punctuation key on a key
-  of its own, Tab and Esc on the left, Shift and Backspace around the bottom letters, and Ctrl,
-  Alt, the space bar, the four arrows and Enter at the bottom. The space bar and Enter carry the
-  launcher layout's swipes. Like the numeric pad, it is never in the layout ring.
+  Ten columns, so the letters and the space bar are as wide as on the launcher layout. The top row
+  types the shifted symbols !@#$%^&*() with F1 to F12 on the down-right corners; every other
+  symbol sits on a letter's corners, filled down-left, then up-left: ` ~ on !, = + on (, - _ on ),
+  [ { and ] } on O and P, ; : ' " \ | on J K L, , < . > / ? on B N M. Tab is Q's down-right
+  corner, Esc A's. The bottom row is the launcher layout's: Ctrl, Alt, the space bar, one
+  direction key with the arrows on its swipes, and Enter. Like the numeric pad, it is never in the
+  layout ring.
 -->
 <keyboard bottom_row="false" name="Full QWERTY" script="latin">
   <row>
-    <key c="`" ne="~"/>
-    <key c="1" ne="!" se=":keyevent symbol='F₁' flags='small':131"/>
-    <key c="2" ne="\@" se=":keyevent symbol='F₂' flags='small':132"/>
-    <key c="3" ne="\#" se=":keyevent symbol='F₃' flags='small':133"/>
-    <key c="4" ne="$" se=":keyevent symbol='F₄' flags='small':134"/>
-    <key c="5" ne="%" se=":keyevent symbol='F₅' flags='small':135"/>
-    <key c="6" ne="^" se=":keyevent symbol='F₆' flags='small':136"/>
-    <key c="7" ne="&amp;" se=":keyevent symbol='F₇' flags='small':137"/>
-    <key c="8" ne="*" se=":keyevent symbol='F₈' flags='small':138"/>
-    <key c="9" ne="(" se=":keyevent symbol='F₉' flags='small':139"/>
-    <key c="0" ne=")" se=":keyevent symbol='F₁₀' flags='small':140"/>
-    <key c="-" ne="_" se=":keyevent symbol='F₁₁' flags='small':141"/>
-    <key c="=" ne="+" se=":keyevent symbol='F₁₂' flags='small':142"/>
+    <key c="!" sw="`" nw="~" se=":keyevent symbol='F₁' flags='small':131"/>
+    <key c="\@" se=":keyevent symbol='F₂' flags='small':132"/>
+    <key c="\#" se=":keyevent symbol='F₃' flags='small':133"/>
+    <key c="$" se=":keyevent symbol='F₄' flags='small':134"/>
+    <key c="%" se=":keyevent symbol='F₅' flags='small':135"/>
+    <key c="^" split_before="true" se=":keyevent symbol='F₆' flags='small':136"/>
+    <key c="&amp;" se=":keyevent symbol='F₇' flags='small':137"/>
+    <key c="*" se=":keyevent symbol='F₈' flags='small':138"/>
+    <key c="(" sw="=" nw="+" ne=":keyevent symbol='F₁₁' flags='small':141" se=":keyevent symbol='F₉' flags='small':139"/>
+    <key c=")" sw="-" nw="_" ne=":keyevent symbol='F₁₂' flags='small':142" se=":keyevent symbol='F₁₀' flags='small':140"/>
   </row>
   <row>
-    <key role="action" c="tab"/>
-    <key c="q"/>
+    <key c="q" se="tab"/>
     <key c="w"/>
     <key c="e"/>
     <key c="r"/>
@@ -35,25 +33,19 @@
     <key c="y" split_before="true"/>
     <key c="u"/>
     <key c="i"/>
-    <key c="o"/>
-    <key c="p"/>
-    <key c="[" ne="{"/>
-    <key c="]" ne="}"/>
+    <key c="o" sw="[" nw="{"/>
+    <key c="p" sw="]" nw="}"/>
   </row>
   <row>
-    <key role="action" c="esc"/>
-    <key c="a"/>
+    <key shift="0.5" c="a" se="esc"/>
     <key c="s"/>
     <key c="d"/>
     <key c="f"/>
     <key c="g"/>
     <key c="h" split_before="true"/>
-    <key c="j"/>
-    <key c="k"/>
-    <key c="l"/>
-    <key c=";" ne=":"/>
-    <key c="'" ne="&quot;"/>
-    <key c="\\" ne="|"/>
+    <key c="j" sw=";" nw=":"/>
+    <key c="k" sw="'" nw="&quot;"/>
+    <key c="l" sw="\\" nw="|"/>
   </row>
   <row>
     <key width="1.5" role="action" c="shift" ne="capslock"/>
@@ -61,25 +53,19 @@
     <key c="x"/>
     <key c="c"/>
     <key c="v"/>
-    <key c="b" split_before="true"/>
-    <key c="n"/>
-    <key c="m"/>
-    <key c="," ne="&lt;"/>
-    <key c="." ne="&gt;"/>
-    <key c="/" ne="\?"/>
+    <key c="b" split_before="true" sw="," nw="&lt;"/>
+    <key c="n" sw="." nw="&gt;"/>
+    <key c="m" sw="/" nw="\?"/>
     <key width="1.5" role="action" c="backspace" ne="delete"/>
   </row>
   <row height="0.95">
-    <key width="1.5" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
-    <key width="1.5" role="action" c="alt" sw="switch_text" se="config"/>
-    <key width="4.0" role="space_bar" c="space" w="cursor_left" e="cursor_right" s="switch_backward"
+    <key width="1.7" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
+    <key width="1.3" role="action" c="alt" sw="switch_text" se="config"/>
+    <key width="4.0" role="space_bar" c="space" split_at="2.5" w="cursor_left" e="cursor_right" s="switch_backward"
          n="tool:app.command_palette:󱎱"
          nw="tool:window.previous:󰜳" ne="tool:window.next:󰜶"
          sw="tool:session.previous:󰜹" se="tool:session.next:󰜰"/>
-    <key role="action" c="left" split_before="true" sw="home"/>
-    <key role="action" c="down" s="page_down"/>
-    <key role="action" c="up" n="page_up"/>
-    <key role="action" c="right" se="end"/>
-    <key width="2.0" role="action" c="enter" n="tool:voice.dictate:"/>
+    <key width="1.3" role="action" c="loc compose" nw="home" ne="page_up" sw="page_down" se="end" w="left" e="right" n="up" s="down"/>
+    <key width="1.7" role="action" c="enter" n="tool:voice.dictate:"/>
   </row>
 </keyboard>

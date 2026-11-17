@@ -294,7 +294,8 @@ fails when the catalogue has gone stale.
   with a subscript number. Upstream's numeric layout has no F keys. A refresh re-applies both.
 
 - `full_qwerty.xml` and the `switch_full` key (MadameLabs fork, 2026-11-16): a launcher pad, a
-  desktop QWERTY in five rows of 13 units, reached by `switch_full` (label `abc+`,
+  symbols-first QWERTY in five rows of 10 units (revised the same day from 13: the digits, the
+  Tab/Esc column and the right-hand punctuation moved to the letters' corners), reached by `switch_full` (label `abc+`,
   `KeyValue.Event.SWITCH_FULL`, appended after `HIDE_SELF`) and left by `switch_text`. The
   launcher layout puts it on the Alt key's down-left corner, `bottom_row.xml` on the Fn key's.
   Upstream has neither the event nor the layout.
