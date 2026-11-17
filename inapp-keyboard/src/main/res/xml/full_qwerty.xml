@@ -7,8 +7,8 @@
   types the shifted symbols !@#$%^&*() with F1 to F12 on the down-right corners; every other
   symbol sits on a letter's corners, filled down-left, then up-left: ` ~ on !, = + on (, - _ on ),
   [ { and ] } on O and P, ; : ' " \ | on J K L, , < . > / ? on B N M. Tab is Q's down-right
-  corner, Esc A's. The bottom row is the launcher layout's: Ctrl, Alt, the space bar, one
-  direction key with the arrows on its swipes, and Enter. Like the numeric pad, it is never in the
+  corner, Esc A's. The bottom row is the launcher layout's: Ctrl, Alt, the layouts key (>_ on a tap), the space
+  bar, one direction key with the arrows on its swipes, and Enter. Like the numeric pad, it is never in the
   layout ring.
 -->
 <keyboard bottom_row="false" name="Full QWERTY" script="latin">
@@ -61,7 +61,8 @@
   <row height="0.95">
     <key width="1.7" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
     <key width="1.3" role="action" c="alt" sw="switch_text" se="config"/>
-    <key width="4.0" role="space_bar" c="space" split_at="2.5" w="cursor_left" e="cursor_right" s="switch_backward"
+    <key width="1.0" role="action" c="switch_text" ne="switch_symbols" sw="switch_numeric" se="switch_greekmath"/>
+    <key width="3.0" role="space_bar" c="space" split_at="1.5" w="cursor_left" e="cursor_right" s="switch_backward"
          n="tool:app.command_palette:󱎱"
          nw="tool:window.previous:󰜳" ne="tool:window.next:󰜶"
          sw="tool:session.previous:󰜹" se="tool:session.next:󰜰"/>

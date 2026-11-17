@@ -36,8 +36,9 @@
     <key width="1.5" role="action" key0="backspace" key3="delete"/>
   </row>
   <row height="0.95">
-    <key width="1.2" role="action" key0="switch_text" key2="loc esc"/>
-    <key width="1.2" role="action" key0="switch_numeric" key2="loc tab"/>
+    <!-- MadameLabs fork: the layouts key in the old ABC key's place; Esc and Tab, from the old ABC and 123+ corners, on the 123+ key's place. -->
+    <key width="1.2" role="action" key0="switch_text" key1="switch_full" key2="switch_symbols" key3="switch_numeric"/>
+    <key width="1.2" role="action" key0="loc esc" key2="loc tab"/>
     <key width="1.2" role="action" key0="fn"/>
     <key width="2.8" role="space_bar" key0="space" key1="superscript" key3="subscript"/>
     <key width="1.2" role="action" key0="0" key2="."/>
