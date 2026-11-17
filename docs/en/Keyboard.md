@@ -223,6 +223,11 @@ cp ~/.termux/launcher/examples/keyboard-layout.xml ~/.termux/keyboard/layout.xml
 termux-reload-settings
 ```
 
+The pads work the same way: `~/.termux/keyboard/layouts/symbols.xml`, `numeric.xml`,
+`greekmath.xml` and `full_qwerty.xml` replace the `#+=`, `123+`, `πλ∇¬` and `abc+` pads, and
+deleting the file brings the shipped pad back. Their shipped sources are under
+`inapp-keyboard/src/main/res/xml/` in the repository; copy one there as a start.
+
 Any swipe slot can run a launcher action written `tool:<action id>`, optionally
 `tool:<action id>:<glyph>` to choose what the slot draws (see
 [Command palette and actions](Command_Palette_And_Actions.md) for the ids). A split keyboard cuts a

@@ -1975,27 +1975,60 @@ public final class TermuxInAppKeyboard {
         for (String id : mLayoutRing)
             recheckLayoutFile(id);
         recheckLayoutFile(mActiveTextLayoutId);
+        // A pad's file is only watched once it exists or the pad has been opened.
+        for (String pad : PADS)
+            if (mFileLayoutLoaders.containsKey(pad) || padFileExists(pad))
+                recheckLayoutFile(pad);
+    }
+
+    private static final String[] PADS = {
+        LAYOUT_NUMERIC, LAYOUT_GREEK_MATH, LAYOUT_FULL, LAYOUT_SYMBOLS};
+
+    private static boolean padFileExists(String pad) {
+        File file = KeyboardLayoutFiles.overrideFile(KeyboardLayoutFiles.defaultHome(), pad);
+        return file != null && file.isFile();
+    }
+
+    /** The bundled XML a pad's file in {@code ~/.termux/keyboard/layouts/} stands in for. */
+    static int padResId(String pad) {
+        switch (pad) {
+            case LAYOUT_NUMERIC: return juloo.keyboard2.R.xml.numeric;
+            case LAYOUT_GREEK_MATH: return juloo.keyboard2.R.xml.greekmath;
+            case LAYOUT_FULL: return juloo.keyboard2.R.xml.full_qwerty;
+            case LAYOUT_SYMBOLS: return juloo.keyboard2.R.xml.symbols;
+            default: return 0;
+        }
     }
 
     /**
      * Rechecks {@code layoutId}'s file — a stat, and a background parse only when it changed —
-     * creating its loader on first use. The launcher layout and the modal pads have their own.
+     * creating its loader on first use. The launcher layout has its own; a pad's file is
+     * {@code layouts/<pad id>.xml} over the bundled pad.
      */
     private void recheckLayoutFile(String layoutId) {
-        if (!mEnabled || mDestroyed || layoutId == null || LAYOUT_MAIN.equals(layoutId)
-            || isPad(layoutId))
+        if (!mEnabled || mDestroyed || layoutId == null || LAYOUT_MAIN.equals(layoutId))
             return;
         TermuxInAppKeyboardLayoutLoader loader = mFileLayoutLoaders.get(layoutId);
         if (loader == null) {
-            LauncherKeyboardLayouts.Layout layout = LauncherKeyboardLayouts.find(
-                requireContainer().getResources(), layoutId);
             File file = KeyboardLayoutFiles.overrideFile(KeyboardLayoutFiles.defaultHome(),
                 layoutId);
-            if (layout == null || file == null)
+            if (file == null)
                 return;
-            // A user layout has no bundled original; a broken one falls back as layout.xml does.
-            int fallbackResId = layout.xmlResId != 0 ? layout.xmlResId
-                : juloo.keyboard2.R.xml.termux_launcher_qwerty;
+            int fallbackResId;
+            if (isPad(layoutId)) {
+                // Untouched pads keep their bundled parse and cost no loader.
+                if (!file.isFile())
+                    return;
+                fallbackResId = padResId(layoutId);
+            } else {
+                LauncherKeyboardLayouts.Layout layout = LauncherKeyboardLayouts.find(
+                    requireContainer().getResources(), layoutId);
+                if (layout == null)
+                    return;
+                // A user layout has no bundled original; a broken one falls back as layout.xml does.
+                fallbackResId = layout.xmlResId != 0 ? layout.xmlResId
+                    : juloo.keyboard2.R.xml.termux_launcher_qwerty;
+            }
             loader = new TermuxInAppKeyboardLayoutLoader(requireContainer().getContext(), file,
                 fallbackResId, mLayoutExecutor, mHost::runOnMain, mLayoutOptions,
                 mLayoutErrorReporter);
@@ -2268,6 +2301,11 @@ public final class TermuxInAppKeyboard {
     }
 
     private KeyboardData getParsedLayoutData(String layoutId) {
+        if (isPad(layoutId)) {
+            KeyboardData fromFile = fileLayoutData(layoutId);
+            if (fromFile != null)
+                return fromFile;
+        }
         switch (layoutId) {
             case LAYOUT_NUMERIC:
                 if (mNumericKeyboardData == null)
@@ -2292,19 +2330,28 @@ public final class TermuxInAppKeyboard {
                     mMainKeyboardData = loadBundledLayout(juloo.keyboard2.R.xml.termux_launcher_qwerty);
                 return mMainKeyboardData;
             default:
-                TermuxInAppKeyboardLayoutLoader loader = mFileLayoutLoaders.get(layoutId);
-                KeyboardData fromFile = loader == null ? null : loader.getLastKnownGood();
-                // Reached before its background parse landed: read the file now rather than
-                // flash the layout it falls back to.
-                if (fromFile == null && loader != null) {
-                    fromFile = loader.loadFileNow();
-                    if (fromFile != null && LauncherKeyboardLayouts.isUserLayout(layoutId))
-                        LauncherKeyboardLayouts.rememberUserLabel(layoutId, fromFile.name);
-                }
+                KeyboardData fromFile = fileLayoutData(layoutId);
                 if (fromFile != null)
                     return fromFile;
                 return getBundledTextLayoutData(layoutId);
         }
+    }
+
+    /** {@code layoutId}'s file as its loader last parsed it, or null when it has no loader. */
+    @Nullable
+    private KeyboardData fileLayoutData(String layoutId) {
+        TermuxInAppKeyboardLayoutLoader loader = mFileLayoutLoaders.get(layoutId);
+        if (loader == null)
+            return null;
+        KeyboardData fromFile = loader.getLastKnownGood();
+        // Reached before its background parse landed: read the file now rather than
+        // flash the layout it falls back to.
+        if (fromFile == null) {
+            fromFile = loader.loadFileNow();
+            if (fromFile != null && LauncherKeyboardLayouts.isUserLayout(layoutId))
+                LauncherKeyboardLayouts.rememberUserLabel(layoutId, fromFile.name);
+        }
+        return fromFile;
     }
 
     /**

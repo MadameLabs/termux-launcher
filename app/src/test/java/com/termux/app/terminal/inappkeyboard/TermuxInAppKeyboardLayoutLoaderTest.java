@@ -62,6 +62,35 @@ public class TermuxInAppKeyboardLayoutLoaderTest {
     }
 
     @Test
+    public void aPadFileReplacesThePadAndItsRemovalBringsTheBundledPadBack() throws Exception {
+        List<KeyboardData> delivered = new ArrayList<>();
+        mLoader = new TermuxInAppKeyboardLayoutLoader(
+            mContext, mLayoutFile, TermuxInAppKeyboard.padResId(TermuxInAppKeyboard.LAYOUT_SYMBOLS),
+            Runnable::run, Runnable::run,
+            new LayoutModifier.LayoutOptions(true, false, true),
+            (diagnostic, userMessage) -> mErrors.add(diagnostic));
+        write("<keyboard name='mine' bottom_row='false'><row><key c='z'/></row></keyboard>");
+
+        mLoader.recheck(delivered::add);
+        assertEquals('z', delivered.get(0).rows.get(0).keys.get(0).keys[0].getChar());
+
+        assertTrue(mLayoutFile.delete());
+        mLoader.recheck(delivered::add);
+        assertEquals(2, delivered.size());
+        // The bundled #+= pad: @ first.
+        assertEquals('@', delivered.get(1).rows.get(0).keys.get(0).keys[0].getChar());
+        assertTrue(mErrors.isEmpty());
+    }
+
+    @Test
+    public void everyPadHasABundledFallback() {
+        for (String pad : new String[] {TermuxInAppKeyboard.LAYOUT_NUMERIC,
+                TermuxInAppKeyboard.LAYOUT_GREEK_MATH, TermuxInAppKeyboard.LAYOUT_FULL,
+                TermuxInAppKeyboard.LAYOUT_SYMBOLS})
+            assertTrue(pad, TermuxInAppKeyboard.padResId(pad) != 0);
+    }
+
+    @Test
     public void oversizedFileIsRejectedAndFallsBackToBundled() throws Exception {
         try (FileOutputStream output = new FileOutputStream(mLayoutFile)) {
             byte[] block = new byte[8192];
