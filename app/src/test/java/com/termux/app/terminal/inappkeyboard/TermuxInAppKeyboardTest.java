@@ -531,12 +531,12 @@ public class TermuxInAppKeyboardTest {
         mController.requestFullLayout();
         assertEquals(TermuxInAppKeyboard.LAYOUT_FULL, mController.getSelectedLayoutId());
         Keyboard2View view = (Keyboard2View) mHost.attachedView;
-        // A desktop keyboard: the number row on top, Tab before q, Esc before a.
-        assertEquals('`', centerKey(view, 0, 0).getChar());
-        assertEquals('1', centerKey(view, 0, 1).getChar());
-        assertEquals(KeyEvent.KEYCODE_TAB, centerKey(view, 1, 0).getKeyevent());
-        assertEquals('q', centerKey(view, 1, 1).getChar());
-        assertEquals(KeyEvent.KEYCODE_ESCAPE, centerKey(view, 2, 0).getKeyevent());
+        // Ten columns: the shifted symbols on top, the letters at the left edge (Tab and Esc are
+        // corners of q and a now).
+        assertEquals('!', centerKey(view, 0, 0).getChar());
+        assertEquals('@', centerKey(view, 0, 1).getChar());
+        assertEquals('q', centerKey(view, 1, 0).getChar());
+        assertEquals('a', centerKey(view, 2, 0).getChar());
         // It is a pad: never in the ring, and the ring does not move while it is up.
         assertTrue(TermuxInAppKeyboard.isPad(TermuxInAppKeyboard.LAYOUT_FULL));
         assertEquals(TermuxInAppKeyboard.LAYOUT_MAIN, mController.getActiveTextLayoutId());
