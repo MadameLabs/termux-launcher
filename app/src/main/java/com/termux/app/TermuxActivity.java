@@ -16512,6 +16512,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
 
         @Override
+        public void requestSymbolsLayout() {
+            if (mInAppKeyboard != null)
+                mInAppKeyboard.requestSymbolsLayout();
+        }
+
+        @Override
         public void requestForwardLayout() {
             if (mInAppKeyboard != null)
                 mInAppKeyboard.requestForwardLayout();

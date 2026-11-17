@@ -278,6 +278,7 @@ public class TerminalKeyEventHandlerTest {
                 case SWITCH_BACKWARD:
                 case SWITCH_GREEKMATH:
                 case SWITCH_FULL:
+                case SWITCH_SYMBOLS:
                 case CAPS_LOCK:
                 case HIDE_SELF:
                     assertEquals(hostActions + 1, mHost.totalActions());
@@ -733,6 +734,7 @@ public class TerminalKeyEventHandlerTest {
         private int numericLayouts;
         private int greekLayouts;
         private int fullLayouts;
+        private int symbolsLayouts;
         private int nextLayouts;
         private int previousLayouts;
         private int settings;
@@ -797,6 +799,11 @@ public class TerminalKeyEventHandlerTest {
         }
 
         @Override
+        public void requestSymbolsLayout() {
+            symbolsLayouts++;
+        }
+
+        @Override
         public void requestForwardLayout() {
             nextLayouts++;
         }
@@ -852,7 +859,7 @@ public class TerminalKeyEventHandlerTest {
         }
 
         private int totalActions() {
-            return pastes + clipboardPastes + copies + textLayouts + numericLayouts + greekLayouts + fullLayouts + nextLayouts +
+            return pastes + clipboardPastes + copies + textLayouts + numericLayouts + greekLayouts + fullLayouts + symbolsLayouts + nextLayouts +
                 previousLayouts + settings + hides + clipboardPanels + capsLocks + voiceRequests;
         }
     }

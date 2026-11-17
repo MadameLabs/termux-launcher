@@ -30,6 +30,9 @@ public interface HostActions {
     /** The full QWERTY pad, from the {@code abc+} key. */
     void requestFullLayout();
 
+    /** The #+= symbols pad, from the layouts key. */
+    void requestSymbolsLayout();
+
     void requestForwardLayout();
 
     void requestBackwardLayout();

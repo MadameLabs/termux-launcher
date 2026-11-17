@@ -524,6 +524,24 @@ public class TermuxInAppKeyboardTest {
     }
 
     @Test
+    public void symbolsPadOpensFromItsKeyAndTheTextKeyLeavesIt() throws Exception {
+        mPreferences.setInAppKeyboardEnabled(true);
+        mController.onCreate(null);
+
+        mController.requestSymbolsLayout();
+        assertEquals(TermuxInAppKeyboard.LAYOUT_SYMBOLS, mController.getSelectedLayoutId());
+        Keyboard2View view = (Keyboard2View) mHost.attachedView;
+        // The Gboard symbols page without its digits: @ # $ on top.
+        assertEquals('@', centerKey(view, 0, 0).getChar());
+        assertEquals('#', centerKey(view, 0, 1).getChar());
+        assertTrue(TermuxInAppKeyboard.isPad(TermuxInAppKeyboard.LAYOUT_SYMBOLS));
+        assertEquals(TermuxInAppKeyboard.LAYOUT_MAIN, mController.getActiveTextLayoutId());
+
+        mController.requestTextLayout();
+        assertEquals(TermuxInAppKeyboard.LAYOUT_MAIN, mController.getSelectedLayoutId());
+    }
+
+    @Test
     public void fullQwertyPadOpensFromItsKeyAndTheTextKeyLeavesIt() throws Exception {
         mPreferences.setInAppKeyboardEnabled(true);
         mController.onCreate(null);
@@ -1052,6 +1070,7 @@ public class TermuxInAppKeyboardTest {
         @Override public void requestNumericLayout() { }
         @Override public void requestGreekMathLayout() { }
         @Override public void requestFullLayout() { }
+        @Override public void requestSymbolsLayout() { }
         @Override public void requestForwardLayout() { }
         @Override public void requestBackwardLayout() { }
         @Override public void openLauncherSettings() { }

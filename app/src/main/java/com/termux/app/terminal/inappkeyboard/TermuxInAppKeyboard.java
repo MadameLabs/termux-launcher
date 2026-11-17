@@ -56,6 +56,7 @@ public final class TermuxInAppKeyboard {
     static final String LAYOUT_NUMERIC = "numeric";
     static final String LAYOUT_GREEK_MATH = "greekmath";
     static final String LAYOUT_FULL = "full_qwerty";
+    static final String LAYOUT_SYMBOLS = "symbols";
 
     public enum ShowReason {
         FIRST_ENABLE,
@@ -119,6 +120,7 @@ public final class TermuxInAppKeyboard {
     private KeyboardData mNumericKeyboardData;
     private KeyboardData mGreekMathKeyboardData;
     private KeyboardData mFullKeyboardData;
+    private KeyboardData mSymbolsKeyboardData;
     /** Parsed bundled text layouts, keyed by catalogue id. Dropped whenever extra keys move. */
     private final Map<String, KeyboardData> mTextLayoutCache = new HashMap<>();
     /** One-entry memo of the parted layout: what it was parted from, by how much, and the result. */
@@ -410,6 +412,7 @@ public final class TermuxInAppKeyboard {
         mNumericKeyboardData = null;
         mGreekMathKeyboardData = null;
         mFullKeyboardData = null;
+        mSymbolsKeyboardData = null;
         mTextLayoutCache.clear();
         mSystemImeFocusListener = null;
         mAttachedSession = null;
@@ -1042,10 +1045,14 @@ public final class TermuxInAppKeyboard {
         selectLayout(LAYOUT_FULL);
     }
 
-    /** The numeric, Greek/math and full QWERTY pads: reached by their own keys, never in the ring. */
+    public void requestSymbolsLayout() {
+        selectLayout(LAYOUT_SYMBOLS);
+    }
+
+    /** The numeric, Greek/math, full QWERTY and symbols pads: reached by their own keys, never in the ring. */
     static boolean isPad(@Nullable String layoutId) {
         return LAYOUT_NUMERIC.equals(layoutId) || LAYOUT_GREEK_MATH.equals(layoutId)
-            || LAYOUT_FULL.equals(layoutId);
+            || LAYOUT_FULL.equals(layoutId) || LAYOUT_SYMBOLS.equals(layoutId);
     }
 
     /**
@@ -1616,6 +1623,7 @@ public final class TermuxInAppKeyboard {
         mNumericKeyboardData = null;
         mGreekMathKeyboardData = null;
         mFullKeyboardData = null;
+        mSymbolsKeyboardData = null;
         if (mLayoutLoader != null)
             mLayoutLoader.setLayoutOptions(mLayoutOptions);
         for (TermuxInAppKeyboardLayoutLoader loader : mFileLayoutLoaders.values())
@@ -2273,6 +2281,10 @@ public final class TermuxInAppKeyboard {
                 if (mFullKeyboardData == null)
                     mFullKeyboardData = loadBundledLayout(juloo.keyboard2.R.xml.full_qwerty);
                 return mFullKeyboardData;
+            case LAYOUT_SYMBOLS:
+                if (mSymbolsKeyboardData == null)
+                    mSymbolsKeyboardData = loadBundledLayout(juloo.keyboard2.R.xml.symbols);
+                return mSymbolsKeyboardData;
             case LAYOUT_MAIN:
                 if (mMainKeyboardData == null && mLayoutLoader != null)
                     mMainKeyboardData = mLayoutLoader.getLastKnownGood();

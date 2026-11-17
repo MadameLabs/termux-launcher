@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MadameLabs fork: the #+= symbols pad, reached by the layouts key's up-right corner.
+
+  Gboard's symbols page without its digits, ten columns wide: every ASCII symbol on a key of its
+  own except { and }, which sit on the up-left corners of [ and ]. Gboard's second page rides on
+  the corners, grouped by meaning and filled down-left, then up-left, up-right, down-right:
+  © ® ™ on @, § on #, € £ ¥ ¢ on $, • on -, π Δ on +, × ÷ on *, ✓ on !, √ ° on ^.
+  The bottom row is Ctrl, Alt, the layouts key, the comma, the space bar, the full stop and Enter.
+  Like the numeric pad it has no name: never in the layout ring nor in the layout picker.
+-->
+<keyboard bottom_row="false" script="latin">
+  <row>
+    <key c="\@" sw="©" nw="®" ne="™"/>
+    <key c="\#" sw="§"/>
+    <key c="$" sw="€" nw="£" ne="¥" se="¢"/>
+    <key c="_"/>
+    <key c="&amp;"/>
+    <key c="-" split_before="true" sw="•"/>
+    <key c="+" sw="π" nw="Δ"/>
+    <key c="("/>
+    <key c=")"/>
+    <key c="/"/>
+  </row>
+  <row>
+    <key c="="/>
+    <key c="*" sw="×" nw="÷"/>
+    <key c="&quot;"/>
+    <key c="'"/>
+    <key c=":"/>
+    <key c=";" split_before="true"/>
+    <key c="!" sw="✓"/>
+    <key c="\?"/>
+    <key c="\\"/>
+    <key c="|"/>
+  </row>
+  <row>
+    <key c="~"/>
+    <key c="`"/>
+    <key c="%"/>
+    <key c="^" sw="√" nw="°"/>
+    <key c="&lt;" split_before="true"/>
+    <key c="&gt;"/>
+    <key c="[" nw="{"/>
+    <key c="]" nw="}"/>
+    <key width="2.0" role="action" c="backspace" ne="delete"/>
+  </row>
+  <row height="0.95">
+    <key width="1.2" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
+    <key width="1.2" role="action" c="alt" sw="switch_text" se="config"/>
+    <key width="1.0" role="action" c="switch_text" nw="switch_full" sw="switch_numeric" se="switch_greekmath"/>
+    <key width="1.0" c=","/>
+    <key width="2.8" role="space_bar" c="space" split_at="0.6" w="cursor_left" e="cursor_right" s="switch_backward"
+         n="tool:app.command_palette:󱎱"
+         nw="tool:window.previous:󰜳" ne="tool:window.next:󰜶"
+         sw="tool:session.previous:󰜹" se="tool:session.next:󰜰"/>
+    <key width="1.0" c="."/>
+    <key width="1.8" role="action" c="enter" n="tool:voice.dictate:"/>
+  </row>
+</keyboard>

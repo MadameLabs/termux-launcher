@@ -270,6 +270,7 @@ public class TermuxInAppKeyboardSplitTest {
         @Override public void requestNumericLayout() { }
         @Override public void requestGreekMathLayout() { }
         @Override public void requestFullLayout() { }
+        @Override public void requestSymbolsLayout() { }
         @Override public void requestForwardLayout() { }
         @Override public void requestBackwardLayout() { }
         @Override public void openLauncherSettings() { }

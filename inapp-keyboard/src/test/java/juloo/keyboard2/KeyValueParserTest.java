@@ -9,6 +9,16 @@ import org.junit.Test;
 public class KeyValueParserTest
 {
   @Test
+  public void layoutKeysCarryTheNamesOfTheirLayouts() throws Exception
+  {
+    KeyValue symbols = KeyValue.getKeyByName("switch_symbols");
+    assertEquals(KeyValue.Event.SWITCH_SYMBOLS, symbols.getEvent());
+    assertEquals("#+=", symbols.getString());
+    // The way back reads as the commands layout it returns to, not as letters.
+    assertEquals(">_", KeyValue.getKeyByName("switch_text").getString());
+  }
+
+  @Test
   public void parsesRetainedVocabularyAndCompatibilityEvents() throws Exception
   {
     assertEquals(KeyValue.Modifier.CTRL,
