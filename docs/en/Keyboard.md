@@ -99,13 +99,13 @@ and the one the tap already goes to, stay empty.
 | Corner | Goes to |
 |---|---|
 | up-left | `abc+`, the full QWERTY layer |
-| up-right | `#+=`, the symbols pad |
-| down-left | `123+`, the numeric pad |
+| up-right | `123+`, the numeric pad |
+| down-left | `#+=`, the symbols pad |
 | down-right | `πλ∇¬`, the Greek and math pad |
 
 The old shortcuts stay: Alt's down-left swipe opens `abc+` and Ctrl's down-right opens `123+`. To
 get the key in your own `~/.termux/keyboard/layout.xml`, add
-`<key c="switch_full" ne="switch_symbols" sw="switch_numeric" se="switch_greekmath"/>` after Alt.
+`<key c="switch_full" ne="switch_numeric" sw="switch_symbols" se="switch_greekmath"/>` after Alt.
 
 ## The symbols pad
 

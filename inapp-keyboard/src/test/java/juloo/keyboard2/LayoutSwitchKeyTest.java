@@ -13,7 +13,7 @@ import org.robolectric.RobolectricTestRunner;
 /**
  * The layouts key: on every bundled layout and pad, in the same place (right of Alt, or first on
  * the bottom row where there is no Alt there), its tap going to the layout's main destination and
- * each corner always to the same pad: up-left abc+, up-right #+=, down-left 123+, down-right πλ∇¬.
+ * each corner always to the same pad: up-left abc+, up-right 123+, down-left #+=, down-right πλ∇¬.
  * A corner never repeats the tap, and the corner of the layout itself stays empty.
  */
 @RunWith(RobolectricTestRunner.class)
@@ -28,8 +28,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.termux_launcher_minimal);
     assertEquals(12f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_full", null, "switch_symbols", "switch_numeric",
-        "switch_greekmath");
+    assertSwitchKey(rightOfAlt(kb), "switch_full", null, "switch_numeric", "switch_symbols", "switch_greekmath");
   }
 
   @Test
@@ -37,8 +36,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.termux_launcher_qwerty);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_full", null, "switch_symbols", "switch_numeric",
-        "switch_greekmath");
+    assertSwitchKey(rightOfAlt(kb), "switch_full", null, "switch_numeric", "switch_symbols", "switch_greekmath");
   }
 
   @Test
@@ -46,8 +44,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.full_qwerty);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_text", null, "switch_symbols", "switch_numeric",
-        "switch_greekmath");
+    assertSwitchKey(rightOfAlt(kb), "switch_text", null, "switch_numeric", "switch_symbols", "switch_greekmath");
   }
 
   @Test
@@ -55,8 +52,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.symbols);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_text", "switch_full", null, "switch_numeric",
-        "switch_greekmath");
+    assertSwitchKey(rightOfAlt(kb), "switch_text", "switch_full", "switch_numeric", null, "switch_greekmath");
   }
 
   @Test
@@ -64,8 +60,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.numeric);
     assertEquals(6f, kb.keysWidth, EPS);
-    assertSwitchKey(firstOfBottomRow(kb), "switch_text", "switch_full", "switch_symbols", null,
-        "switch_greekmath");
+    assertSwitchKey(firstOfBottomRow(kb), "switch_text", "switch_full", null, "switch_symbols", "switch_greekmath");
     // Ctrl, which rode the old ABC key, takes the place of the πλ∇¬ key.
     assertNotNull(keyWithCentre(kb, "ctrl"));
     assertEquals(null, keyWithCentre(kb, "switch_greekmath"));
@@ -76,8 +71,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.greekmath);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(firstOfBottomRow(kb), "switch_text", "switch_full", "switch_symbols",
-        "switch_numeric", null);
+    assertSwitchKey(firstOfBottomRow(kb), "switch_text", "switch_full", "switch_numeric", "switch_symbols", null);
     // Esc and Tab, which rode the old ABC and 123+ keys, take the place of the 123+ key.
     KeyboardData.Key esc = keyWithCentre(kb, "esc");
     assertNotNull(esc);

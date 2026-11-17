@@ -232,7 +232,7 @@ _Avoid_: local echo (the app never draws a character before the shell sends it)
 **Layouts key** (MadameLabs fork):
 The in-app keyboard key, right of Alt (first on the bottom row of the numeric and Greek/math
 pads), that moves between layouts: a tap goes to `abc+` or back (`>_`), and its corners always
-lead to `abc+` (up-left), `#+=` (up-right), `123+` (down-left) and `πλ∇¬` (down-right).
+lead to `abc+` (up-left), `123+` (up-right), `#+=` (down-left) and `πλ∇¬` (down-right).
 _Avoid_: ABC key, switch key
 
 **Symbols pad** (MadameLabs fork):

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  MadameLabs fork: the #+= symbols pad, reached by the layouts key's up-right corner.
+  MadameLabs fork: the #+= symbols pad, reached by the layouts key's down-left corner.
 
   Gboard's symbols page without its digits, ten columns wide: every ASCII symbol on a key of its
   own except { and }, which sit on the up-left corners of [ and ]. Gboard's second page rides on
@@ -48,7 +48,7 @@
   <row height="0.95">
     <key width="1.2" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
     <key width="1.2" role="action" c="alt" sw="switch_text" se="config"/>
-    <key width="1.0" role="action" c="switch_text" nw="switch_full" sw="switch_numeric" se="switch_greekmath"/>
+    <key width="1.0" role="action" c="switch_text" nw="switch_full" ne="switch_numeric" se="switch_greekmath"/>
     <key width="1.0" c=","/>
     <key width="2.8" role="space_bar" c="space" split_at="0.6" w="cursor_left" e="cursor_right" s="switch_backward"
          n="tool:app.command_palette:󱎱"

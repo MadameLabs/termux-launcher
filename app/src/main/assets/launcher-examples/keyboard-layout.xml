@@ -91,7 +91,7 @@
   <row height="0.95">
     <key width="1.7" c="ctrl" ne="loc meta" sw="loc switch_clipboard" se="switch_numeric"/>
     <key width="1.3" c="loc alt" nw="fn" ne="loc change_method" sw="switch_full" se="config"/>
-    <key width="1.0" c="switch_full" ne="switch_symbols" sw="switch_numeric" se="switch_greekmath"/>
+    <key width="1.0" c="switch_full" sw="switch_symbols" ne="switch_numeric" se="switch_greekmath"/>
     <key width="3.0" c="space" split_at="2.5" w="cursor_left" e="cursor_right" s="switch_backward"
          n="tool:app.command_palette:󱎱"
          nw="tool:window.previous:󰜳" ne="tool:window.next:󰜶"

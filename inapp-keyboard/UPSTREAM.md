@@ -306,8 +306,8 @@ fails when the catalogue has gone stale.
   Upstream has neither. `switch_text` reads `>_` instead of upstream's `ABC`.
 - The layouts key (MadameLabs fork, 2026-11-17): `termux_launcher_qwerty.xml`,
   `termux_launcher_minimal.xml`, `full_qwerty.xml` and `symbols.xml` carry a one-unit key right
-  of Alt (centre `switch_full` or `switch_text`; nw `switch_full`, ne `switch_symbols`,
-  sw `switch_numeric`, se `switch_greekmath`, the layout's own corner and the tap's left empty),
+  of Alt (centre `switch_full` or `switch_text`; nw `switch_full`, ne `switch_numeric`,
+  sw `switch_symbols`, se `switch_greekmath`, the layout's own corner and the tap's left empty),
   the space bar one unit narrower. `numeric.xml`'s bottom-left `switch_text` key becomes the
   layouts key and its `switch_greekmath` key becomes `ctrl`; `greekmath.xml`'s `switch_text` key
   becomes the layouts key and its `switch_numeric` key becomes `loc esc` with `loc tab` up-right.

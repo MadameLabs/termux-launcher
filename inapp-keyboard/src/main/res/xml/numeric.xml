@@ -30,7 +30,7 @@
   </row>
   <row height="0.95">
     <!-- MadameLabs fork: the layouts key in the old ABC key's place: >_ on a tap, abc+, #+= and πλ∇¬ on its corners. -->
-    <key width="1.5" role="action" key0="switch_text" key1="switch_full" key2="switch_symbols" key4="switch_greekmath"/>
+    <key width="1.5" role="action" key0="switch_text" key1="switch_full" key3="switch_symbols" key4="switch_greekmath"/>
     <!-- MadameLabs fork: F10, F11 and F12 on the wide 0, the F keys F1 to F9 on 1 to 9. -->
     <key width="1.5" key0="0" key4=":keyevent symbol='F₁₀' flags='small':140" key3=":keyevent symbol='F₁₁' flags='small':141" key2=":keyevent symbol='F₁₂' flags='small':142"/>
     <key width="0.75" role="action" key0="." key1=":" key2="," key3=";"/>
