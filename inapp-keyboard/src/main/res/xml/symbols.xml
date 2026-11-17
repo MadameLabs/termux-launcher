@@ -45,14 +45,13 @@
     <key c="&gt;" split_before="true"/>
     <key c="[" nw="{"/>
     <key c="]" nw="}"/>
-    <key width="2.0" role="action" c="backspace" ne="delete"/>
+    <key width="2.0" role="action" c="backspace" nw="esc" ne="delete" sw="tab"/>
   </row>
   <row height="0.95">
-    <key width="1.2" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
-    <key width="1.2" role="action" c="alt" nw="esc" ne="tab" sw="switch_text" se="config"/>
-    <key width="1.0" role="action" c="switch_text" nw="switch_full" ne="switch_numeric" se="switch_greekmath"/>
+    <key width="1.2" role="action" c="ctrl" nw="fn" ne="alt" sw="meta" se="config"/>
+    <key width="1.2" role="action" c="switch_text" nw="switch_full" ne="switch_numeric" se="switch_greekmath" n="loc switch_clipboard" s="change_method"/>
     <key width="1.0" c=","/>
-    <key width="2.8" role="space_bar" c="space" split_at="0.6" w="cursor_left" e="cursor_right" s="switch_backward"
+    <key width="3.8" role="space_bar" c="space" split_at="1.6" w="cursor_left" e="cursor_right" s="switch_backward"
          n="tool:app.command_palette:󱎱"
          nw="tool:window.previous:󰜳" ne="tool:window.next:󰜶"
          sw="tool:session.previous:󰜹" se="tool:session.next:󰜰"/>

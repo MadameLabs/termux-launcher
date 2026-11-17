@@ -687,17 +687,17 @@ public final class KeyValue implements Comparable<KeyValue>
 
       /* Special event keys */
       case "config": return CONFIG;
-      case "switch_text": return eventKey(">_", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
-      case "switch_numeric": return eventKey("123+", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
+      case "switch_text": return eventKey("󰆍", Event.SWITCH_TEXT, FLAG_SMALLER_FONT);
+      case "switch_numeric": return eventKey("󰎠", Event.SWITCH_NUMERIC, FLAG_SMALLER_FONT);
       case "switch_emoji": return eventKey(0xE001, Event.SWITCH_EMOJI, FLAG_SMALLER_FONT);
       case "switch_back_emoji": return eventKey("ABC", Event.SWITCH_BACK_EMOJI, 0);
       case "switch_clipboard": return eventKey(0xE017, Event.SWITCH_CLIPBOARD, 0);
       case "switch_back_clipboard": return eventKey("ABC", Event.SWITCH_BACK_CLIPBOARD, 0);
       case "switch_forward": return eventKey(0xE013, Event.SWITCH_FORWARD, FLAG_SMALLER_FONT);
       case "switch_backward": return eventKey(0xE014, Event.SWITCH_BACKWARD, FLAG_SMALLER_FONT);
-      case "switch_greekmath": return eventKey("πλ∇¬", Event.SWITCH_GREEKMATH, FLAG_SMALLER_FONT);
-      case "switch_full": return eventKey("abc+", Event.SWITCH_FULL, FLAG_SMALLER_FONT);
-      case "switch_symbols": return eventKey("#+=", Event.SWITCH_SYMBOLS, FLAG_SMALLER_FONT);
+      case "switch_greekmath": return eventKey("󰒠", Event.SWITCH_GREEKMATH, FLAG_SMALLER_FONT);
+      case "switch_full": return eventKey("󰌌", Event.SWITCH_FULL, FLAG_SMALLER_FONT);
+      case "switch_symbols": return eventKey("󰐣", Event.SWITCH_SYMBOLS, FLAG_SMALLER_FONT);
       case "change_method": return CHANGE_METHOD;
       case "change_method_prev": return CHANGE_METHOD_PREV;
       case "change_method_next": return CHANGE_METHOD_NEXT;

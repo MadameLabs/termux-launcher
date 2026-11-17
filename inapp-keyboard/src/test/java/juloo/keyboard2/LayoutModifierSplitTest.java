@@ -324,12 +324,12 @@ public class LayoutModifierSplitTest
 
     KeyboardData.Row docked = composed.rows.get(composed.rows.size() - 1);
     KeyboardData.Row parted = split.rows.get(split.rows.size() - 1);
-    // Ctrl, Alt and the layouts key come first; the bar is cut 1.5 units in, at the same 5.5
-    // units from the left edge as before the layouts key took one unit of it.
-    KeyboardData.Key bar = docked.keys.get(3);
-    KeyboardData.Key left = parted.keys.get(3);
-    KeyboardData.Key right = parted.keys.get(4);
-    assertEquals(1.5f, left.width, EPS);
+    // Ctrl and the layouts key come first; the bar is cut 2.5 units in, 5.5 units from the
+    // left edge, where it always was.
+    KeyboardData.Key bar = docked.keys.get(2);
+    KeyboardData.Key left = parted.keys.get(2);
+    KeyboardData.Key right = parted.keys.get(3);
+    assertEquals(2.5f, left.width, EPS);
     assertEquals(1.5f, right.width, EPS);
     assertEquals(bar.getKeyValue(0), left.getKeyValue(0));
     assertEquals(bar.getKeyValue(0), right.getKeyValue(0));

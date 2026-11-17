@@ -92,7 +92,7 @@ public class FullQwertyLayoutTest
   }
 
   @Test
-  public void altStillLeadsBack()
+  public void altHasTheShiftPlace()
   {
     KeyboardData.Key alt = null;
     for (KeyboardData.Row row : pad().rows)
@@ -100,7 +100,7 @@ public class FullQwertyLayoutTest
         if (KeyValue.getKeyByName("alt").equals(key.getKeyValue(C)))
           alt = key;
     assertNotNull("an Alt key", alt);
-    assertEquals(KeyValue.getKeyByName("switch_text"), alt.getKeyValue(SW));
+    assertEquals(KeyValue.getKeyByName("shift"), alt.getKeyValue(2));
   }
 
   @Test

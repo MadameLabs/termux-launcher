@@ -19,10 +19,10 @@
     <key width="0.75" role="action" key0="-" key1="^"/>
   </row>
   <row>
-    <!-- MadameLabs fork: Ctrl, from the old ABC key's corner, where the πλ∇¬ key was (the layouts key has it). -->
-    <key width="0.75" role="action" key0="ctrl"/>
+    <!-- MadameLabs fork: Ctrl where the πλ∇¬ key was, with fn, Alt, Super and Settings on its corners. -->
+    <key width="0.75" role="action" key0="ctrl" key1="fn" key2="alt" key3="meta" key4="config"/>
     <!-- MadameLabs fork: Alt is the key, Shift on its corner; fn is gone (as on the main layout). -->
-    <key width="0.75" role="action" key0="loc alt" key2="shift"/>
+    <key width="0.75" role="action" key0="alt" key2="shift" key4="capslock"/>
     <key key0="1" key1="superscript" key2="ordinal" key3="subscript" key4=":keyevent symbol='F₁' flags='small':131"/>
     <key key0="2" key4=":keyevent symbol='F₂' flags='small':132"/>
     <key key0="3" key4=":keyevent symbol='F₃' flags='small':133"/>
@@ -30,11 +30,12 @@
   </row>
   <row height="0.95">
     <!-- MadameLabs fork: the layouts key in the old ABC key's place: >_ on a tap, abc+, #+= and πλ∇¬ on its corners. -->
-    <key width="1.5" role="action" key0="switch_text" key1="switch_full" key3="switch_symbols" key4="switch_greekmath"/>
+    <key width="1.5" role="action" key0="switch_text" key1="switch_full" key3="switch_symbols" key4="switch_greekmath" key7="loc switch_clipboard" key8="change_method"/>
     <!-- MadameLabs fork: F10, F11 and F12 on the wide 0, the F keys F1 to F9 on 1 to 9. -->
     <key width="1.5" key0="0" key4=":keyevent symbol='F₁₀' flags='small':140" key3=":keyevent symbol='F₁₁' flags='small':141" key2=":keyevent symbol='F₁₂' flags='small':142"/>
     <key width="0.75" role="action" key0="." key1=":" key2="," key3=";"/>
-    <key width="0.75" role="action" key0="action" key1="&quot;" key2="'" key3="loc compose" key4="_"/>
-    <key width="1.5" role="action" key0="enter" key1="±" key2="action" key3="="/>
+    <!-- MadameLabs fork: = in place of the IME action key, a second Enter in a terminal. -->
+    <key width="0.75" role="action" key0="=" key1="&quot;" key2="'" key3="loc compose" key4="_"/>
+    <key width="1.5" role="action" key0="enter" key1="±"/>
   </row>
 </keyboard>

@@ -13,9 +13,12 @@ public class KeyValueParserTest
   {
     KeyValue symbols = KeyValue.getKeyByName("switch_symbols");
     assertEquals(KeyValue.Event.SWITCH_SYMBOLS, symbols.getEvent());
-    assertEquals("#+=", symbols.getString());
-    // The way back reads as the commands layout it returns to, not as letters.
-    assertEquals(">_", KeyValue.getKeyByName("switch_text").getString());
+    // Nerd Font icons: md-pound, md-console (the way back), md-keyboard, md-numeric, md-sigma.
+    assertEquals("\uDB81\uDC23", symbols.getString());
+    assertEquals("\uDB80\uDD8D", KeyValue.getKeyByName("switch_text").getString());
+    assertEquals("\uDB80\uDF0C", KeyValue.getKeyByName("switch_full").getString());
+    assertEquals("\uDB80\uDFA0", KeyValue.getKeyByName("switch_numeric").getString());
+    assertEquals("\uDB81\uDCA0", KeyValue.getKeyByName("switch_greekmath").getString());
   }
 
   @Test

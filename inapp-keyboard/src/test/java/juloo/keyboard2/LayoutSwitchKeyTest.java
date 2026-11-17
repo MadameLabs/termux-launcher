@@ -11,8 +11,8 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 /**
- * The layouts key: on every bundled layout and pad, in the same place (right of Alt, or first on
- * the bottom row where there is no Alt there), its tap going to the layout's main destination and
+ * The layouts key: on every bundled layout and pad, in the same place (right of Ctrl, or first on
+ * the bottom row of the 123+ and πλ∇¬ pads), its tap going to the layout's main destination and
  * each corner always to the same pad: up-left abc+, up-right 123+, down-left #+=, down-right πλ∇¬.
  * A corner never repeats the tap, and the corner of the layout itself stays empty.
  */
@@ -28,13 +28,13 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.termux_launcher_minimal);
     assertEquals(12f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_full", null, "switch_numeric", "switch_symbols", "switch_greekmath");
+    assertSwitchKey(rightOfCtrl(kb), "switch_full", null, "switch_numeric", "switch_symbols", "switch_greekmath");
   }
 
   @Test
   public void minimalSpaceBarSlidesTheCursorLikeTheOthers()
   {
-    KeyboardData.Key space = rightOfAlt(load(R.xml.termux_launcher_minimal));
+    KeyboardData.Key space = rightOfCtrl(load(R.xml.termux_launcher_minimal));
     for (KeyboardData.Row row : load(R.xml.termux_launcher_minimal).rows)
       for (KeyboardData.Key key : row.keys)
         if (KeyValue.getKeyByName("space").equals(key.getKeyValue(C)))
@@ -56,7 +56,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.termux_launcher_qwerty);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_full", null, "switch_numeric", "switch_symbols", "switch_greekmath");
+    assertSwitchKey(rightOfCtrl(kb), "switch_full", null, "switch_numeric", "switch_symbols", "switch_greekmath");
   }
 
   @Test
@@ -64,7 +64,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.full_qwerty);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_text", null, "switch_numeric", "switch_symbols", "switch_greekmath");
+    assertSwitchKey(rightOfCtrl(kb), "switch_text", null, "switch_numeric", "switch_symbols", "switch_greekmath");
   }
 
   @Test
@@ -72,7 +72,7 @@ public class LayoutSwitchKeyTest
   {
     KeyboardData kb = load(R.xml.symbols);
     assertEquals(10f, kb.keysWidth, EPS);
-    assertSwitchKey(rightOfAlt(kb), "switch_text", "switch_full", "switch_numeric", null, "switch_greekmath");
+    assertSwitchKey(rightOfCtrl(kb), "switch_text", "switch_full", "switch_numeric", null, "switch_greekmath");
   }
 
   @Test
@@ -105,14 +105,59 @@ public class LayoutSwitchKeyTest
         org.robolectric.RuntimeEnvironment.getApplication().getResources(), id);
   }
 
-  private static KeyboardData.Key rightOfAlt(KeyboardData kb)
+  private static KeyboardData.Key rightOfCtrl(KeyboardData kb)
   {
     List<KeyboardData.Key> keys = kb.rows.get(kb.rows.size() - 1).keys;
     for (int i = 0; i + 1 < keys.size(); i++)
-      if (KeyValue.getKeyByName("alt").equals(keys.get(i).getKeyValue(C)))
+      if (KeyValue.getKeyByName("ctrl").equals(keys.get(i).getKeyValue(C)))
         return keys.get(i + 1);
-    fail("no Alt on the bottom row");
+    fail("no Ctrl on the bottom row");
     return null;
+  }
+
+  private static final int[] ALL = {R.xml.termux_launcher_minimal, R.xml.termux_launcher_qwerty,
+      R.xml.full_qwerty, R.xml.symbols, R.xml.numeric, R.xml.greekmath};
+
+  /** Ctrl carries fn, Alt, Super and Settings on its corners, the same on every layout. */
+  @Test
+  public void everyCtrlCarriesTheSameCorners()
+  {
+    for (int id : ALL)
+    {
+      KeyboardData.Key ctrl = keyWithCentre(load(id), "ctrl");
+      assertNotNull("a Ctrl key in layout " + id, ctrl);
+      assertSwitchKey(ctrl, "ctrl", "fn", "alt", "meta", "config");
+    }
+  }
+
+  /** No Alt key on any bottom row; where there is a Shift, Alt has its place and it rides up-right. */
+  @Test
+  public void altTakesTheShiftPlaceAndLeavesTheBottomRow()
+  {
+    for (int id : ALL)
+    {
+      KeyboardData kb = load(id);
+      for (KeyboardData.Key key : kb.rows.get(kb.rows.size() - 1).keys)
+        assertTrue("no Alt on the bottom row of " + id,
+            !KeyValue.getKeyByName("alt").equals(key.getKeyValue(C)));
+      assertEquals("no Shift key of its own in " + id, null, keyWithCentre(kb, "shift"));
+    }
+    for (int id : new int[] {R.xml.termux_launcher_qwerty, R.xml.full_qwerty, R.xml.numeric,
+        R.xml.greekmath})
+    {
+      KeyboardData.Key alt = keyWithCentre(load(id), "alt");
+      assertNotNull("an Alt key in " + id, alt);
+      assertEquals(KeyValue.getKeyByName("shift"), alt.getKeyValue(NE));
+    }
+  }
+
+  /** The IME action key typed a second Enter in a terminal; = has its place. */
+  @Test
+  public void numericPadHasOneEnter()
+  {
+    KeyboardData kb = load(R.xml.numeric);
+    assertEquals(null, keyWithCentre(kb, "action"));
+    assertNotNull(keyWithCentre(kb, "enter"));
   }
 
   private static KeyboardData.Key firstOfBottomRow(KeyboardData kb)

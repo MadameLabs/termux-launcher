@@ -57,7 +57,7 @@ public class ComposedLayoutsKeyTest {
                     assertEquals("row " + r + " key " + k + " slot " + i,
                         raw.rows.get(r).keys.get(k).getKeyValue(i),
                         shown.rows.get(r).keys.get(k).getKeyValue(i));
-        // Esc and Tab, the terminal's own, are still on the pad: on Alt's upper corners.
+        // Esc and Tab, the terminal's own, are still on the pad: on Backspace's left corners.
         assertNotNull(keyWith(shown, "esc"));
         assertNotNull(keyWith(shown, "tab"));
     }

@@ -4,7 +4,7 @@
   (Gboard, a hardware keyboard) and keeping the terminal's keys at hand: Esc, cut, copy, paste,
   the clipboard, one direction key and Backspace on top; Ctrl, Alt, the space bar, voice typing and
   Enter below; a sideways slide on the space bar moves the cursor, the sessions are on its lower
-  corners. Both rows are 12 units wide. Right of Alt, the layouts key: abc+ on a tap, 123+, #+= and
+  corners. Both rows are 12 units wide. Right of Ctrl (fn, Alt, Super and Settings on its corners), the layouts key: abc+ on a tap, 123+, #+= and
   πλ∇¬ on its up-right, down-left and down-right corners. Brought in from a user's ~/.termux/keyboard/layout.xml
   ("Minimal Unkb") on 2026-11-16.
 -->
@@ -19,10 +19,9 @@
     <key width="2.8" key0="backspace"/>
   </row>
   <row height="0.95">
-    <key width="1.4" key0="ctrl" key2="switch_numeric" key4="loc meta"/>
-    <key width="1.4" key0="loc alt" key2="loc change_method" key3="switch_full" key4="config"/>
-    <key width="1.0" key0="switch_full" key3="switch_symbols" key2="switch_numeric" key4="switch_greekmath"/>
-    <key width="4.5" key0="space" key5="cursor_left" key6="cursor_right" key3="tool:session.previous:󰜹" key4="tool:session.next:󰜰" key7="tool:app.command_palette:󱎱"/>
+    <key width="1.4" key0="ctrl" key1="fn" key2="alt" key3="meta" key4="config"/>
+    <key width="1.4" key0="switch_full" key3="switch_symbols" key2="switch_numeric" key4="switch_greekmath" key8="change_method"/>
+    <key width="5.5" key0="space" key5="cursor_left" key6="cursor_right" key3="tool:session.previous:󰜹" key4="tool:session.next:󰜰" key7="tool:app.command_palette:󱎱"/>
     <key width="1.8" key0="voice_typing"/>
     <key width="1.9" key0="enter" key7=":str symbol='¶':'&#xA;'"/>
   </row>

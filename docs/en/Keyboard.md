@@ -48,13 +48,12 @@ away, since nothing there takes typing. On the Display place its keys go to the 
 
 | Key | Swipe | What it does |
 |---|---|---|
-| Ctrl | up-right | Clipboard history (see [Clipboard history](Touch_Links_And_Clipboard.md#clipboard-history)) |
-| Ctrl | down-left | Meta |
-| Ctrl | down-right | Numeric layer |
-| Alt | up-left | Fn layer |
-| Alt | up-right | Hide the keyboard |
-| Alt | down-left | Full QWERTY layer (the `abc+` key) |
-| Alt | down-right | Open Settings |
+| Ctrl | up-left | Fn layer |
+| Ctrl | up-right | Alt |
+| Ctrl | down-left | Super (Meta) |
+| Ctrl | down-right | Open Settings |
+| Layouts key | up | Clipboard history (see [Clipboard history](Touch_Links_And_Clipboard.md#clipboard-history)) |
+| Layouts key | down | Switch to another Android keyboard |
 | Space bar | up | [Command palette](Command_Palette_And_Actions.md) |
 | Space bar | up-left / up-right | Previous / next window |
 | Space bar | down-left / down-right | Previous / next session |
@@ -64,11 +63,11 @@ away, since nothing there takes typing. On the Display place its keys go to the 
 | Key right of the space bar | up-left / up-right / down-left / down-right | Home / Page Up / Page Down / End |
 | Enter | up | Voice input (see [Voice input](Voice_Input.md)) |
 
-Shift's up-right swipe is Caps Lock and Backspace's is Delete.
+There is no Alt key on the bottom row, and no Shift key of its own: the key where Shift used to be is Alt, with Shift on its up-right corner and Caps Lock on its down-right, on every layout that has letters and on the `123+` pad. Backspace's up-right swipe is Delete.
 
 ## The Fn layer
 
-Fn is the up-left swipe on the Alt key; there is no separate Fn key. While it is on:
+Fn is the up-left swipe on the Ctrl key; there is no separate Fn key. While it is on:
 
 - the top row types F1 to F10, and Z and X type F11 and F12;
 - A and S type Esc and Tab;
@@ -78,22 +77,22 @@ Fn is the up-left swipe on the Alt key; there is no separate Fn key. While it is
 
 ## The full QWERTY layer
 
-The `abc+` swipe (down-left on Alt) opens a symbols-first keyboard in ten columns, as wide as your
+The `abc+` key opens a symbols-first keyboard in ten columns, as wide as your
 layout. The top row types `!@#$%^&*()`, with F1 to F12 on the down-right corners (F11 and F12 on
 the up-right corners of `(` and `)`). Every other symbol sits on a letter's corners, down-left
 first, then up-left: `` ` ~ `` on `!`, `= +` on `(`, `- _` on `)`, `[ {` and `] }` on O and P,
 `; :`, `' "` and `\ |` on J, K and L, `, <`, `. >` and `/ ?` on B, N and M. Tab is on Q's
-down-right corner and Esc on A's. The bottom row is the launcher layout's: Ctrl, Alt, the space
-bar, one direction key with the arrows on its swipes, and Enter. The same swipe, now reading
-`>_`, brings your layout back. If you keep
-your own `~/.termux/keyboard/layout.xml`, add `sw="switch_full"` to its Alt key to get the swipe.
+down-right corner and Esc on A's. The bottom row is the launcher layout's: Ctrl, the layouts key, the space
+bar, one direction key with the arrows on its swipes, and Enter. The layouts key, now showing a
+console icon, brings your layout back.
 
 ## The layouts key
 
-Every layout and pad has one key for moving between them, in the same place: right of Alt on the
+Every layout and pad has one key for moving between them, in the same place: right of Ctrl on the
 QWERTY, Minimal, `abc+` and `#+=` layouts, first on the bottom row of the `123+` and `πλ∇¬` pads.
-A tap goes to `abc+` from the QWERTY and Minimal layouts, and back to your layout (`>_`) from
-everywhere else. Its corners always lead to the same place; the corner of the layout you are on,
+Each layout has an icon: a keyboard for `abc+`, `123`
+for `123+`, a `#` for `#+=`, a Σ for `πλ∇¬` and a console for your own layout. A tap goes to
+`abc+` from the QWERTY and Minimal layouts, and back to your layout from everywhere else. Its corners always lead to the same place; the corner of the layout you are on,
 and the one the tap already goes to, stay empty.
 
 | Corner | Goes to |
@@ -103,9 +102,9 @@ and the one the tap already goes to, stay empty.
 | down-left | `#+=`, the symbols pad |
 | down-right | `πλ∇¬`, the Greek and math pad |
 
-The old shortcuts stay: Alt's down-left swipe opens `abc+` and Ctrl's down-right opens `123+`. To
-get the key in your own `~/.termux/keyboard/layout.xml`, add
-`<key c="switch_full" ne="switch_numeric" sw="switch_symbols" se="switch_greekmath"/>` after Alt.
+To get the key in your own `~/.termux/keyboard/layout.xml`, add
+`<key c="switch_full" ne="switch_numeric" sw="switch_symbols" se="switch_greekmath" n="switch_clipboard" s="change_method"/>`
+after Ctrl.
 
 ## The symbols pad
 
@@ -113,10 +112,11 @@ get the key in your own `~/.termux/keyboard/layout.xml`, add
 symbol has a key of its own (`{` and `}` ride the up-left corners of `[` and `]`), and the less
 common ones sit on corners, grouped by meaning: `©` `®` `™` on `@`, `§` on `#`, `€` `£` `¥` `¢`
 on `$`, `•` on `-`, `π` `Δ` on `+`, `×` `÷` on `*`, `✓` on `!`, `√` `°` on `^`. The bottom row
-has the comma and the full stop either side of the space bar.
+has the comma and the full stop either side of the space bar; Esc and Tab are on Backspace's
+up-left and down-left corners.
 
 The **Minimal** layout (Settings → Keyboard → Layouts) has no letters: two rows of terminal keys
-(Esc, cut, copy, paste, clipboard, the direction key, Backspace; Ctrl, Alt, the layouts key, the
+(Esc, cut, copy, paste, clipboard, the direction key, Backspace; Ctrl, the layouts key, the
 space bar, voice typing, Enter) for typing letters with another keyboard.
 
 ## Layouts
@@ -154,8 +154,8 @@ A floating keyboard moves by its two top corners or by the pill in its handle ro
 the grip in its bottom-left corner: dragging left makes it wider and dragging up makes its rows
 taller, while the right and bottom edges stay where they are.
 
-A split keyboard cuts each row once: q to t | y to p, a to g | h to l, Shift z to v | b to m
-Backspace. On the space-bar row, Ctrl, Alt and part of the space bar sit on the left, the rest of
+A split keyboard cuts each row once: q to t | y to p, a to g | h to l, Alt z to v | b to m
+Backspace. On the space-bar row, Ctrl, the layouts key and part of the space bar sit on the left, the rest of
 the space bar, the arrow key and Enter on the right. Both pieces of the space bar type a space;
 left-side swipes stay on the left piece and right-side swipes on the right. In mouse mode the gap
 widens to make room for the touchpad.
