@@ -243,7 +243,7 @@ _Avoid_: symbols layout, page 2
 **Full QWERTY layer** (MadameLabs fork):
 A pad of the in-app keyboard in ten columns: a top row of shifted symbols with F1 to F12 on its
 corners, and every other punctuation key, Tab and Esc on the letters' corners. Reached by `abc+` (the Alt key's down-left swipe),
-left by the same swipe (`ABC`). A pad like the numeric one, never in the layout ring.
+left by the same swipe (`>_`). A pad like the numeric one, never in the layout ring.
 _Avoid_: PC layout, full keyboard
 
 **Layer**, **open layer**:

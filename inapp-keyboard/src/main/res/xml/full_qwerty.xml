@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   MadameLabs fork: the full QWERTY pad, reached by the abc+ key (the Alt key's down-left swipe on
-  the launcher layout) and left by the same swipe, which reads ABC here.
+  the launcher layout) and left by the same swipe, which reads >_ here.
 
   Ten columns, so the letters and the space bar are as wide as on the launcher layout. The top row
   types the shifted symbols !@#$%^&*() with F1 to F12 on the down-right corners; every other

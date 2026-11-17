@@ -7,9 +7,11 @@
   the corners, grouped by meaning and filled down-left, then up-left, up-right, down-right:
   © ® ™ on @, § on #, € £ ¥ ¢ on $, • on -, π Δ on +, × ÷ on *, ✓ on !, √ ° on ^.
   The bottom row is Ctrl, Alt, the layouts key, the comma, the space bar, the full stop and Enter.
-  Like the numeric pad it has no name: never in the layout ring nor in the layout picker.
+  Esc and Tab ride Alt's upper corners; the enabled extra keys stay off the pad (extra_keys="false")
+  so its corners keep the symbols. Like the numeric pad it has no name: never in the layout ring
+  nor in the layout picker.
 -->
-<keyboard bottom_row="false" script="latin">
+<keyboard bottom_row="false" extra_keys="false" script="latin">
   <row>
     <key c="\@" sw="©" nw="®" ne="™"/>
     <key c="\#" sw="§"/>
@@ -47,7 +49,7 @@
   </row>
   <row height="0.95">
     <key width="1.2" role="action" c="ctrl" ne="loc switch_clipboard" sw="loc meta" se="switch_numeric"/>
-    <key width="1.2" role="action" c="alt" sw="switch_text" se="config"/>
+    <key width="1.2" role="action" c="alt" nw="esc" ne="tab" sw="switch_text" se="config"/>
     <key width="1.0" role="action" c="switch_text" nw="switch_full" ne="switch_numeric" se="switch_greekmath"/>
     <key width="1.0" c=","/>
     <key width="2.8" role="space_bar" c="space" split_at="0.6" w="cursor_left" e="cursor_right" s="switch_backward"

@@ -74,7 +74,7 @@ public final class LayoutModifier
     // Add enabled keys that are not already on the layout ('loc' slots kept
     // above count as present).
     extraKeys.keySet().removeAll(layoutKeys);
-    if (!extraKeys.isEmpty())
+    if (!extraKeys.isEmpty() && result.extra_keys)
       result = result.addExtraKeys(extraKeys.entrySet().iterator());
 
     try
