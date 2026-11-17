@@ -32,6 +32,26 @@ public class LayoutSwitchKeyTest
   }
 
   @Test
+  public void minimalSpaceBarSlidesTheCursorLikeTheOthers()
+  {
+    KeyboardData.Key space = rightOfAlt(load(R.xml.termux_launcher_minimal));
+    for (KeyboardData.Row row : load(R.xml.termux_launcher_minimal).rows)
+      for (KeyboardData.Key key : row.keys)
+        if (KeyValue.getKeyByName("space").equals(key.getKeyValue(C)))
+          space = key;
+    assertValue("w", "cursor_left", space.getKeyValue(5));
+    assertValue("e", "cursor_right", space.getKeyValue(6));
+    KeyboardData.Key qwertySpace = null;
+    for (KeyboardData.Row row : load(R.xml.termux_launcher_qwerty).rows)
+      for (KeyboardData.Key key : row.keys)
+        if (KeyValue.getKeyByName("space").equals(key.getKeyValue(C)))
+          qwertySpace = key;
+    // The sessions move to the lower corners, where the QWERTY space bar has them.
+    assertEquals(qwertySpace.getKeyValue(SW), space.getKeyValue(SW));
+    assertEquals(qwertySpace.getKeyValue(SE), space.getKeyValue(SE));
+  }
+
+  @Test
   public void qwertyLayout()
   {
     KeyboardData kb = load(R.xml.termux_launcher_qwerty);
