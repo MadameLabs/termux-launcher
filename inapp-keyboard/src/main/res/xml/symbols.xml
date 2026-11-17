@@ -39,8 +39,8 @@
     <key c="`"/>
     <key c="%"/>
     <key c="^" sw="√" nw="°"/>
-    <key c="&lt;" split_before="true"/>
-    <key c="&gt;"/>
+    <key c="&lt;"/>
+    <key c="&gt;" split_before="true"/>
     <key c="[" nw="{"/>
     <key c="]" nw="}"/>
     <key width="2.0" role="action" c="backspace" ne="delete"/>

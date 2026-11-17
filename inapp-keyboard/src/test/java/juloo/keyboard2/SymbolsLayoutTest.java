@@ -31,6 +31,13 @@ public class SymbolsLayoutTest
   }
 
   @Test
+  public void splitHalvesAreFiveUnitsEach()
+  {
+    // A row parted off-centre widens both halves and shrinks every key in split mode.
+    assertEquals(5f, SplitLayout.halfUnits(pad()), EPS);
+  }
+
+  @Test
   public void everyAsciiSymbolIsAKeyOfItsOwn()
   {
     Set<String> centres = new HashSet<>();
