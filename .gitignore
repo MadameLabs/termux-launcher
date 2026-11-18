@@ -107,3 +107,6 @@ project-docs/reference/layout-editor-v2/layout-editor-v2.zip
 # Output of a skills installer (local, never committed)
 .agents/
 skills-lock.json
+
+# graphify: grafo de código, regenerável sem custo (GRAPHIFY_BACKEND=none graphify extract . --code-only)
+graphify-out/
